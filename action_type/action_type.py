@@ -1,5 +1,12 @@
 from type import order
 import pydantic
+from serve.mode import PackMode
+
+
+class ActionType:
+    PICK = "pick"
+    DROP = "drop"
+    FORK_LIFT = "forklift"
 
 
 class ActionPack(pydantic.BaseModel):
@@ -51,57 +58,55 @@ class ActionPack(pydantic.BaseModel):
 
         return a
 
-    @staticmethod
-    def pick(action: order.Action,node_id:str) -> dict:
-        # print("pick")
-        action_parameters = action.actionParameters
-        station_name = None
-        station_type = None
-        try:
-            for action_parameter in action_parameters:
-                # print("------",action_parameter.dict())
-                a_p = action_parameter.dict()
-                if a_p["key"] == "stationName":
-                    station_name = a_p["value"]
-                if a_p["key"] == "stationType":
-                    station_type = a_p["value"]
-        except Exception as e:
-            print("pick action failed", e)
-        if station_type and station_name:
-            a = {
-                "id": station_name,
-                "source_id":node_id,
-                "task_id": action.actionId,
-                "binTask": station_type
-            }
-            return a
-        return {}
+    @classmethod
+    def pick(cls, action: order.Action, mode: PackMode, script_stage=2) -> dict:
+        action_task = cls._pack_action(action, mode, script_stage)
+        print("pick:", action_task)
+        return action_task
 
-    @staticmethod
-    def drop(action: order.Action) -> dict:
-        # print("pick")
-        action_parameters = action.actionParameters
-        station_name = None
-        station_type = None
+    @classmethod
+    def drop(cls, action: order.Action, mode: PackMode, script_stage=2) -> dict:
+        action_task = cls._pack_action(action, mode, script_stage)
+        print("drop:", action_task)
+        return action_task
+
+    @classmethod
+    def _pack_action(cls, action: order.Action, mode: PackMode, script_stage) -> dict:
         try:
-            for action_parameter in action_parameters:
-                # print("------",action_parameter.dict())
-                a_p = action_parameter.dict()
-                if a_p["key"] == "stationName":
-                    station_name = a_p["value"]
-                if a_p["key"] == "stationType":
-                    station_type = a_p["value"]
-            print("ssss", station_name, station_type)
+            if mode == PackMode.params:
+                action_task = {
+                    "task_id": action.actionId,
+                    "id": "SELF_POSITION",
+                    "source_id": "SELF_POSITION",
+                    "script_name": "ForkByModbusTcpCtr.py",
+                    "script_args": {
+                        "action_parameters": action.actionParameters,
+                        "operation": action.actionType,
+                        "blocking_type": "node"
+                    },
+                    "operation": "Script",
+                    "script_stage": script_stage
+                }
+            elif mode == PackMode.binTask:
+                action_task = {
+                    "task_id": action.actionId
+                }
+                for param in action.actionParameters:
+                    if param.key == "binTask":
+                        action_task["binTask"] = param.value
+                    if param.key == "id":
+                        action_task["id"] = param.value
+                        action_task["source_id"] = param.value
+                if not (action_task.get("id") and action_task.get("binTask")):
+                    print(f"动作打包异常！！！ action_task：{action_task}|||action：{action}")
+                    action_task = {}
+            else:
+                print("action type error:", mode)
+                action_task = {}
+            return action_task
         except Exception as e:
-            print("pick action failed", e)
-        if station_type and station_name:
-            a = {
-                "id": station_name,
-                "task_id": action.actionId,
-                "binTask": station_type
-            }
-            return a
-        return {}
+            print("_pack_action error:",e)
+            return {}
 
     @staticmethod
     def detectObject(action: order.Action) -> dict:

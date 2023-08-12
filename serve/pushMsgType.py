@@ -1,4 +1,4 @@
-from typing import List, Dict,Optional
+from typing import List, Dict, Optional, Union
 from pydantic import BaseModel
 
 
@@ -25,9 +25,9 @@ class Motor(BaseModel):
     follow_err: bool = False
     motor_name: str = ""
     passive: bool = False
-    position: int = 0
-    raw_position: int = 0
-    speed: int = 0
+    position: float = 0.
+    raw_position: float = 0.
+    speed: float = 0.
     stop: bool = False
     temperature: int = 0
     type: int = 0
@@ -101,9 +101,9 @@ class TaskStatus(BaseModel):
 class TaskStatusPackage(BaseModel):
     closest_label: str = ""
     closest_target: str = ""
-    distance: int = 0
+    distance: float = 0.
     info: str = ""
-    percentage: int = 0
+    percentage: float = 0.
     source_label: str = ""
     source_name: str = ""
     target_label: str = ""
@@ -179,7 +179,7 @@ class RobotPush(BaseModel):
     motor_info: List[Motor] = []
     motor_steer_angles: List[int] = []
     move_status_info: str = ''
-    nearest_obstacles: List[str] = []
+    nearest_obstacles: List[dict] = []
     odo: float = 0.
     peripheral_data: List[str] = []
     pgvs: List[str] = []
@@ -194,7 +194,7 @@ class RobotPush(BaseModel):
     r_vx: float = 0.
     r_vy: float = 0.
     r_w: float = 0.
-    reliabilities: List[str] = []
+    reliabilities: List[Union[str,int]] = []
     reloc_status: int = 0
     requestCurrent: float = 0.
     requestVoltage: float = 0.
