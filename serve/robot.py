@@ -8,6 +8,7 @@ import threading
 from datetime import datetime
 
 from rbklib.rbklib import Rbklib
+from rbklib.rbklibPro import Rbk
 from type import state
 from typing import List
 import time
@@ -28,7 +29,8 @@ def get_robot_ip():
 
 Robot_ip = get_robot_ip()
 
-rbk = Rbklib(Robot_ip, push_flag=True)
+# rbk = Rbklib(Robot_ip, push_flag=True)
+rbk = Rbk(Robot_ip)
 
 
 class RobotMapManager:
@@ -75,7 +77,7 @@ class RobotMapManager:
         if not md5:
             md5 = self.get_updated_md5(name + '.smap')
         map_path = os.path.join(map_dir, name + '.smap')
-        _, data = self.rbk.robot_config_downloadmap_req(name)
+        data = self.rbk.robot_config_download_map_req(name)
         if os.path.exists(map_dir):
             with open(map_path, 'wb') as file:
                 # 可选：写入内容到文件
@@ -88,7 +90,7 @@ class RobotMapManager:
 
     def get_updated_md5(self, map_name: str):
         try:
-            _, c_md5_res = self.rbk.robot_status_mapmd5_req([map_name])
+            c_md5_res = self.rbk.robot_status_map_md5_req([map_name])
             c_md5_json = json.loads(c_md5_res)
             if c_md5_json.get("ret_code") == 0:
                 if c_md5_json["map_info"][0]["name"] == map_name:
@@ -106,7 +108,7 @@ class RobotMapManager:
             print(f"get_updated_md5{e}")
 
     def switch_map(self, target_map: str) -> bool:
-        _, map_res = self.rbk.robot_control_loadmap_req(target_map)
+        map_res = self.rbk.robot_control_load_map_req(target_map)
         map_res_json = json.loads(map_res)
         if map_res_json.get("ret_code"):
             if map_res_json["ret_code"] == 0:
@@ -129,7 +131,7 @@ class RobotMapManager:
 
     def _get_map(self):
         try:
-            _, map_req = self.rbk.robot_status_map_req()
+            map_req = self.rbk.robot_status_map_req()
             map_req_json = json.loads(map_req)
             return map_req_json
         except OSError as o:
@@ -228,7 +230,6 @@ class Robot:
         self.state = state.State.create_state()
         self.nick_name = "seer-vda5050"
         self.lock = False
-        self.online = self.robot_online
         self.robot_version = "3.4.5"
         self.messages = queue.Queue()
 
@@ -248,14 +249,14 @@ class Robot:
         check robot online status,and check robot lock status
         :return:
         """
-        return self.check_online()
+        return self.rbk.online
 
     def update(self):
         """
         将机器人的数据，更新到 self.state 中
         :return:
         """
-        self.robot_push_msg = RobotPush(**json.loads(self.rbk.pushData.get()))
+        self.robot_push_msg = RobotPush(**json.loads(self.rbk.so_19301.pushData.get()))
         # state
         self.update_state()
         # 根據信息判斷邏輯
@@ -264,6 +265,7 @@ class Robot:
         # 當前地圖
         self.update_map()
         # 定位信息
+        self.logs.info(f'[robot]online status:{self.rbk.online_status}')
 
     def update_state(self):
         self.state.headerId += 1
@@ -300,7 +302,7 @@ class Robot:
 
     def update_operating_mode(self) -> state.OperatingMode:
         mode = state.OperatingMode.MANUAL
-        if self.online and self.lock:
+        if self.robot_online and self.lock:
             mode = state.OperatingMode.AUTOMATIC
         if not self.lock:
             mode = state.OperatingMode.SERVICE
@@ -354,14 +356,6 @@ class Robot:
             self.lock = True
             self.logs.info("master has lock")
 
-    def check_online(self):
-        if not self.rbk.so_19204:
-            self.online = False
-        else:
-            self.online = True
-
-        return self.online
-
     def get_robot_massage(self):
         if self.robot_online:
             try:
@@ -381,7 +375,7 @@ class Robot:
         try:
             while flag:
                 if self.lock:
-                    _, res_data = self.rbk.request(type_id, msg=move_task_list)
+                    res_data = self.rbk.request(3066,msg=move_task_list)
                     res_data_json = json.loads(res_data)
                     self.logs.info(f"下发任务内容：{move_task_list}, rbk 返回结果：{res_data_json}")
                     if res_data_json["ret_code"] == 0:

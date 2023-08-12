@@ -14,11 +14,23 @@ class Rbk:
         self.so_19206 = So19206(ip)
         self.so_19207 = So19207(ip)
         self.so_19210 = So19210(ip)
-        print(self.so_19204.so)
-        print(self.so_19205.so)
         self.so_19301 = So19301(ip)
-        print(self.so_19204.so)
-        print(self.so_19205.so)
+        self.online_status = dict()
+
+    @property
+    def online(self):
+        self.online_status = {
+            "19204": self.so_19204.connected,
+            "19205": self.so_19205.connected,
+            "19206": self.so_19206.connected,
+            "19207": self.so_19207.connected,
+            "19301": self.so_19301.connected
+        }
+        if self.so_19204.connected and self.so_19205.connected and self.so_19206.connected \
+                and self.so_19207.connected and self.so_19301.connected:
+            return True
+        else:
+            return False
 
     def __del__(self):
         if self.so_19204 is not None:
@@ -36,24 +48,98 @@ class Rbk:
 
     def request(self, msgType, reqId=1, msg=None):
         if 1000 <= msgType < 2000:
-            return self.so_19204.request(msgType,reqId,msg)
+            return self.so_19204.request(msgType, reqId, msg)
         elif msgType < 3000:
-            return self.so_19205.request(msgType,reqId,msg)
+            return self.so_19205.request(msgType, reqId, msg)
         elif msgType < 4000:
-            return self.so_19206.request(msgType,reqId,msg)
+            return self.so_19206.request(msgType, reqId, msg)
         elif msgType < 5000:
-            return self.so_19207.request(msgType,reqId,msg)
+            return self.so_19207.request(msgType, reqId, msg)
         elif 6000 <= msgType < 7000:
-            return self.so_19210.request(msgType,reqId,msg)
+            return self.so_19210.request(msgType, reqId, msg)
         else:
             # 如果报文类型不在范围内，则抛出异常
             raise ValueError("没有与报文类型对应的socket,或者需要指定一个socket")
 
+    def robot_config_download_map_req(self, map_name: str):
+        """
+        从机器人下载地图
 
+        :param map_name: 地图名(不能包含中文等非法字符, 只能使用 0-9, a-z, A-Z, -, _)
+        """
+        return self.request(4011, 1, {"map_name": map_name})
+
+    def robot_status_map_md5_req(self, map_names):
+        """
+        查询指定地图列表的MD5值
+
+        :param map_names: 需要查询的地图列表，应该保证机器人中存在地图列表中所有的地图
+        """
+        return self.request(1302, 1, {"map_names": map_names})
+
+    def robot_control_load_map_req(self, map_name: str):
+        """
+        切换载入的地图
+
+        :param map_name: 要切换的地图名(不能包含中文等非法字符, 只能使用 0-9, a-z, A-Z, -, _)
+        """
+        return self.request(2022, 1, {"map_name": map_name})
+
+    def robot_control_reloc_req(self, x: float = None, y: float = None, angle: float = None, length: float = 0,
+                                home: bool = False):
+        """
+         重定位
+
+         :param x: 世界坐标系中的 x 坐标, 单位 m
+         :param y: 世界坐标系中的 y 坐标, 单位 m
+         :param angle: 世界坐标系中的角度, 单位 rad
+         :param length: 重定位区域半径，单位 m
+         :param home: 在 RobotHome 重定位(若为 true, 前三个参数无效, 并从 Roboshop 参数配置中的 RobotHome1-5 重定位,
+                      若 RobotHome1-5 未配置, 则不做任何操作。若缺省则认为是 false)
+         """
+        d = {}
+        if x is not None:
+            d["x"] = x
+        if y is not None:
+            d["y"] = y
+        if angle is not None:
+            d["angle"] = angle
+        if length is not None:
+            d["length"] = length
+        d["home"] = home
+        return self.request(2002, 1, d)
+
+    def robot_status_map_req(self):
+        """
+        查询机器人载入的地图以及储存的地图
+        """
+        return self.request(1300)
+
+    def robot_config_lock_req(self, nick_name: str):
+        """
+        抢占控制权
+        :param nick_name: 控制权抢占者名称
+        """
+        return self.request(4005, 1, {"nick_name": nick_name})
+
+    def robot_task_go_target_list_req(self, **kwargs):
+        """
+        指定路径导航\n
+        指定路径导航为向机器人发送一组站点序列，机器人会按照此序列进行导航（不再自主规划路径），经过中间站点不进行停留。
+
+        :param kwargs: 参阅 https://books.seer-group.com/public/netprotocol/3.3/zh/dev-integration/netprotocol/tcp-ip/task-api/robot-task-gotargetlist.html
+        """
+        return self.request(3066, 1, kwargs)
+
+    def robot_task_cancel_req(self):
+        """
+        取消当前导航
+        """
+        return self.request(3003)
 
 
 class BaseSo:
-    def __init__(self, ip: str, port: int, socket_timeout=60, max_reconnect_attempts=5):
+    def __init__(self, ip: str, port: int, socket_timeout=60, max_reconnect_attempts=10):
         self.PACK_FMT_STR = '!BBHLH6s'
         self.ip = ip
         self.port = port
@@ -79,9 +165,9 @@ class BaseSo:
                 self.reconnect_attempts += 1
 
                 if self.reconnect_attempts > self.max_reconnect_attempts:
-                    print("达到最大重连尝试次数，退出连接")
-                    break
-
+                    print("达到最大重连尝试次数，繼續重新鏈接")
+                    self.reconnect_attempts = 0
+                    self.reconnect_attempts= 0
                 reconnect_delay = self.get_reconnect_delay()
                 print(f"等待 {reconnect_delay} 秒后进行重连")
                 time.sleep(reconnect_delay)
@@ -174,7 +260,8 @@ class BaseSo:
             print("未连接到服务器")
             return None
         try:
-            _, body = self._request(self.so, msgType, reqId, msg)
+            h, body = self._request(self.so, msgType, reqId, msg)
+            print("返回 header：", h.__len__())
             return body
         except socket.timeout:
             self.connected = False
@@ -186,6 +273,7 @@ class BaseSo:
             self.reconnect()
         except Exception as e:
             self.connected = False
+            self.reconnect()
             print(f"其他异常：{e}")
 
     def reconnect(self):
@@ -228,10 +316,10 @@ class So19210(BaseSo):
 
 
 class So19301(BaseSo):
-    def __init__(self, ip: str = "127.0.0.1", socket_timeout=60, max_reconnect_attempts=5, pushDataSize=1):
+    def __init__(self, ip: str = "127.0.0.1", socket_timeout=60, max_reconnect_attempts=5, pushDataSize=5):
         super().__init__(ip, 19301, socket_timeout, max_reconnect_attempts)
         self.pushData = Queue(pushDataSize)
-        thread = threading.Thread(target=self._robot_push)
+        thread = threading.Thread(target=self._robot_push,name="So19301_pushData")
         thread.setDaemon(True)
         thread.start()
 
@@ -241,25 +329,28 @@ class So19301(BaseSo):
         """
 
         while True:
-            print(self.so)
-            if self.connected:
-                # 接收报文头
-                headData = self.so.recv(16)
-                # 解析报文头
-                header = struct.unpack(self.PACK_FMT_STR, headData)
-                # 获取报文体长度
-                bodyLen = header[3]
-                readSize = 1024
-                recvData = b''
-                while bodyLen > 0:
-                    recv = self.so.recv(readSize)
-                    recvData += recv
-                    bodyLen -= len(recv)
-                    if bodyLen < readSize:
-                        readSize = bodyLen
-                if self.pushData.full():
-                    self.pushData.get()
-                print(recvData)
-                self.pushData.put(recvData)
-            else:
-                return
+            try:
+                if self.connected:
+                    # 接收报文头
+                    headData = self.so.recv(16)
+                    # 解析报文头
+                    header = struct.unpack(self.PACK_FMT_STR, headData)
+                    # 获取报文体长度
+                    bodyLen = header[3]
+                    readSize = 1024
+                    recvData = b''
+                    while bodyLen > 0:
+                        recv = self.so.recv(readSize)
+                        recvData += recv
+                        bodyLen -= len(recv)
+                        if bodyLen < readSize:
+                            readSize = bodyLen
+                    if self.pushData.full():
+                        self.pushData.get()
+                    self.pushData.put(recvData)
+                else:
+                    return
+            except Exception as e:
+                print("pushData error:",e)
+                self.connected = False
+                self.reconnect()

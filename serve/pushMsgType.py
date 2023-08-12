@@ -1,4 +1,4 @@
-from typing import List, Dict,Optional
+from typing import List, Dict, Optional, Union
 from pydantic import BaseModel
 
 
@@ -194,7 +194,7 @@ class RobotPush(BaseModel):
     r_vx: float = 0.
     r_vy: float = 0.
     r_w: float = 0.
-    reliabilities: List[str] = []
+    reliabilities: List[Union[str,int]] = []
     reloc_status: int = 0
     requestCurrent: float = 0.
     requestVoltage: float = 0.

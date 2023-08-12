@@ -75,7 +75,6 @@ class RobotOrder:
         self.connection: connection.Connection = connection.Connection.create()
         self.robot_state_header_id = 0
         self.robot_connection_header_id = 0
-        self.robot_online = self.robot.online
         self.logs = logs
         self.state = state.State.create_state()
         self.init = False  # 表示第一次运行，用于判断运单逻辑
@@ -281,7 +280,7 @@ class RobotOrder:
         :return:
         """
         online = False
-        if self.robot.online:
+        if self.robot.robot_online:
             online = True
         return online
 
@@ -418,7 +417,7 @@ class RobotOrder:
         if self.nodes_state.__len__() != 0 or self.edges_state.__len__() != 0:
             self.logs.info(f"[id_list]{self.nodes_id_list}|{self.edges_id_list}|{self.actions_id_list}|=|")
             self.logs.info(f"[state]{self.nodes_state}|{self.edges_state}|{self.actions_state}|=|")
-        if not self.robot_online or not self.current_order:
+        if not self.robot.robot_online or not self.current_order:
             self.report_robot_not_online()
         elif self.current_order is not None:
             self.report_state_current_order()
