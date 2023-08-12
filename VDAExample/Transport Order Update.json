@@ -1,0 +1,148 @@
+{
+    "orderId": "75982a12-7b9a-48a3-a8f7-efa1ee1cc465",
+    "orderUpdateId": 1,
+    "zoneSetId": "",
+    "nodes": [
+        {
+            "nodeId": "cb551286-9b6c-4a18-9250-55812bbba880",
+            "sequenceId": 6,
+            "nodeDescription": "Point of interest ID: 5f9df07e-7ff8-4708-9cfd-52d8d0bde726, Type: Dolly",
+            "released": true,
+            "nodePosition": {
+                "x": 79.17817,
+                "y": 126.91492,
+                "theta": -3.1415925,
+                "allowedDeviationXY": 0.7,
+                "allowedDeviationTheta": 0.0,
+                "mapId": "01632ba1-5e0f-41b3-9d1c-b701fa168c3f",
+                "mapDescription": "Map Id 01632ba1-5e0f-41b3-9d1c-b701fa168c3f"
+            },
+            "actions": [
+                {
+                    "actionType": "lift",
+                    "actionId": "fd8d8e56-e71a-4bf3-8254-6b6e90f9275d",
+                    "actionDescription": "Lift",
+                    "blockingType": "HARD",
+                    "actionParameters": []
+                }
+            ]
+        },
+        {
+            "nodeId": "ce2ec3af-49bf-40d3-8193-b69c22305c08",
+            "sequenceId": 8,
+            "nodeDescription": "Exitvector for PointOfInterest 5f9df07e-7ff8-4708-9cfd-52d8d0bde726 Dolly",
+            "released": true,
+            "nodePosition": {
+                "x": 81.67817,
+                "y": 126.91492,
+                "theta": -3.1415925,
+                "allowedDeviationXY": 0.7,
+                "allowedDeviationTheta": 0.0,
+                "mapId": "01632ba1-5e0f-41b3-9d1c-b701fa168c3f",
+                "mapDescription": "Map Id 01632ba1-5e0f-41b3-9d1c-b701fa168c3f"
+            },
+            "actions": []
+        },
+        {
+            "nodeId": "7bfa5205-b3ba-44b5-8fdb-18619e0c94f6",
+            "sequenceId": 10,
+            "nodeDescription": "Entry node for PointOfInterest 035c53a9-577c-4806-af6a-ee0ecbfbed5e Dolly",
+            "released": true,
+            "nodePosition": {
+                "x": 77.5604,
+                "y": 57.359077,
+                "theta": -0.017453495,
+                "allowedDeviationXY": 0.7,
+                "allowedDeviationTheta": 0.0,
+                "mapId": "01632ba1-5e0f-41b3-9d1c-b701fa168c3f",
+                "mapDescription": "Map Id 01632ba1-5e0f-41b3-9d1c-b701fa168c3f"
+            },
+            "actions": []
+        },
+        {
+            "nodeId": "59c0567c-53a3-4218-b8e5-b1b2b23af765",
+            "sequenceId": 12,
+            "nodeDescription": "Point of interest ID: 035c53a9-577c-4806-af6a-ee0ecbfbed5e, Type: Dolly",
+            "released": true,
+            "nodePosition": {
+                "x": 80.16,
+                "y": 57.3137,
+                "theta": -0.017453495,
+                "allowedDeviationXY": 0.7,
+                "allowedDeviationTheta": 0.0,
+                "mapId": "01632ba1-5e0f-41b3-9d1c-b701fa168c3f",
+                "mapDescription": "Map Id 01632ba1-5e0f-41b3-9d1c-b701fa168c3f"
+            },
+            "actions": [
+                {
+                    "actionType": "drop",
+                    "actionId": "059363b7-3803-44c6-a5e9-bb05ec299db9",
+                    "actionDescription": "Drop",
+                    "blockingType": "HARD",
+                    "actionParameters": []
+                }
+            ]
+        }
+    ],
+    "edges": [
+        {
+            "edgeId": "75ac0e1b-381b-4538-a906-0021c7eec894",
+            "sequenceId": 7,
+            "edgeDescription": "Edge connecting cb551286-9b6c-4a18-9250-55812bbba880 to ce2ec3af-49bf-40d3-8193-b69c22305c08",
+            "released": true,
+            "startNodeId": "cb551286-9b6c-4a18-9250-55812bbba880",
+            "endNodeId": "ce2ec3af-49bf-40d3-8193-b69c22305c08",
+            "maxSpeed": null,
+            "maxHeight": null,
+            "minHeight": null,
+            "orientation": null,
+            "direction": null,
+            "rotationAllowed": false,
+            "maxRotationSpeed": null,
+            "trajectory": null,
+            "length": null,
+            "actions": []
+        },
+        {
+            "edgeId": "bf7ebba0-804a-4667-935c-d627dd67fd94",
+            "sequenceId": 9,
+            "edgeDescription": "Edge connecting ce2ec3af-49bf-40d3-8193-b69c22305c08 to 7bfa5205-b3ba-44b5-8fdb-18619e0c94f6",
+            "released": true,
+            "startNodeId": "ce2ec3af-49bf-40d3-8193-b69c22305c08",
+            "endNodeId": "7bfa5205-b3ba-44b5-8fdb-18619e0c94f6",
+            "maxSpeed": null,
+            "maxHeight": null,
+            "minHeight": null,
+            "orientation": null,
+            "direction": null,
+            "rotationAllowed": false,
+            "maxRotationSpeed": null,
+            "trajectory": null,
+            "length": null,
+            "actions": []
+        },
+        {
+            "edgeId": "9ad1871d-24da-4aab-8cc5-c65a60162f3c",
+            "sequenceId": 11,
+            "edgeDescription": "Edge connecting 7bfa5205-b3ba-44b5-8fdb-18619e0c94f6 to 59c0567c-53a3-4218-b8e5-b1b2b23af765",
+            "released": true,
+            "startNodeId": "7bfa5205-b3ba-44b5-8fdb-18619e0c94f6",
+            "endNodeId": "59c0567c-53a3-4218-b8e5-b1b2b23af765",
+            "maxSpeed": null,
+            "maxHeight": null,
+            "minHeight": null,
+            "orientation": null,
+            "direction": null,
+            "rotationAllowed": false,
+            "maxRotationSpeed": null,
+            "trajectory": null,
+            "length": null,
+            "actions": []
+        }
+    ],
+    "headerId": 0,
+    "timeStamp": "11/15/2022 11:59:20",
+    "version": "v1",
+    "manufacturer": "",
+    "serialNumber": ""
+}

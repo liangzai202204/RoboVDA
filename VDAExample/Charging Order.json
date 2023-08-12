@@ -1,0 +1,130 @@
+{
+  "orderId": "c8615dd4-6fdd-421d-a7f5-12166f4f0595",
+  "orderUpdateId": 0,
+  "zoneSetId": "",
+  "nodes": [
+    {
+      "nodeId": "8eb12d74-bf09-432e-afec-cf85e87e2f43",
+      "sequenceId": 0,
+      "nodeDescription": "Node based on device state: Header: 14",
+      "released": true,
+      "nodePosition": {
+        "x": 0.0,
+        "y": 0.0,
+        "theta": 0.0,
+        "allowedDeviationXY": 0.5,
+        "allowedDeviationTheta": 0.5,
+        "mapId": "6d673fe4-8660-4dec-9b06-8d2b6e4ee8d2",
+        "mapDescription": "Id: 6d673fe4-8660-4dec-9b06-8d2b6e4ee8d2"
+      },
+      "actions": [
+        
+      ]
+    },
+    {
+      "nodeId": "e6fa8d16-ce5a-4ee7-b5cf-076bfa35e87e",
+      "sequenceId": 2,
+      "nodeDescription": "Entry node for PointOfInterest ed01056a-76b9-4f01-bc80-de1435be2e00 Charger",
+      "released": true,
+      "nodePosition": {
+        "x": 14.198575,
+        "y": 10.073771,
+        "theta": 1.5707964,
+        "allowedDeviationXY": 0.1,
+        "allowedDeviationTheta": 0.0,
+        "mapId": "6d673fe4-8660-4dec-9b06-8d2b6e4ee8d2",
+        "mapDescription": "Map Id 6d673fe4-8660-4dec-9b06-8d2b6e4ee8d2"
+      },
+      "actions": [
+        {
+          "actionType": "dock",
+          "actionId": "90024ff1-8dfa-4275-9dc6-b22795a03646",
+          "actionDescription": "Dock",
+          "blockingType": "HARD",
+          "actionParameters": [
+            {
+              "key": "type",
+              "value": "charger"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "nodeId": "f176642a-80b8-482c-bcbc-55cdc96dbfc3",
+      "sequenceId": 4,
+      "nodeDescription": "Point of interest ID: ed01056a-76b9-4f01-bc80-de1435be2e00, Type: Charger",
+      "released": true,
+      "nodePosition": {
+        "x": 14.198575,
+        "y": 12.673772,
+        "theta": 1.5707964,
+        "allowedDeviationXY": 0.1,
+        "allowedDeviationTheta": 0.0,
+        "mapId": "6d673fe4-8660-4dec-9b06-8d2b6e4ee8d2",
+        "mapDescription": "Map Id 6d673fe4-8660-4dec-9b06-8d2b6e4ee8d2"
+      },
+      "actions": [
+        {
+          "actionType": "startCharging",
+          "actionId": "483ea08a-ca48-44c9-8b18-4a0ca4af51b7",
+          "actionDescription": "Charge",
+          "blockingType": "HARD",
+          "actionParameters": [
+            {
+              "key": "Threshold",
+              "value": "80"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "edgeId": "907138ea-f93e-4488-afc7-957359797400",
+      "sequenceId": 1,
+      "edgeDescription": "Edge connecting 8eb12d74-bf09-432e-afec-cf85e87e2f43 to e6fa8d16-ce5a-4ee7-b5cf-076bfa35e87e",
+      "released": true,
+      "startNodeId": "8eb12d74-bf09-432e-afec-cf85e87e2f43",
+      "endNodeId": "e6fa8d16-ce5a-4ee7-b5cf-076bfa35e87e",
+      "maxSpeed": null,
+      "maxHeight": null,
+      "minHeight": null,
+      "orientation": null,
+      "direction": null,
+      "rotationAllowed": false,
+      "maxRotationSpeed": null,
+      "trajectory": null,
+      "length": null,
+      "actions": [
+        
+      ]
+    },
+    {
+      "edgeId": "d940faa6-da2d-47bf-ac35-1f6b1d17604e",
+      "sequenceId": 3,
+      "edgeDescription": "Edge connecting e6fa8d16-ce5a-4ee7-b5cf-076bfa35e87e to f176642a-80b8-482c-bcbc-55cdc96dbfc3",
+      "released": true,
+      "startNodeId": "e6fa8d16-ce5a-4ee7-b5cf-076bfa35e87e",
+      "endNodeId": "f176642a-80b8-482c-bcbc-55cdc96dbfc3",
+      "maxSpeed": null,
+      "maxHeight": null,
+      "minHeight": null,
+      "orientation": null,
+      "direction": null,
+      "rotationAllowed": false,
+      "maxRotationSpeed": null,
+      "trajectory": null,
+      "length": null,
+      "actions": [
+        
+      ]
+    }
+  ],
+  "headerId": 2011734645,
+  "timeStamp": "8/31/2022 3:10:56 PM",
+  "version": "v1",
+  "manufacturer": "",
+  "serialNumber": ""
+}

@@ -1,0 +1,16 @@
+{
+  "instantActions": [
+    {
+      "actionType": "ReleaseInteractionZone",
+      "actionId": "65e4491b-e405-17b4-9ff4-64b57f902828",
+      "actionDescription": "Release the interaction zone",
+      "blockingType": "HARD",
+      "actionParameters": []
+    }
+  ],
+  "headerId": 0,
+  "timeStamp": "10/06/2020 14:00:13",
+  "version": "v1.0",
+  "manufacturer": "",
+  "serialNumber": ""
+}

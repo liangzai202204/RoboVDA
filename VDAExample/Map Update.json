@@ -1,0 +1,28 @@
+{
+    "mapId": "6d673fe4-8660-4dec-9b06-8d2b6e4ee8d2",
+    "mapType": "",
+    "mapCompression": "",
+    "mapDownloadLink": "https://mywebsite.com/map-updater/etc",
+    "mapDownloadProtocol": "https",
+    "mapCreationDate": "10/01/2021 15:33:21",
+    "mapName": "My map",
+    "mapDescription": "The first map for my AGV",
+    "mapReferenceHeight": null,
+    "mapMetaData": {
+        "resolution": 0.1,
+        "widthInPixels": 384,
+        "heightInPixels": 400,
+        "origin": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+        },
+        "occupiedThresh": 0.0,
+        "freeThresh": 0.0
+    },
+    "headerId": 1,
+    "timeStamp": "02/06/2023 15:55:51",
+    "version": "v1",
+    "manufacturer": "",
+    "serialNumber": ""
+}

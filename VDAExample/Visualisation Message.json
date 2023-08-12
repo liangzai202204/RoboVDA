@@ -1,0 +1,22 @@
+{
+    "agvPosition": {
+        "deviationRange": 0.0,
+        "localizationScore": 0.0,
+        "mapDescription": "",
+        "mapId": "9b270f29-262e-4b74-b90b-0faee129d00e",
+        "positionInitialized": true,
+        "theta": 1.5808738470077515,
+        "x": 8.723976135253906,
+        "y": 5.928616523742676
+    },
+    "headerId": 7,
+    "manufacturer": "",
+    "serialNumber": "",
+    "timeStamp": "2020-10-22T09:21:32.072Z",
+    "velocity": {
+        "omega": 1.4617996813015566e-09,
+        "vx": 3.0939234507698643e-10,
+        "vy": -3.1180132260832938e-12
+    },
+    "version": ""
+}

@@ -1,0 +1,5 @@
+pydantic
+flask
+memory-profiler
+paho-mqtt
+colorlog

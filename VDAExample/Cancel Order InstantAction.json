@@ -1,0 +1,16 @@
+{
+    "instantActions": [
+        {
+            "actionType": "cancelOrder",
+            "actionId": "01d47574-29aa-4dd7-bea2-5efcceea5f2d",
+            "actionDescription": "Manual reset",
+            "blockingType": "HARD",
+            "actionParameters": []
+        }
+    ],
+    "headerId": 218566232,
+    "timeStamp": "2/6/2023 4:26:42 PM",
+    "version": "v1",
+    "manufacturer": "",
+    "serialNumber": ""
+}

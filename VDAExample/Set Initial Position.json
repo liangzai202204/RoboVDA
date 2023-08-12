@@ -1,0 +1,29 @@
+{
+    "instantActions": [
+        {
+            "actionType": "initposition",
+            "actionId": "3261fe5f-5c91-451d-b2be-339dc46e2ffe",
+            "actionDescription": "Initializing position of 427d1a10-75e6-41aa-aab7-f553990f5ad9 from X: 10.904905 Y: 11.442172 Theta: -3.1415925 to POI ",
+            "blockingType": "HARD",
+            "actionParameters": [
+                {
+                    "key": "x",
+                    "value": "10.904905"
+                },
+                {
+                    "key": "y",
+                    "value": "11.442172"
+                },
+                {
+                    "key": "theta",
+                    "value": "-3.1415925"
+                }
+            ]
+        }
+    ],
+    "headerId": 66523429,
+    "timeStamp": "2/6/2023 4:25:57 PM",
+    "version": "v1",
+    "manufacturer": "",
+    "serialNumber": ""
+}

@@ -1,0 +1,232 @@
+{
+    "actionStates": [
+        {
+            "actionDescription": "Entry vector description",
+            "actionId": "ed400e35-587b-4651-9ada-d25d3ab8f392",
+            "actionStatus": "WAITING",
+            "actionType": "Dock",
+            "resultDescription": ""
+        },
+        {
+            "actionDescription": "LiftUp description",
+            "actionId": "8f23452a-9f9f-4337-838c-92149beeacb6",
+            "actionStatus": "WAITING",
+            "actionType": "Lift",
+            "resultDescription": ""
+        },
+        {
+            "actionDescription": "Drop description",
+            "actionId": "65e4491a-e405-47b4-9ff4-64b57f902828",
+            "actionStatus": "WAITING",
+            "actionType": "Drop",
+            "resultDescription": ""
+        }
+    ],
+    "agvPosition": {
+        "deviationRange": 0.0,
+        "localizationScore": 0.0,
+        "mapDescription": "",
+        "mapId": "",
+        "positionInitialized": false,
+        "theta": 0.0,
+        "x": 0.0,
+        "y": 0.0
+    },
+    "batteryState": {
+        "batteryCharge": 0.0,
+        "batteryVoltage": 0.0,
+        "batteryCapacityValue": 0.0,
+        "batteryCellMinVoltage": 0.0,
+        "batteryTemperature": 0,
+        "charging": false
+    },
+    "driving": false,
+    "waitingForInteractionZoneRelease": false,
+    "edgeStates": [
+        {
+            "edgeDescription": "Edge connecting f9050845-50d6-4508-9571-a43168b76aa3 to f9a0e0e9-46f1-4a16-a7f1-22633de5fa81",
+            "edgeId": "29b1c473-8365-4a9f-90c7-b9409287ffa1",
+            "released": true,
+            "sequenceId": 1,
+            "trajectory": {
+                "controlPoints": [],
+                "degree": 1.0,
+                "knotVector": []
+            }
+        },
+        {
+            "edgeDescription": "Edge connecting f9a0e0e9-46f1-4a16-a7f1-22633de5fa81 to 3fd99af0-db6c-4986-8de8-e6ecccab55bb",
+            "edgeId": "3402b624-6edb-41c4-aeb2-ef56ee2955c9",
+            "released": true,
+            "sequenceId": 3,
+            "trajectory": {
+                "controlPoints": [],
+                "degree": 1.0,
+                "knotVector": []
+            }
+        },
+        {
+            "edgeDescription": "Edge connecting 3fd99af0-db6c-4986-8de8-e6ecccab55bb to 7ade41e5-d38a-435b-8bf4-69586d5e8b19",
+            "edgeId": "c781b463-60b8-4d25-8309-b47b7a8a1288",
+            "released": true,
+            "sequenceId": 5,
+            "trajectory": {
+                "controlPoints": [],
+                "degree": 1.0,
+                "knotVector": []
+            }
+        },
+        {
+            "edgeDescription": "Edge connecting 7ade41e5-d38a-435b-8bf4-69586d5e8b19 to f637c360-e527-4cc1-b11d-719cad2ffe86",
+            "edgeId": "078d00c7-3d02-4bca-bfde-4d1924b2862f",
+            "released": false,
+            "sequenceId": 7,
+            "trajectory": {
+                "controlPoints": [],
+                "degree": 1.0,
+                "knotVector": []
+            }
+        },
+        {
+            "edgeDescription": "Edge connecting f637c360-e527-4cc1-b11d-719cad2ffe86 to a8a887c7-9ab2-4688-a98e-80201ae6c69e",
+            "edgeId": "d9a1ad6d-605d-4299-a987-fb4b6e72dfa3",
+            "released": false,
+            "sequenceId": 9,
+            "trajectory": {
+                "controlPoints": [],
+                "degree": 1.0,
+                "knotVector": []
+            }
+        },
+        {
+            "edgeDescription": "Edge connecting a8a887c7-9ab2-4688-a98e-80201ae6c69e to 9e03e6ab-dbf1-4548-9f4e-be8b2792917a",
+            "edgeId": "a73c0d07-b4b1-493a-a763-fdfe136cdd7c",
+            "released": false,
+            "sequenceId": 11,
+            "trajectory": {
+                "controlPoints": [],
+                "degree": 1.0,
+                "knotVector": []
+            }
+        }
+    ],
+    "errors": [],
+    "headerId": 0,
+    "informations": [],
+    "interactionZones": [],
+    "lastNodeId": "f9050845-50d6-4508-9571-a43168b76aa3",
+    "lastNodeSequenceId": 0,
+    "loads": [],
+    "manufacturer": "",
+    "newBaseRequest": false,
+    "nodeStates": [
+        {
+            "nodeDescription": "Node created because of EntryVector Parameter",
+            "nodeId": "f9a0e0e9-46f1-4a16-a7f1-22633de5fa81",
+            "nodePosition": {
+                "allowedDeviationTheta": 1.8718023300170898,
+                "allowedDeviationXY": 0.0,
+                "mapDescription": "Description of Map",
+                "mapId": "9b270f29-262e-4b74-b90b-0faee129d00e",
+                "theta": -3.140000104904175,
+                "x": 10.119999885559082,
+                "y": 27.0
+            },
+            "released": true,
+            "sequenceId": 2
+        },
+        {
+            "nodeDescription": "Node for 2a0377ae-5d98-489f-bff3-58dddc85d17e",
+            "nodeId": "3fd99af0-db6c-4986-8de8-e6ecccab55bb",
+            "nodePosition": {
+                "allowedDeviationTheta": 2.276160478591919,
+                "allowedDeviationXY": 0.0,
+                "mapDescription": "MapId: 9b270f29-262e-4b74-b90b-0faee129d00e",
+                "mapId": "9b270f29-262e-4b74-b90b-0faee129d00e",
+                "theta": -3.140000104904175,
+                "x": 8.119999885559082,
+                "y": 27.0
+            },
+            "released": true,
+            "sequenceId": 4
+        },
+        {
+            "nodeDescription": "Node created because of ExitVector Parameter",
+            "nodeId": "7ade41e5-d38a-435b-8bf4-69586d5e8b19",
+            "nodePosition": {
+                "allowedDeviationTheta": 1.9731062650680542,
+                "allowedDeviationXY": 0.0,
+                "mapDescription": "Description of Map",
+                "mapId": "9b270f29-262e-4b74-b90b-0faee129d00e",
+                "theta": -3.140000104904175,
+                "x": 10.119999885559082,
+                "y": 27.0
+            },
+            "released": true,
+            "sequenceId": 6
+        },
+        {
+            "nodeDescription": "Dolly drop location",
+            "nodeId": "f637c360-e527-4cc1-b11d-719cad2ffe86",
+            "nodePosition": {
+                "allowedDeviationTheta": 1.9731062650680542,
+                "allowedDeviationXY": 0.0,
+                "mapDescription": "Description of Map",
+                "mapId": "9b270f29-262e-4b74-b90b-0faee129d00e",
+                "theta": 0.0,
+                "x": 42.20000076293945,
+                "y": 15.0
+            },
+            "released": false,
+            "sequenceId": 8
+        },
+        {
+            "nodeDescription": "Node created because of ExitVector Parameter",
+            "nodeId": "a8a887c7-9ab2-4688-a98e-80201ae6c69e",
+            "nodePosition": {
+                "allowedDeviationTheta": 1.9731062650680542,
+                "allowedDeviationXY": 0.0,
+                "mapDescription": "Description of Map",
+                "mapId": "9b270f29-262e-4b74-b90b-0faee129d00e",
+                "theta": 0.0,
+                "x": 40.20000076293945,
+                "y": 15.0
+            },
+            "released": false,
+            "sequenceId": 10
+        },
+        {
+            "nodeDescription": "Waypoint",
+            "nodeId": "9e03e6ab-dbf1-4548-9f4e-be8b2792917a",
+            "nodePosition": {
+                "allowedDeviationTheta": 1.9731062650680542,
+                "allowedDeviationXY": 0.0,
+                "mapDescription": "Description of Map",
+                "mapId": "9b270f29-262e-4b74-b90b-0faee129d00e",
+                "theta": 1.5700000524520874,
+                "x": 8.600000381469727,
+                "y": 6.0
+            },
+            "released": false,
+            "sequenceId": 12
+        }
+    ],
+    "operatingMode": "",
+    "orderId": "575205ed-da30-4b30-8e99-5ba53df4f016",
+    "orderUpdateId": 0,
+    "paused": false,
+    "safetyState": {
+        "eStop": "",
+        "fieldViolation": false
+    },
+    "serialNumber": "",
+    "agvVersions": {},
+    "timeStamp": "",
+    "velocity": {
+        "omega": 0.0,
+        "vx": 0.0,
+        "vy": 0.0
+    },
+    "version": "",
+    "zoneSetId": ""
+}

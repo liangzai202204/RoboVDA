@@ -1,0 +1,70 @@
+{
+    "actionStates": [],
+    "agvPosition": {
+        "deviationRange": 0.0,
+        "localizationScore": 0.0,
+        "mapDescription": "",
+        "mapId": "--",
+        "positionInitialized": true,
+        "theta": -3.1356661319732666,
+        "x": 10.801274299621582,
+        "y": 11.430991172790527
+    },
+    "agvVersions": {
+        "package_release_version": "",
+        "release_node_version": "2.25.0",
+        "release_status": "",
+        "release_version": "v1.8.2-32-ga06daa30d",
+        "software_version": ""
+    },
+    "batteryState": {
+        "batteryCapacityValue": 0.0,
+        "batteryCellMinVoltage": 0.0,
+        "batteryCharge": 0.0,
+        "batteryTemperature": 0,
+        "batteryVoltage": 0.0,
+        "charging": false
+    },
+    "driving": false,
+    "edgeStates": [],
+    "errors": [],
+    "headerId": 40,
+    "informations": [
+        {
+            "infoDescription": "Robot stopped temporarily due to limited capacity zone",
+            "infoLevel": "info",
+            "infoReferences": [],
+            "infoType": "M_IDLGOALP0068"
+        }
+    ],
+    "interactionZones": [
+        {
+            "status": 0,
+            "zoneId": "d48f133c-5b9e-4c3c-a3c0-db83af5322b0"
+        }
+    ],
+    "lastNodeId": "",
+    "lastNodeSequenceId": 0,
+    "loads": [],
+    "manufacturer": "",
+    "newBaseRequest": false,
+    "nodeStates": [],
+    "operatingMode": "AUTOMATIC",
+    "orderId": "",
+    "orderUpdateId": 0,
+    "paused": false,
+    "safetyState": {
+        "eStop": "",
+        "fieldViolation": false
+    },
+    "serialNumber": "",
+    "timeStamp": "2023-02-09T14:25:10.541Z",
+    "velocity": {
+        "omega": 0,
+        "vx": 0,
+        "vy": 0
+    },
+    "version": "1.1",
+    "waitingForInteractionZoneRelease": true,
+    "zoneSetId": ""
+}

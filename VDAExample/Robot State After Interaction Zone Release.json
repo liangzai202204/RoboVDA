@@ -1,0 +1,71 @@
+{
+    "actionStates": [
+        {
+            "actionDescription": "Automatic zone release",
+            "actionId": "883d4ada-d80d-4c66-84e6-03b6bb1a9f0d",
+            "actionStatus": "FINISHED",
+            "actionType": "releaseinteractionzone",
+            "resultDescription": ""
+        }
+    ],
+    "agvPosition": {
+        "deviationRange": 0.0,
+        "localizationScore": 0.0,
+        "mapDescription": "",
+        "mapId": "--",
+        "positionInitialized": true,
+        "theta": -3.1380512714385986,
+        "x": 10.085939407348633,
+        "y": 11.428093910217285
+    },
+    "agvVersions": {
+        "package_release_version": "",
+        "release_node_version": "2.25.0",
+        "release_status": "",
+        "release_version": "v1.8.2-32-ga06daa30d",
+        "software_version": ""
+    },
+    "batteryState": {
+        "batteryCapacityValue": 0.0,
+        "batteryCellMinVoltage": 0.0,
+        "batteryCharge": 0.0,
+        "batteryTemperature": 0,
+        "batteryVoltage": 0.0,
+        "charging": false
+    },
+    "driving": true,
+    "edgeStates": [],
+    "errors": [],
+    "headerId": 43,
+    "informations": [],
+    "interactionZones": [
+        {
+            "status": 1,
+            "zoneId": "d48f133c-5b9e-4c3c-a3c0-db83af5322b0"
+        }
+    ],
+    "lastNodeId": "",
+    "lastNodeSequenceId": 0,
+    "loads": [],
+    "manufacturer": "",
+    "newBaseRequest": false,
+    "nodeStates": [],
+    "operatingMode": "AUTOMATIC",
+    "orderId": "",
+    "orderUpdateId": 0,
+    "paused": false,
+    "safetyState": {
+        "eStop": "",
+        "fieldViolation": false
+    },
+    "serialNumber": "",
+    "timeStamp": "2023-02-09T14:25:13.541Z",
+    "velocity": {
+        "omega": -1.704184349193838e-08,
+        "vx": -0.0008637281134724617,
+        "vy": -0.2438947558403015
+    },
+    "version": "1.1",
+    "waitingForInteractionZoneRelease": false,
+    "zoneSetId": ""
+}
