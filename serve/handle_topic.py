@@ -14,6 +14,7 @@ from serve.robot import ApiReq
 from serve.mode import PackMode
 from action_type.action_type import ActionPack, ActionType
 from error_type import error_type as err
+from type.RobotOrderStatus import RobotOrderStatus
 
 
 def timeit(func):
@@ -945,13 +946,3 @@ class RobotOrder:
         self.actions_change = False
 
 
-class RobotOrderStatus(IntEnum):
-    StatusNone = 0
-    Waiting = 1
-    Running = 2
-    Suspended = 3
-    Completed = 4
-    Failed = 5
-    Canceled = 6
-    OverTime = 7
-    NotFound = 404

@@ -4,7 +4,11 @@ import unittest
 import uuid
 import json
 import uuid
+from typing import List
+
 import paho.mqtt.client as mqtt
+import pydantic
+
 from serve.handle_topic import RobotOrder
 from type import order
 from log.log import MyLogger
@@ -50,5 +54,12 @@ class MyTestCase(unittest.TestCase):
         self.assertNotEqual(a_s, c_s)
 
 
+
+
 if __name__ == '__main__':
-    unittest.main()
+    class E(pydantic.BaseModel):
+        s: List[{str: str}]
+
+
+    a = E(s=[{"4": "4"}])
+    print(a)
