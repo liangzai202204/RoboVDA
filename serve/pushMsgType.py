@@ -120,7 +120,6 @@ class TasklistStatus(BaseModel):
     taskListStatus: int = 0
 
 
-
 class RobotPush(BaseModel):
     DI: List[DIs] = []
     DO: List[DOs] = []
@@ -176,13 +175,13 @@ class RobotPush(BaseModel):
     loc_state: int = 0
     manual_charge: bool = False
     model: str = ''
-    motor_info: List[Motor] = []
+    # motor_info: List[Motor] = []
     motor_steer_angles: List[int] = []
     move_status_info: str = ''
     nearest_obstacles: List[dict] = []
     odo: float = 0.
     peripheral_data: List[str] = []
-    pgvs: List[str] = []
+    # pgvs: List[str] = []
     pitch: float = 0.
     qw: float = 0.
     qx: float = 0.
@@ -249,10 +248,6 @@ class RobotPush(BaseModel):
     yaw: float = 0.
 
 
-
 class RobotReq(BaseModel):
     # robot_status_current_lock
     robotStatusCurrentLock: Optional[Lock]
-
-
-
