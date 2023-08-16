@@ -177,7 +177,7 @@ class InstantActionsTest(unittest.TestCase):
         import os
         # 假设包 B 的名称为 package_B，JSON 文件名为 data.json
         path_to_B = os.path.abspath("../VDAExample")
-        json_filename = 'Cancel Order InstantAction.json'
+        json_filename = 'Transport Order.json'
 
         json_file_path = os.path.join(path_to_B, json_filename)
 
@@ -185,27 +185,27 @@ class InstantActionsTest(unittest.TestCase):
             json_content = json.load(json_file)
             print(json_content)
         client = mqtt.Client()
-        client.connect("192.168.198.181", 1883, 60)
-        client.publish("robot/instantActions", json.dumps(json_content))
+        client.connect("192.168.8.45", 1883, 60)
+        client.publish("robot/order", json.dumps(json_content))
 
     def test_OOO(self):
         from serve import OrderStateMachine
         import json
         import os
-        # 假设包 B 的名称为 package_B，JSON 文件名为 data.json
-        path_to_B = os.path.abspath("../VDAExample")
-        json_filename = 'Transport Order.json'
-
-        json_file_path = os.path.join(path_to_B, json_filename)
-
-        with open(json_file_path, 'r') as json_file:
-            json_content = json.load(json_file)
-            #print(json_content)
+        # # 假设包 B 的名称为 package_B，JSON 文件名为 data.json
+        # path_to_B = os.path.abspath("../VDAExample")
+        # json_filename = 'Transport Order.json'
+        #
+        # json_file_path = os.path.join(path_to_B, json_filename)
+        #
+        # with open(json_file_path, 'r') as json_file:
+        #     json_content = json.load(json_file)
+        #     #print(json_content)
         a=OrderStateMachine.OrderStateMachine()
-        a.init_order_status(order.Order(**json_content))
-        a.orders.orders.set_node_status_by_id("7a434ec3-91c8-4334-89f8-31d30942fbb7",OrderStateMachine.Status.FINISHED)
-        n = a.orders.orders.get_status_by_id("7a434ec3-91c8-4334-89f8-31d30942fbb7")
-        print(n)
+        print(a.orders.orders.orderId)
+        # a.init_order(order.Order(**json_content))
+        # a.orders.orders.set_node_status_by_id("7a434ec3-91c8-4334-89f8-31d30942fbb7",OrderStateMachine.Status.FINISHED)
+        # n = a.orders.orders.get_status_by_id("7a434ec3-91c8-4334-89f8-31d30942fbb7")
 
 
 if __name__ == '__main__':

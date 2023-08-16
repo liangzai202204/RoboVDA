@@ -4,7 +4,7 @@ import json
 import os
 import queue
 import socket
-from datetime import datetime
+import datetime
 
 from rbklib.rbklibPro import Rbk
 from type import state
@@ -133,13 +133,16 @@ class RobotMapManager:
 
     def _get_map(self):
         try:
-            map_req = self.rbk.robot_status_map_req()
             map_req = self.rbk.call_service(ApiReq.ROBOT_STATUS_MAP_REQ.value)
+            if not map_req:
+                print("req error")
+                return {}
             print(map_req)
             map_req_json = json.loads(map_req)
             return map_req_json
         except OSError as o:
             print("_get_map", o)
+            return {}
 
         except Exception as e:
             print("_get_map c", e)
@@ -153,7 +156,10 @@ class RobotMapManager:
             # 创建目录
             os.makedirs(self.map_dir)
         map_req = self._get_map()
-        map_list = map_req["maps"]
+        map_list = map_req.get("maps")
+        if not map_list:
+            print("加載失敗")
+            return
         print(map_list)
         for m in map_list:
             self.load_map(self.map_dir, m)
@@ -278,10 +284,9 @@ class Robot:
         self.update_map()
         # 定位信息
 
-
     def update_state(self):
         self.state.headerId += 1
-        self.state.timestamp = datetime.now().strftime("%m/%d/%Y %I:%M:%S %p")
+        self.state.timestamp = datetime.datetime.now().isoformat(timespec='milliseconds') + 'Z'
         self.state.batteryState = self.battery_state(
             batteryCharge=self.robot_push_msg.battery_level,
             charging=self.robot_push_msg.charging,
@@ -444,10 +449,7 @@ class Robot:
         send = True
         while send:
             if self.robot_online and self.lock:
-                # self.rbk.robot_task_cancel_req()
                 self.rbk.call_service(ApiReq.ROBOT_TASK_CANCEL_REQ)
+                send = False
             else:
                 self.lock_robot()
-
-
-

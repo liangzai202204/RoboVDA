@@ -1,20 +1,16 @@
 import asyncio
 import copy
 import datetime
-import json
-import os
 import threading
-from enum import IntEnum
-
+from serve.OrderStateMachine import OrderStateMachine
 from type import state, order, instantActions, connection, visualization
 from typing import List, Union
 import time
 from serve.robot import Robot as Robot
-from serve.robot import ApiReq
 from serve.mode import PackMode
 from action_type.action_type import ActionPack, ActionType
 from error_type import error_type as err
-from type.RobotOrderStatus import RobotOrderStatus
+from type.RobotOrderStatus import Status
 
 
 def timeit(func):
@@ -83,30 +79,13 @@ class RobotOrder:
         self.robot_state_thread = threading.Thread(group=loop, target=self.handle_state, name="run robot state")
         self.robot_connection_thread = threading.Thread(group=None, target=self.handle_connection, name="run robot "
                                                                                                         "connect")
-        self.robot_task_state_thread = threading.Thread(group=None, target=self.update_state_loop,
-                                                        name="run update_state_loop")
         self.robot_run_thread = threading.Thread(group=None, target=self.robot.run, name="run robot")
         self.mode = mode  # 定义动作模式 False为参数，True为binTask
-        self.nodes_state = dict()
-        self.nodes_change = False
-        self.edges_change = False
-        self.actions_change = False
-        self.nodes_id_list = []
-        self.edges_state = dict()
-        self.nodes_task_len = 0
-        self.edges_task_len = 0
-        self.actions_task_len = 0
-        self.edges_current_len = 0
-        self.edges_id_list = []
-        self.actions_state = dict()
-        self.actions_current_len = 0
-        self.actions_id_list = []
-        self.tasks_state = dict()
-        self.tasks_id_list = []
-        self.pack_task_list = []
+        # 訂單狀態機
+        self.order_state_machine = OrderStateMachine()
 
     def __del__(self):
-        pass
+        self._cls()
 
     async def run(self):
         self._run()
@@ -116,25 +95,8 @@ class RobotOrder:
         self.robot_run_thread.start()
         # 上报state逻辑
         self.robot_state_thread.start()
-        # 实时拉取订单的状态
-        self.robot_task_state_thread.start()
-        # report connection
+        # topic connection
         self.robot_connection_thread.start()
-        # 接收订单后的处理线程
-        # self.robot.map_manager.thread.start()
-        pattern = [
-            "------------------------------------------------\n",
-            "------------------------------------------------\n",
-            "----                                        ----\n",
-            "----                                        ----\n",
-            "----                 RoboVDA                ----\n",
-            "----                                        ----\n",
-            "----                                        ----\n",
-            "------------------------------------------------\n",
-            "------------------------------------------------\n",
-        ]
-        for i in pattern:
-            print(i)
         asyncio.gather(self.handle_order(), self.handle_report())
 
     async def handle_order(self):
@@ -180,103 +142,14 @@ class RobotOrder:
     def update_state_by_order(self):
         if not self.robot.robot_online:
             return
-        if not self.edges_state and not self.nodes_state and not self.actions_state:
-            self.nodes_id_list = []
-            self.edges_id_list = []
-            self.actions_id_list = []
-            return
-        if self.edges_state or self.nodes_state or self.actions_state:
-            print(self.robot.robot_push_msg.tasklist_status)
-            print("edges_id_list", self.edges_id_list)
-            task_status = self.robot.get_task_status(self.edges_id_list)
-            if not task_status:
-                self.logs.error(f"[order] update edges state error.{self.edges_id_list}")
-            else:
-                self.update_edges_state(task_status)
-
-            # 查询动作的任务状态-------------------------------------
-            task_status_actions = self.robot.get_task_status(self.actions_id_list)
-            if not task_status_actions:
-                self.logs.error(f"[order] update edges state error.{self.edges_id_list}")
-            else:
-                self.update_actions(task_status_actions)
-
-    def update_edges_state(self, task_status):
-        if isinstance(task_status, list) and len(task_status) != 0:
-            for task_statu in task_status:
-                task_id = task_statu["task_id"]
-                # print("查詢到taskid：", task_id)
-                if task_statu["status"] == RobotOrderStatus.Completed:
-                    # print("查詢到taskid 狀態：", task_statu["status"])
-                    edges_task = self.edges_state.get(task_id, None)
-                    if edges_task:
-                        # print("查詢到taskid 中 edges_state：", edges_task)
-                        current_order_edges = self.current_order.edges
-                        edge_s = None
-                        for current_order_edge in current_order_edges:
-                            if current_order_edge.edgeId == task_id:
-                                edge_s = current_order_edge
-                        if edge_s and isinstance(edge_s, order.Edge):
-
-                            if not (self.edges_state.get(task_id, None) and self.nodes_state.get(
-                                    edge_s.endNodeId, None)):
-                                print("哭了")
-                                break
-                            try:
-
-                                if self.nodes_state.get(edge_s.edgeId, None):
-                                    self.state.lastNodeId = self.nodes_state[edge_s.edgeId].NodeId
-                                    self.state.lastNodeSequenceId = self.nodes_state[
-                                        edge_s.edgeId].NodeSequenceId
-
-                                if self.nodes_state.get(edge_s.startNodeId, None):
-                                    self.nodes_state.pop(edge_s.startNodeId)
-
-                                self.nodes_state.pop(edge_s.endNodeId)
-                                self.edges_state.pop(edge_s.edgeId)
-                                print("刪除edge_s.edgeId", edge_s.edgeId)
-                                print("刪除edge_s.endNodeId", edge_s.endNodeId)
-                            except Exception as e:
-                                print(f"更新node和edge出错：{e}")
-                            self.edges_change = True
-                            self.nodes_change = True
-        else:
-            print("task_status 为空")
-
-    def update_actions(self, task_status_actions):
-        if isinstance(task_status_actions, list) and len(task_status_actions) != 0:
-            for task_status_action in task_status_actions:
-                task_id = task_status_action["task_id"]
-                if task_id in self.actions_state:
-                    a = self.actions_state[task_id]
-                    status = task_status_action["status"]
-
-                    if status == 0:
-                        if a.actionStatus != state.ActionStatus.INITIALIZING:
-                            self.actions_change = True
-                        a.actionStatus = state.ActionStatus.INITIALIZING
-                    elif status == 1:
-                        if a.actionStatus != state.ActionStatus.WAITING:
-                            self.actions_change = True
-                        a.actionStatus = state.ActionStatus.WAITING
-                    elif status == 2:
-                        if a.actionStatus != state.ActionStatus.RUNNING:
-                            self.actions_change = True
-                        a.actionStatus = state.ActionStatus.RUNNING
-                    elif status == 3:
-                        if a.actionStatus != state.ActionStatus.PAUSED:
-                            self.actions_change = True
-                        a.actionStatus = state.ActionStatus.PAUSED
-                    elif status == 4:
-                        if a.actionStatus != state.ActionStatus.FINISHED:
-                            self.actions_change = True
-                        a.actionStatus = state.ActionStatus.FINISHED
-                    else:
-                        if a.actionStatus != state.ActionStatus.FAILED:
-                            self.actions_change = True
-                        a.actionStatus = state.ActionStatus.FAILED
-        else:
-            print("task_status_actions 为空")
+        try:
+            if self.order_state_machine.edges_and_actions_id_list:
+                self.order_state_machine.update_order_status(
+                    self.robot.get_task_status(
+                        self.order_state_machine.edges_and_actions_id_list))
+                self.order_state_machine.update_state(self.robot.state)
+        except Exception as e:
+            print("狀態機 error",e)
 
     def handle_connection(self):
         while True:
@@ -349,17 +222,11 @@ class RobotOrder:
     def _cls(self):
         self.s_order = asyncio.Queue()
         self.p_state = asyncio.Queue()
-        # self.order_cache_queue = asyncio.Queue()
         self.chanel_state = asyncio.Queue()
-        self.nodes_id_list = []
-        self.edges_id_list = []
-        self.actions_id_list = []
-        self.nodes_state = dict()
-        self.edges_state = dict()
-        self.actions_state = dict()
-        self.actions_state = dict()
         self.order = None
         self.current_order = None
+        # 清除狀態機狀態
+        self.order_state_machine.clear()
 
     def handle_state(self):
         """
@@ -377,63 +244,22 @@ class RobotOrder:
 
         """
         while True:
-            self.report()
-
-    def update_state_node_edge_action(self):
-        # 更新 actionState
-
-        actions_state_list = []
-        if self.actions_state:
-            for k, v in self.actions_state.items():
-                actions_state_list.append(v)
-        self.state.actionStates = actions_state_list
-
-        # 更新 nodeState
-        nodes_state_list = []
-        if self.nodes_state:
-            for n_s, node_v in self.nodes_state.items():
-                nodes_state_list.append(node_v)
-        self.state.nodeStates = nodes_state_list
-        # 更新 edgeState
-        edges_state_list = []
-        if self.edges_state:
-            for e_s, edge_v in self.edges_state.items():
-                edges_state_list.append(edge_v)
-        self.state.edgeStates = edges_state_list
+            try:
+                self.report()
+            except Exception as e:
+                self.logs.error(f"[state]report state error:{e}")
 
     def report_state_current_order(self):
-        """
-            更新（header、动作、节点、边）
-            https://github.com/liangzai202204/VDA5050.git
-        :return:
-        """
-
-        self.update_state()
-        if self.is_state_change():
-            self._enqueue(self.chanel_state, self.state)
-            self.reset_state_change()
-        else:
-            time.sleep(1)
-            self._enqueue(self.chanel_state, self.state)
-
-    def update_state(self):
-        self.state = self.robot.state
-        if self.current_order:
-            self.undate_header()
-        self.update_state_node_edge_action()
+        self.update_state_by_order()
+        self._enqueue(self.chanel_state, self.robot.state)
 
     def report(self):
         time.sleep(2)
         self.logs.info(
-            f"order status:|{self.nodes_change}|{self.edges_change}|{self.actions_change}|{self.task_empty()}|"
-            f"{len(self.nodes_id_list)}|{len(self.edges_id_list)}|{len(self.actions_id_list)}|=|"
-            f"{self.nodes_state.__len__()}|{self.edges_state.__len__()}|{self.actions_state.__len__()}|=|"
-            f"{self.nodes_task_len}|{self.edges_task_len}|{self.actions_task_len}|=|"
+            f"order status:|"
             f"{self.chanel_state.qsize()}|{self.p_state.qsize()}|{self.s_order.qsize()}|"
             f"{self.p_connection.qsize()}|")
-        if self.nodes_state.__len__() != 0 or self.edges_state.__len__() != 0:
-            self.logs.info(f"[id_list]{self.nodes_id_list}|{self.edges_id_list}|{self.actions_id_list}|=|")
-            # self.logs.info(f"[state]{self.nodes_state}|{self.edges_state}|{self.actions_state}|=|")
+
         if not self.robot.robot_online or not self.current_order:
             self.report_robot_not_online()
         elif self.current_order is not None:
@@ -442,8 +268,8 @@ class RobotOrder:
             print("over")
 
     def report_robot_not_online(self):
-        self.update_state()
-        self._enqueue(self.chanel_state, self.state)
+        self.update_state_by_order()
+        self._enqueue(self.chanel_state, self.robot.state)
 
     def _report_order_error(self, sub_order):
         self.logs.info("todo" + sub_order.orderId)
@@ -459,23 +285,19 @@ class RobotOrder:
 
     def _run_order(self, task: order.Order):
         self.logs.info("[order] rec and start")
-        if not self.init:
+        if self.order_state_machine.ready:
             # 初始化，直接创建订单
-            self.init = True
             self.logs.info(f"[order] init,creat order")
-            self.lock_order.acquire()
-            self.order = order.Order.create_order(task)
-            self.current_order = self.order
-            self.lock_order.release()
-            # self.logs.info(self.order.nodes)
-            # self.robot.current_order = self.current_order
+            self.current_order = order.Order.create_order(task)
+            # 狀態機
+            self.order_state_machine.init_order(order.Order.create_order(task))
             self.execute_order()
         else:
             # 判断机器人当前的订单Id和新的订单Id是否一致
             self.logs.info(f"[order] try creat order")
             if self.current_order.orderId != task.orderId:
                 # 订单不一致，开始创建新订单逻辑
-                if not self.task_empty():
+                if self.order_state_machine.orders.orders.status != Status.FINISHED:
                     self.report_error(err.ErrorOrder.newOrderIdButOrderRunning)
                 else:
                     # 创建新的订单
@@ -483,16 +305,12 @@ class RobotOrder:
             else:
                 # 订单一致，开始订单更新逻辑
                 # orderUpdateId 比较
-                if self.current_order is None:
-                    self.logs.info(
-                        f"当前订单为：{self.current_order}，这里是收到orderId一致的订单，但是单子意外没了，直接退出")
-                    return
                 if self.current_order.orderUpdateId <= task.orderUpdateId:
                     if self.current_order.orderUpdateId == task.orderUpdateId:
                         # 订单orderUpdateId已存在，丢弃信息
                         self.logs.info(f"orderUpdateId已存在，丢弃信息")
                     else:
-                        if not self.task_empty():
+                        if self.order_state_machine.orders.orders.status != Status.FINISHED:
                             """
                                 机器人正在从1到10，在4的时候，order说，可以去115了，这个时候，需要更新订单 4-15
                             """
@@ -514,9 +332,12 @@ class RobotOrder:
     def _try_create_order(self, sub_order):
         print("收到新的orderId，并且当前没有任务，尝试创建新的订单。。。")
         self.order = order.Order.create_order(sub_order)
+
         self.lock_order.acquire()
         self.current_order = self.order
+        self.order_state_machine.init_order(self.current_order)
         self.lock_order.release()
+        # self.logs.info(self.order.nodes)
         # self.logs.info(self.order.nodes)
         self.execute_order()
 
@@ -530,6 +351,8 @@ class RobotOrder:
         print("尝试更新订单")
         flag = self.is_match_node_start_end(sub_order.nodes, self.current_order.nodes)
         if flag:
+            # self.current_order = sub_order
+            self.current_order.orderUpdateId = sub_order.orderUpdateId
             self.update_order(sub_order)
         else:
             print("node and edge errors")
@@ -537,7 +360,11 @@ class RobotOrder:
 
     def update_order(self, sub_order: order.Order):
         update_order = order.Order.create_order(sub_order)
-        self.current_order.orderUpdateId = update_order.orderUpdateId
+
+        # 狀態機
+
+        self.order_state_machine.update_order(update_order)
+
         update_nodes = []
         update_edges = []
         for u_n in update_order.nodes:
@@ -551,18 +378,6 @@ class RobotOrder:
         task_list = self.pack_tasks(update_nodes, update_edges)
         # self.order_enqueue(task_list=task_list)
         self.robot.send_order(task_list)
-
-    def task_empty(self):
-        """
-        判断是否有任务,判断 nodes，edges，actions
-        :return:
-        """
-        self.actions_task_len = self.is_action_states_finished_empty(self.actions_state)
-        self.nodes_task_len = self.is_nodes_empty(self.nodes_state)
-        self.edges_task_len = self.is_edges_empty(self.edges_state)
-        if self.actions_task_len == 0 and self.nodes_task_len == 0 and self.edges_task_len == 0:
-            return True
-        return False
 
     @staticmethod
     def is_action_states_finished_empty(action_states) -> int:
@@ -734,16 +549,7 @@ class RobotOrder:
 
     def pack_node(self, node: order.Node, task_list: list):
         # 节点不会下发任务给机器人
-        if node.nodeId not in self.nodes_id_list:
-            self.nodes_id_list.append(node.nodeId)
         # 创建节点
-        node_p = state.NodeState.create_node_state()
-        node_p.nodeId = node.nodeId
-        node_p.nodePosition = node.nodePosition
-        node_p.nodeDescription = node.nodeDescription
-        node_p.sequenceId = node.sequenceId
-        node_p.released = node.released
-        self.nodes_state[node.nodeId] = node_p
         if node.actions:
             self.pack_actions(node, task_list)
 
@@ -760,18 +566,6 @@ class RobotOrder:
                 edge_task["reach_angle"] = 3.141592653589793
             if edge.released:
                 task_list.append(edge_task)
-            if edge.edgeId not in self.edges_id_list:
-                self.edges_id_list.append(edge.edgeId)
-
-                # 创建edgeState
-            edge_p = state.EdgeState.create()
-            edge_p.edgeId = edge.edgeId
-            edge_p.sequenceId = edge.sequenceId
-            edge_p.edgeDescription = edge.edgeDescription
-            edge_p.released = edge.released
-            edge_p.trajectory = edge.trajectory
-
-            self.edges_state[edge.edgeId] = edge_p
             if edge.actions:
                 self.pack_actions(edge, task_list, edge_task)
 
@@ -789,71 +583,12 @@ class RobotOrder:
                 return
             if task:
                 task["script_name"] = action_task["script_name"]
-                task["script_name"] = action_task["script_name"]
                 task["script_args"] = action_task["script_args"]
                 task["operation"] = action_task["operation"]
                 task["script_stage"] = 1
                 action_task = task
-            if action.actionId not in self.actions_id_list:
-                if NE.released:
-                    task_list.append(action_task)
-                self.actions_id_list.append(action.actionId)
-                action_status = state.ActionState.creat_action_state()
-                action_status.actionId = action.actionId
-                action_status.actionStatus = state.ActionStatus.WAITING
-                action_status.actionDescription = action.actionDescription
-                self.actions_state[action.actionId] = action_status
-                # todo 邊和動作再一次，需要重新計算任務狀態
-
-    def pack_actionsV1(self, node: order.Node, task_list: list):
-        actions = node.actions
-        for action in actions:
-            action_check = False
-            action_task = dict()
-            params = action.actionParameters
-            if self.mode == PackMode.params:
-                # 参数模式
-                action_task = {
-                    "task_id": action.actionId,
-                    "id": "SELF_POSITION",
-                    "source_id": "SELF_POSITION",
-                    "script_name": "ForkByModbusTcpCtr.py",
-                    "script_args": {
-                        "action_parameters": params,
-                        "operation": action.actionType,
-                        "blocking_type": "node"
-                    },
-                    "operation": "Script",
-                }
-                # for param in params:
-                #     action_task[param.key] = param.value
-                action_check = True
-            elif self.mode == PackMode.binTask:
-                # binTask模式
-                action_task = {
-                    "task_id": action.actionId
-                }
-                for param in params:
-                    if param.key == "binTask":
-                        action_task["binTask"] = param.value
-                    if param.key == "id":
-                        action_task["id"] = param.value
-                        action_task["source_id"] = param.value
-                if action_task.get("id") and action_task.get("binTask"):
-                    action_check = True
-                else:
-                    print(f"动作打包异常！！！ action_task：{action_task}|||action：{action}")
-                    action_check = False
-            if action_check:
-                if action.actionId not in self.actions_id_list:
-                    if node.released:
-                        task_list.append(action_task)
-                    self.actions_id_list.append(action.actionId)
-                    action_status = state.ActionState.creat_action_state()
-                    action_status.actionId = action.actionId
-                    action_status.actionStatus = state.ActionStatus.WAITING
-                    action_status.actionDescription = action.actionDescription
-                    self.actions_state[action.actionId] = action_status
+            if NE.released:
+                task_list.append(action_task)
 
     @classmethod
     def pack_nodes_edges_list(cls, nodes: List[order.Node], edges: List[order.Edge]):
@@ -930,19 +665,3 @@ class RobotOrder:
     def connection_header_id(self):
         self.robot_connection_header_id += 1
         return self.robot_connection_header_id
-
-    def is_state_change(self):
-        """
-        检查节点、边、动作的任务是否有变化
-        :return: bool
-        """
-        if self.nodes_change or self.edges_change or self.actions_change:
-            return True
-        return False
-
-    def reset_state_change(self):
-        self.nodes_change = False
-        self.edges_change = False
-        self.actions_change = False
-
-

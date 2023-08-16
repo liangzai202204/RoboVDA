@@ -1,4 +1,4 @@
-from enum import IntEnum
+from enum import IntEnum, Enum
 
 
 class RobotOrderStatus(IntEnum):
@@ -11,3 +11,12 @@ class RobotOrderStatus(IntEnum):
     Canceled = 6
     OverTime = 7
     NotFound = 404
+
+
+class Status(str, Enum):
+    WAITING = "WAITING"
+    INITIALIZING = "INITIALIZING"
+    RUNNING = "RUNNING"
+    PAUSED = "PAUSED"
+    FINISHED = "FINISHED"
+    FAILED = "FAILED"

@@ -222,19 +222,22 @@ class SimOrder:
 
         return order_list
 
-    def creat_order(self, tasks: list, released: bool = True, order_count: int = 1,init = ""):
+    def creat_order(self, tasks: list, released: bool = True, order_count: int = 1,init = None):
         # 获取机器人当前位置
         if self.rbk.so_19204:
             _, res = self.rbk.robot_status_loc_req()
             res_json = json.loads(res)
             current_station = res_json["current_station"]
             last_station = res_json["last_station"]
+            print("current_station",current_station)
             if current_station:
                 self.init_point = current_station
             else:
-                self.init_point = last_station
+                if last_station:
+                    self.init_point = last_station
         else:
-            if init != "":
+            print("init", init)
+            if init:
                 self.init_point = init
             else:
                 self.init_point = "AP1"
@@ -259,6 +262,7 @@ class SimOrder:
         for index, task in enumerate(tasks):
             action_list[task[0]] = task[1]
             if index == 0:
+                print("index",mid_pos, "p",task[0])
                 paths = self.map.shortest_path(mid_pos, task[0])
             else:
                 print("1----", p_all[-1], task[0])
@@ -400,6 +404,8 @@ class SimOrder:
 class Map:
     def __init__(self, m: str):
         node_list, edge_list = self.output_node_edge(m)
+        print(node_list)
+        print(edge_list)
         self.G = nx.DiGraph()  # 创建一个有向图
         self.G.add_nodes_from(node_list)  # 添加节点
         self.G.add_edges_from(edge_list)  # 添加边
@@ -410,6 +416,7 @@ class Map:
         with open(map, "r") as f:
             map_data = json.load(f)
         node_list = []
+        print(map_data)
         for node in map_data['advancedPointList']:
             node_list.append(node['instanceName'])
         edge_list = []
@@ -421,7 +428,7 @@ class Map:
         return node_list, edge_list
 
     def shortest_path(self, s, e):
-        # print(s, e)
+        print("0000000000",s, e)
         return nx.shortest_path(self.G, source=s, target=e)
 
 
