@@ -4,7 +4,8 @@ import uuid
 import json
 import uuid
 import paho.mqtt.client as mqtt
-from serve.handle_topic import RobotOrder, RobotOrderStatus
+from serve.handle_topic import RobotOrder
+from type.RobotOrderStatus import RobotOrderStatus
 from type import order
 from log.log import MyLogger
 

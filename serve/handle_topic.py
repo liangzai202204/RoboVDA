@@ -70,8 +70,10 @@ class RobotOrder:
         self.current_order = None
         self.current_order_state: state.State = state.State.create_state()
         self.connection: connection.Connection = connection.Connection.create()
+        self.visualization: visualization.Visualization = visualization.Visualization.create()
         self.robot_state_header_id = 0
         self.robot_connection_header_id = 0
+        self.robot_visualization_header_id = 0
         self.logs = logs
         self.state = state.State.create_state()
         self.init = False  # 表示第一次运行，用于判断运单逻辑
@@ -79,6 +81,8 @@ class RobotOrder:
         self.robot_state_thread = threading.Thread(group=loop, target=self.handle_state, name="run robot state")
         self.robot_connection_thread = threading.Thread(group=None, target=self.handle_connection, name="run robot "
                                                                                                         "connect")
+        self.robot_visualization_thread = threading.Thread(group=None, target=self.handle_visualization,
+                                                           name="run robot visualization")
         self.robot_run_thread = threading.Thread(group=None, target=self.robot.run, name="run robot")
         self.mode = mode  # 定义动作模式 False为参数，True为binTask
         # 訂單狀態機
@@ -97,6 +101,8 @@ class RobotOrder:
         self.robot_state_thread.start()
         # topic connection
         self.robot_connection_thread.start()
+
+        self.robot_visualization_thread.start()
         asyncio.gather(self.handle_order(), self.handle_report())
 
     async def handle_order(self):
@@ -159,9 +165,22 @@ class RobotOrder:
             self._enqueue(self.p_connection, self.connection)
             time.sleep(60 * 10)
 
-    def handle_visualization(self, task_status):
+    def handle_visualization(self):
         while True:
-            pass
+            self._handle_visualization()
+
+    def _handle_visualization(self):
+        try:
+            self.visualization.agvPosition = self.robot.state.agvPosition
+            self.visualization.velocity = self.robot.state.velocity
+            self.visualization.headerId = self.visualization_header_id
+            self.visualization.timestamp = datetime.datetime.now().isoformat(timespec='milliseconds') + 'Z'
+            self._enqueue(self.p_visualization, self.visualization)
+            time.sleep(10)
+        except Exception as e:
+            print(f"handle_visualization error:{e}")
+            time.sleep(20)
+
 
     @property
     def connection_online(self) -> bool:
@@ -665,3 +684,8 @@ class RobotOrder:
     def connection_header_id(self):
         self.robot_connection_header_id += 1
         return self.robot_connection_header_id
+
+    @property
+    def visualization_header_id(self):
+        self.robot_visualization_header_id += 1
+        return self.robot_visualization_header_id

@@ -1,7 +1,5 @@
-import json
 import threading
-from enum import Enum
-from typing import List, Union
+from typing import Union
 
 import pydantic
 from type.RobotOrderStatus import RobotOrderStatus
@@ -85,7 +83,7 @@ class OrderStateMachine:
             node_f_n = len(nodes_status)
             edge_f_n = len(edges_status)
             action_f_n = len(actions_status)
-            if node_f_n == 0 and edge_f_n == 0 and action_f_n:
+            if node_f_n == 0 and edge_f_n == 0 and self.orders.orders.action_empty():
                 print("狀態機沒有任務")
                 return robot_state
             for _, node_s in nodes_status.items():
@@ -274,6 +272,13 @@ class OrderStatus(pydantic.BaseModel):
             "edge": edge,
             "status": Status.INITIALIZING
         }
+
+    def action_empty(self) -> bool:
+        for ids,a in self.actions.items():
+            a_s = a.get("status",None)
+            if a_s != Status.FINISHED:
+                return False
+        return True
 
 
 class Orders(pydantic.BaseModel):

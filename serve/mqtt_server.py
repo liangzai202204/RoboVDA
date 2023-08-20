@@ -94,6 +94,7 @@ class RobotServer:
             self._handle_mqtt_subscribe_messages(),
             self._handle_mqtt_publish_messages(),
             self._handle_mqtt_publish_messages_connection(),
+            self._handle_mqtt_publish_messages_visualization(),
             self._robot_run()
         )
 
@@ -117,6 +118,8 @@ class RobotServer:
                 self.logs.info(f"[subscribe][{self.mqtt_topic_connection}]|"
                                f"{len(message.model_dump())}|{message.model_dump()}")
                 self._mqtt_handle_Connection(message)
+            elif isinstance(message, visualization.Visualization):
+                self._mqtt_handle_visualization(message)
             else:
                 self.logs.info(f"[subscribe][unknown]|{len(message.model_dump())}|{message.model_dump()}")
 
@@ -151,7 +154,7 @@ class RobotServer:
             message = await self.get_visualization()
             self._mqtt_client.publish(self.mqtt_topic_visualization, json.dumps(message.model_dump()))
             self.logs.info(f"[publish][{self.mqtt_topic_visualization}]|"
-                           f"{len(json.dumps(message.model_dump()))}|{json.dumps(message.model_dump())}")
+                           f"{len(json.dumps(message.model_dump()))}|")
 
     async def get_state(self) -> state.State:
         return await self.robot_order.p_state.get()
@@ -240,4 +243,8 @@ class RobotServer:
         self.robot_order.handle_instantActions(instant)
 
     def _mqtt_handle_Connection(self, message):
-        pass
+        self.logs.info(f"_mqtt_handle_Connection ,message len:{message.model_dump().__len__()} ")
+
+    def _mqtt_handle_visualization(self, message):
+        self.logs.info(f"[subscribe][{self.mqtt_topic_visualization}]|"
+                       f"{len(message.model_dump())}|")
