@@ -76,7 +76,7 @@ class RobotMapManager:
             md5 = self.get_updated_md5(name + '.smap')
         map_path = os.path.join(map_dir, name + '.smap')
         # data = self.rbk.robot_config_download_map_req(name)
-        data = self.rbk.call_service(ApiReq.ROBOT_CONFIG_DOWNLOADMAP_REQ.value,{"map_name": name})
+        data = self.rbk.call_service(ApiReq.ROBOT_CONFIG_DOWNLOADMAP_REQ.value, {"map_name": name})
         if os.path.exists(map_dir):
             with open(map_path, 'wb') as file:
                 # 可选：写入内容到文件
@@ -90,7 +90,7 @@ class RobotMapManager:
     def get_updated_md5(self, map_name: str):
         try:
             # c_md5_res = self.rbk.robot_status_map_md5_req([map_name])
-            c_md5_res = self.rbk.call_service(ApiReq.ROBOT_STATUS_MAPMD5_REQ.value,{"map_names": [map_name]})
+            c_md5_res = self.rbk.call_service(ApiReq.ROBOT_STATUS_MAPMD5_REQ.value, {"map_names": [map_name]})
             c_md5_json = json.loads(c_md5_res)
             if c_md5_json.get("ret_code") == 0:
                 if c_md5_json["map_info"][0]["name"] == map_name:
@@ -109,7 +109,7 @@ class RobotMapManager:
 
     def switch_map(self, target_map: str) -> bool:
         # map_res = self.rbk.robot_control_load_map_req(target_map)
-        map_res = self.rbk.call_service(ApiReq.ROBOT_CONTROL_LOADMAP_REQ.value,{"map_name": target_map})
+        map_res = self.rbk.call_service(ApiReq.ROBOT_CONTROL_LOADMAP_REQ.value, {"map_name": target_map})
         map_res_json = json.loads(map_res)
         if map_res_json.get("ret_code"):
             if map_res_json["ret_code"] == 0:
@@ -370,7 +370,7 @@ class Robot:
     def lock_robot(self):
         if self.robot_online:
             # self.rbk.robot_config_lock_req(self.nick_name)
-            self.rbk.call_service(ApiReq.ROBOT_CONFIG_LOCK_REQ.value,{"nick_name": self.nick_name})
+            self.rbk.call_service(ApiReq.ROBOT_CONFIG_LOCK_REQ.value, {"nick_name": self.nick_name})
             self.lock = True
             self.logs.info("master has lock")
 
@@ -382,9 +382,9 @@ class Robot:
             except Exception as e:
                 self.logs.info(f"[robot][map]get_robot_massage error {e}")
 
-    def get_task_status(self,edges_id_list):
+    def get_task_status(self, edges_id_list):
         res_edges_json = self.rbk.call_service(ApiReq.ROBOT_STATUS_TASK_STATUS_PACKAGE_REQ.value,
-                                               {"task_ids":edges_id_list})
+                                               {"task_ids": edges_id_list})
         # print("res_edges_json",res_edges_json)
         res_edges = json.loads(res_edges_json)
         if res_edges:
@@ -395,7 +395,7 @@ class Robot:
             return task_status
 
     def send_order(self, task_list):
-        print("收到訂單",task_list)
+        print("收到訂單", task_list)
         if not isinstance(task_list, list):
             self.logs.error("send_order is empty:", task_list)
             return
@@ -448,8 +448,23 @@ class Robot:
     def instant_cancel_task(self):
         send = True
         while send:
-            if self.robot_online and self.lock:
-                self.rbk.call_service(ApiReq.ROBOT_TASK_CANCEL_REQ)
+            try:
+                if self.robot_online and self.lock:
+                    self.rbk.call_service(ApiReq.ROBOT_TASK_CANCEL_REQ)
+                    send = False
+                else:
+                    self.lock_robot()
+            except Exception as e:
+                self.logs.error(f"instant_cancel_task error:{e}")
                 send = False
-            else:
-                self.lock_robot()
+
+    def instant_init_position(self,task):
+        free_go = task
+        res_data = self.rbk.call_service(ApiReq.ROBOT_TASK_GO_TARGET_REQ.value, free_go)
+        res_data_json = json.loads(res_data)
+        self.logs.info(f"下发任务内容：{free_go}, rbk 返回结果：{res_data_json}")
+        if res_data_json["ret_code"] == 0:
+            self.logs.info(f"下发任务成功：{free_go}")
+            flag = False
+        else:
+            self.logs.info(f"下发任务失败：{free_go}")

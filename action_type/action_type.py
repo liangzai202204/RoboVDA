@@ -6,7 +6,7 @@ from serve.mode import PackMode
 class ActionType:
     PICK = "pick"
     DROP = "drop"
-    FORK_LIFT = "forklift"
+    FORK_LIFT = "forklift",
 
 
 class ActionPack(pydantic.BaseModel):
@@ -39,10 +39,24 @@ class ActionPack(pydantic.BaseModel):
 
     @staticmethod
     def initPosition(action: order.Action) -> dict:
-        a = dict()
-        print(action)
-
-        return a
+        if not action.actionParameters:
+            return {}
+        freeGo = {}
+        for a_p in action.actionParameters:
+            if a_p.key == "x":
+                freeGo["x"] = a_p.value
+            elif a_p.key == "y":
+                freeGo["y"] = a_p.value
+            elif a_p.key == "theta":
+                freeGo["theta"] = a_p.value
+        if not (freeGo.get("x") and freeGo.get("y") and freeGo.get("theta")):
+            return {}
+        task = {
+            "task_id": action.actionId,
+            "id": "SELF_POSITION",
+            "freeGo": freeGo
+        }
+        return task
 
     @staticmethod
     def stateRequest(action: order.Action) -> dict:
@@ -68,6 +82,12 @@ class ActionPack(pydantic.BaseModel):
     def drop(cls, action: order.Action, mode: PackMode, script_stage=2) -> dict:
         action_task = cls._pack_action(action, mode, script_stage)
         print("drop:", action_task)
+        return action_task
+
+    @classmethod
+    def forklift(cls, action: order.Action, mode: PackMode, script_stage=2) -> dict:
+        action_task = cls._pack_action(action, mode, script_stage)
+        print("forklift:", action_task)
         return action_task
 
     @classmethod
@@ -105,7 +125,7 @@ class ActionPack(pydantic.BaseModel):
                 action_task = {}
             return action_task
         except Exception as e:
-            print("_pack_action error:",e)
+            print("_pack_action error:", e)
             return {}
 
     @staticmethod

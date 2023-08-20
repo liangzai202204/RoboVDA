@@ -210,8 +210,8 @@ class RobotOrder:
                 # todo
                 ActionPack.stopCharging(action)
             elif action_type == "initPosition":
-                # todo
-                ActionPack.initPosition(action)
+
+                self.instant_initPosition(ActionPack.initPosition(action))
             elif action_type == "stateRequest":
                 # todo
                 ActionPack.stateRequest(action)
@@ -237,6 +237,9 @@ class RobotOrder:
     def instant_cancel_task(self):
         self.robot.instant_cancel_task()
         self._cls()
+
+    def instant_initPosition(self,task):
+        self.robot.instant_init_position(task)
 
     def _cls(self):
         self.s_order = asyncio.Queue()
@@ -596,7 +599,8 @@ class RobotOrder:
                 action_task = ActionPack.pick(action, self.mode)
             elif action.actionType == ActionType.DROP:
                 action_task = ActionPack.drop(action, self.mode)
-
+            elif action.actionType == ActionType.FORK_LIFT:
+                action_task = ActionPack.forklift(action, self.mode,script_stage=1)
             if not action_task:
                 print("action_task error:", action_task)
                 return
