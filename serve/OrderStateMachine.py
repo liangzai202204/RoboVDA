@@ -40,7 +40,7 @@ class OrderStateMachine:
             self.task_id_list.append(edge.edgeId)
             self.edges_and_actions_id_list.append(edge.edgeId)
             edges[edge.edgeId] = {
-                "node": edge,
+                "edge": edge,
                 "status": Status.INITIALIZING
             }
             if edge.actions:
