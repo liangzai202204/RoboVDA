@@ -31,7 +31,7 @@ class RobotServer:
                  mqtt_topic_connection: str = None,
                  mqtt_topic_instantActions: str = None,
                  mqtt_topic_factsheet: str = None,
-                 state_report_frequency=1
+                 state_report_frequency = 1
                  ):
         self.connected = False
         self.logs = logg

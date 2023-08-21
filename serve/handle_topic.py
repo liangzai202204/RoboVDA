@@ -139,6 +139,7 @@ class RobotOrder:
 
     def update_state_loop(self):
         while True:
+            print("休息:",self.state_report_frequency)
             time.sleep(self.state_report_frequency)
             print("-=" * 20)
             try:
@@ -277,7 +278,8 @@ class RobotOrder:
         self._enqueue(self.chanel_state, self.robot.state)
 
     def report(self):
-        time.sleep(2)
+        print("休息:", self.state_report_frequency)
+        time.sleep(self.state_report_frequency)
         self.logs.info(
             f"order status:|"
             f"{self.chanel_state.qsize()}|{self.p_state.qsize()}|{self.s_order.qsize()}|"
