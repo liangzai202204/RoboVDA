@@ -7,7 +7,7 @@ import pydantic
 from flask import Flask, render_template, jsonify
 from memory_profiler import profile
 from paho.mqtt import client as mqtt_client
-from type import state, order, instantActions, connection,visualization
+from type import state, order, instantActions, connection, visualization
 from typing import Union
 import time
 from serve import handle_topic
@@ -31,6 +31,7 @@ class RobotServer:
                  mqtt_topic_connection: str = None,
                  mqtt_topic_instantActions: str = None,
                  mqtt_topic_factsheet: str = None,
+                 state_report_frequency=1
                  ):
         self.connected = False
         self.logs = logg
@@ -45,7 +46,7 @@ class RobotServer:
         # connect to MQTT
         self._mqtt_client = self._connect_to_mqtt(mqtt_host, mqtt_port, mqtt_transport)
         self._mqtt_messages: asyncio.Queue[RobotMessage] = asyncio.Queue()
-        self.robot_order: handle_topic.RobotOrder = handle_topic.RobotOrder(logs=logg, mode=mode)
+        self.robot_order: handle_topic.RobotOrder = handle_topic.RobotOrder(logs=logg, mode=mode,state_report_frequency=state_report_frequency)
 
         self.mode = mode
 

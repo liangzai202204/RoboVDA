@@ -54,7 +54,8 @@ def lock_decorator(func):
 @timeit
 class RobotOrder:
 
-    def __init__(self, logs, loop=None, mode=PackMode.binTask):
+    def __init__(self, logs, loop=None, mode=PackMode.binTask,state_report_frequency=1):
+        self.state_report_frequency = state_report_frequency
         self.init = False
         self._event_loop = asyncio.get_event_loop() if loop is None else loop
         self.robot: Robot = Robot(logs)
@@ -138,7 +139,7 @@ class RobotOrder:
 
     def update_state_loop(self):
         while True:
-            time.sleep(2)
+            time.sleep(self.state_report_frequency)
             print("-=" * 20)
             try:
                 self.update_state_by_order()

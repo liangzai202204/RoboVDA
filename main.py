@@ -33,6 +33,7 @@ def read_config():
         config.add_section('web')
         config.set('web', 'web_host', 'localhost')
         config.set('web', 'web_port', '5000')
+        config.set('network', 'state_report_frequency', '1')
 
         with open('config.ini', 'w') as configfile:
             config.write(configfile)
@@ -64,6 +65,8 @@ def config_params():
     parser.add_argument("--mode", default=c.getint('robot', 'mode'), type=int, help="robot_ip")
     parser.add_argument("--web_host", default=c.get('web', 'web_host'), help="web_host")
     parser.add_argument("--web_port", default=c.get('web', 'web_port'), help="web_port")
+
+    parser.add_argument("--state_report_frequency", default=c.get('network', 'state_report_frequency'), help="state_report_frequency")
 
     return parser.parse_args()
 
