@@ -66,7 +66,8 @@ def config_params():
     parser.add_argument("--web_host", default=c.get('web', 'web_host'), help="web_host")
     parser.add_argument("--web_port", default=c.get('web', 'web_port'), help="web_port")
 
-    parser.add_argument("--state_report_frequency", default=c.get('network', 'state_report_frequency'), type=int,help="state_report_frequency")
+    parser.add_argument("--state_report_frequency", default=c.get('network', 'state_report_frequency'),
+                        type=int,help="state_report_frequency")
 
     return parser.parse_args()
 

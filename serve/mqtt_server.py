@@ -77,11 +77,22 @@ class RobotServer:
             }
             return jsonify(data)
 
+        @self.app.route('/getOrderStatus', methods=['GET'])
+        def getOrderStatus():
+            OrderStatus=self.robot_order.order_state_machine.orders.orders.model_dump()
+            if OrderStatus:
+                return jsonify(OrderStatus)
+            else:
+                return jsonify({"code":201,"msg":"没有订单"})
+
+        @self.app.route('/getState', methods=['GET'])
+        def getState():
+            state = self.robot_order.robot.state.model_dump()
+            return jsonify(state)
     def start_web(self):
         # 启动Flask应用
         self.app.run(host=self.web_host, port=self.web_port)
 
-    @profile
     def run(self):
         self._mqtt_client.loop_start()
         web_thread = threading.Thread(target=self.start_web)

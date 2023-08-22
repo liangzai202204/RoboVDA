@@ -139,7 +139,6 @@ class RobotOrder:
 
     def update_state_loop(self):
         while True:
-            print("休息:",self.state_report_frequency)
             time.sleep(self.state_report_frequency)
             print("-=" * 20)
             try:
@@ -182,7 +181,6 @@ class RobotOrder:
         except Exception as e:
             print(f"handle_visualization error:{e}")
             time.sleep(20)
-
 
     @property
     def connection_online(self) -> bool:
@@ -278,7 +276,6 @@ class RobotOrder:
         self._enqueue(self.chanel_state, self.robot.state)
 
     def report(self):
-        print("休息:", self.state_report_frequency)
         time.sleep(self.state_report_frequency)
         self.logs.info(
             f"order status:|"
@@ -385,24 +382,19 @@ class RobotOrder:
 
     def update_order(self, sub_order: order.Order):
         update_order = order.Order.create_order(sub_order)
-
         # 狀態機
-
         self.order_state_machine.update_order(update_order)
+        self.pack_send(update_order.nodes,update_order.edges)
 
-        update_nodes = []
-        update_edges = []
-        for u_n in update_order.nodes:
-            update_nodes.append(u_n)
-        for u_e in update_order.edges:
-            update_edges.append(u_e)
-        update_nodes, update_edges = self.check_nodes_edges(update_nodes, update_edges)
-        if not update_nodes or not update_edges:
+    def pack_send(self,nodes: List[order.Node], edges: List[order.Edge]):
+        if (len(nodes) - 1) != len(edges):
             self.report_error(err.ErrorOrder.nodeAndEdgeNumErr)
             return
-        task_list = self.pack_tasks(update_nodes, update_edges)
-        # self.order_enqueue(task_list=task_list)
+        nodes.sort(key=lambda x: x.sequenceId)
+        edges.sort(key=lambda y: y.sequenceId)
+        task_list = self.pack_tasks(nodes, edges)
         self.robot.send_order(task_list)
+
 
     @staticmethod
     def is_action_states_finished_empty(action_states) -> int:
@@ -494,30 +486,16 @@ class RobotOrder:
         """
 
         try:
-            edges = self.current_order.edges
-            nodes = self.current_order.nodes
-            # self.logs.info(f"排序前的：{nodes}")
-            nodes, edges = self.check_nodes_edges(nodes, edges)
-            if not nodes:
-                self.report_error(err.ErrorOrder.nodeAndEdgeNumErr)
-                return
-            task_list = self.pack_tasks(nodes, edges)
-            # self.order_enqueue(task_list=task_list)
-            # todo
-            self.robot.send_order(task_list)
+            self.pack_send(self.current_order.nodes,self.current_order.edges)
         except Exception as e:
             self.logs.info(f"试图打包任务，发给机器人 失败:{e}")
             self.report_error(err.ErrorOrder.sendOrderToRobotErr)
 
     @staticmethod
-    def check_nodes_edges(nodes, edges):
-        if (len(nodes) - 1) == len(edges):
-            # print("nodes -1 len == edges len")
-            nodes.sort(key=lambda x: x.dict()["sequenceId"])
-            edges.sort(key=lambda y: y.dict()["sequenceId"])
-            # print("nodes -1 len != edges len")
-            return nodes, edges
-        return [], []
+    def check_nodes_edges(nodes:List[order.Node], edges:List[order.Edge]):
+        nodes.sort(key=lambda x: x.sequenceId)
+        edges.sort(key=lambda y: y.sequenceId)
+
 
     @lock_decorator
     def pack_tasks(self, nodes: List[order.Node], edges: List[order.Edge]):
@@ -548,28 +526,49 @@ class RobotOrder:
                 nodes}
             print(nodes_point)
 
-        for i_p, point in enumerate(nodes_edges_lists):
-            if isinstance(point, order.Node):
-                # print("node")
-                # 在地图中找一个点，匹配node的坐标点
-                if self.mode != PackMode.vda5050:
-                    p = nodes_point.get(point.nodeId)
-                    if p:
-                        self.pack_node(point, task_list)
-                elif self.mode == PackMode.vda5050:
-                    self.pack_node(point, task_list)
-            elif isinstance(point, order.Edge):
-                if self.mode != PackMode.vda5050:
-                    edge_start_point = nodes_point.get(point.startNodeId)
-                    edge_end_point = nodes_point.get(point.endNodeId)
-                    if not edge_start_point or not edge_end_point:
-                        self.report_error(err.ErrorOrder.packTaskEdgeErr)
-                        return []
-                    self.pack_edge(point, task_list, edge_start_point, edge_end_point)
-                elif self.mode == PackMode.vda5050:
-                    self.pack_edge(point, task_list)
-            else:
-                self.logs.error(f"pack_tasks:unknown msg")
+        for edge,node in zip(nodes_edges_lists[::2],nodes_edges_lists[1::2]):
+            node:order.Node
+            edge:order.Edge
+            # 条件1，非VDA5050模式
+            # 条件2，VDA5050模式
+            print(nodes_edges_lists)
+            if (self.mode != PackMode.vda5050 and nodes_point.get(node.nodeId)) or self.mode == PackMode.vda5050:
+                self.pack_node(node, task_list)
+
+            if self.mode != PackMode.vda5050:
+                edge_start_point = nodes_point.get(edge.startNodeId)
+                edge_end_point = nodes_point.get(edge.endNodeId)
+                if not edge_start_point or not edge_end_point:
+                    self.report_error(err.ErrorOrder.packTaskEdgeErr)
+                    return []
+                self.pack_edge(edge, task_list, edge_start_point, edge_end_point, angle=node.nodePosition.theta)
+            elif self.mode == PackMode.vda5050:
+                self.pack_edge(edge, task_list)
+
+        # angle = None
+        # for i_p, point in enumerate(nodes_edges_lists):
+        #     if isinstance(point, order.Node):
+        #         # print("node")
+        #         # 在地图中找一个点，匹配node的坐标点
+        #         angle = point.nodePosition.theta
+        #         if self.mode != PackMode.vda5050:
+        #             p = nodes_point.get(point.nodeId)
+        #             if p:
+        #                 self.pack_node(point, task_list)
+        #         elif self.mode == PackMode.vda5050:
+        #             self.pack_node(point, task_list)
+        #     elif isinstance(point, order.Edge):
+        #         if self.mode != PackMode.vda5050:
+        #             edge_start_point = nodes_point.get(point.startNodeId)
+        #             edge_end_point = nodes_point.get(point.endNodeId)
+        #             if not edge_start_point or not edge_end_point:
+        #                 self.report_error(err.ErrorOrder.packTaskEdgeErr)
+        #                 return []
+        #             self.pack_edge(point, task_list, edge_start_point, edge_end_point,angle=angle)
+        #         elif self.mode == PackMode.vda5050:
+        #             self.pack_edge(point, task_list)
+        #     else:
+        #         self.logs.error(f"pack_tasks:unknown msg")
         return task_list
 
     def pack_node(self, node: order.Node, task_list: list):
@@ -578,7 +577,7 @@ class RobotOrder:
         if node.actions:
             self.pack_actions(node, task_list)
 
-    def pack_edge(self, edge: order.Edge, task_list: list, edge_start_point=None, edge_end_point=None):
+    def pack_edge(self, edge: order.Edge, task_list: list, edge_start_point=None, edge_end_point=None,angle=None):
         if edge_start_point and edge_end_point:
             edge_task = {
                 "task_id": edge.edgeId,
@@ -587,8 +586,10 @@ class RobotOrder:
                 "operation": "Wait",
                 "percentage": 1.0
             }
-            if edge.actions is None:
+            if not angle and edge.actions is None:
                 edge_task["reach_angle"] = 3.141592653589793
+            if angle:
+                edge_task["angle"] = angle
             if edge.released:
                 task_list.append(edge_task)
             if edge.actions:
