@@ -54,7 +54,7 @@ def lock_decorator(func):
 @timeit
 class RobotOrder:
 
-    def __init__(self, logs, loop=None, mode=PackMode.binTask,state_report_frequency=1):
+    def __init__(self, logs, loop=None, mode=PackMode.binTask, state_report_frequency=1):
         self.state_report_frequency = state_report_frequency
         self.init = False
         self._event_loop = asyncio.get_event_loop() if loop is None else loop
@@ -156,7 +156,7 @@ class RobotOrder:
                         self.order_state_machine.edges_and_actions_id_list))
                 self.order_state_machine.update_state(self.robot.state)
         except Exception as e:
-            print("狀態機 error",e)
+            print("狀態機 error", e)
 
     def handle_connection(self):
         while True:
@@ -238,13 +238,13 @@ class RobotOrder:
         self.robot.instant_cancel_task()
         self._cls()
 
-    def instant_initPosition(self,task):
+    def instant_initPosition(self, task):
         self.robot.instant_init_position(task)
 
     def _cls(self):
-        self.s_order = asyncio.Queue()
-        self.p_state = asyncio.Queue()
-        self.chanel_state = asyncio.Queue()
+        #self.s_order = asyncio.Queue()
+        #self.p_state = asyncio.Queue()
+        #self.chanel_state = asyncio.Queue()
         self.order = None
         self.current_order = None
         # 清除狀態機狀態
@@ -299,12 +299,14 @@ class RobotOrder:
         # todo
 
     def report_error(self, typ: err.ErrorOrder):
+        self._cls()
         self.logs.error(f"error type : {typ}")
         if typ == err.ErrorOrder.newOrderIdButOrderRunning:
             pass
         elif typ == err.ErrorOrder.nodeAndEdgeNumErr:
             pass
 
+    @lock_decorator
     def _run_order(self, task: order.Order):
         self.logs.info("[order] rec and start")
         if self.order_state_machine.ready:
@@ -370,7 +372,7 @@ class RobotOrder:
         :return:
         """
 
-        print("尝试更新订单")
+        #print("尝试更新订单")
         flag = self.is_match_node_start_end(sub_order.nodes, self.current_order.nodes)
         if flag:
             # self.current_order = sub_order
@@ -384,9 +386,9 @@ class RobotOrder:
         update_order = order.Order.create_order(sub_order)
         # 狀態機
         self.order_state_machine.update_order(update_order)
-        self.pack_send(update_order.nodes,update_order.edges)
+        self.pack_send(update_order.nodes, update_order.edges)
 
-    def pack_send(self,nodes: List[order.Node], edges: List[order.Edge]):
+    def pack_send(self, nodes: List[order.Node], edges: List[order.Edge]):
         if (len(nodes) - 1) != len(edges):
             self.report_error(err.ErrorOrder.nodeAndEdgeNumErr)
             return
@@ -394,7 +396,6 @@ class RobotOrder:
         edges.sort(key=lambda y: y.sequenceId)
         task_list = self.pack_tasks(nodes, edges)
         self.robot.send_order(task_list)
-
 
     @staticmethod
     def is_action_states_finished_empty(action_states) -> int:
@@ -466,15 +467,20 @@ class RobotOrder:
                     break
                 if old_node[i + 1].released is False:
                     end = old_node[i]
-                    print(i, end)
+                    # print(i, end)
+                    # print(i, old_node[i + 1])
                     break
-        if end is not None and start:
-            if end.nodeId == start.nodeId and end.sequenceId == start.sequenceId:
+        for i, N_node in enumerate(new_node):
+            if N_node.nodeId == end.nodeId and N_node.released == True:
                 return True
-            else:
-                print(f"nodeId:{end.nodeId} 与 {start.nodeId},\nsequenceId:{end.sequenceId} 与 {start.sequenceId}")
-                return False
         return False
+        # if end is not None and start:
+        #     if end.nodeId == start.nodeId and end.sequenceId == start.sequenceId:
+        #         return True
+        #     else:
+        #         print(f"nodeId:{end.nodeId} 与 {start.nodeId},\nsequenceId:{end.sequenceId} 与 {start.sequenceId}")
+        #         return False
+        # return False
 
     def _enqueue(self, q, obj):
         asyncio.run_coroutine_threadsafe(q.put(obj), self._event_loop)
@@ -486,16 +492,15 @@ class RobotOrder:
         """
 
         try:
-            self.pack_send(self.current_order.nodes,self.current_order.edges)
+            self.pack_send(self.current_order.nodes, self.current_order.edges)
         except Exception as e:
             self.logs.info(f"试图打包任务，发给机器人 失败:{e}")
             self.report_error(err.ErrorOrder.sendOrderToRobotErr)
 
     @staticmethod
-    def check_nodes_edges(nodes:List[order.Node], edges:List[order.Edge]):
+    def check_nodes_edges(nodes: List[order.Node], edges: List[order.Edge]):
         nodes.sort(key=lambda x: x.sequenceId)
         edges.sort(key=lambda y: y.sequenceId)
-
 
     @lock_decorator
     def pack_tasks(self, nodes: List[order.Node], edges: List[order.Edge]):
@@ -526,12 +531,12 @@ class RobotOrder:
                 nodes}
             print(nodes_point)
 
-        for edge,node in zip(nodes_edges_lists[::2],nodes_edges_lists[1::2]):
-            node:order.Node
-            edge:order.Edge
+        for edge, node in zip(nodes_edges_lists[::2], nodes_edges_lists[1::2]):
+            node: order.Node
+            edge: order.Edge
             # 条件1，非VDA5050模式
             # 条件2，VDA5050模式
-            #print(nodes_edges_lists)
+            # print(nodes_edges_lists)
             if (self.mode != PackMode.vda5050 and nodes_point.get(node.nodeId)) or self.mode == PackMode.vda5050:
                 self.pack_node(node, task_list)
 
@@ -577,7 +582,7 @@ class RobotOrder:
         if node.actions:
             self.pack_actions(node, task_list)
 
-    def pack_edge(self, edge: order.Edge, task_list: list, edge_start_point=None, edge_end_point=None,angle=None):
+    def pack_edge(self, edge: order.Edge, task_list: list, edge_start_point=None, edge_end_point=None, angle=None):
         if edge_start_point and edge_end_point:
             edge_task = {
                 "task_id": edge.edgeId,
@@ -604,7 +609,9 @@ class RobotOrder:
             elif action.actionType == ActionType.DROP:
                 action_task = ActionPack.drop(action, self.mode)
             elif action.actionType == ActionType.FORK_LIFT:
-                action_task = ActionPack.forklift(action, self.mode,script_stage=1)
+                action_task = ActionPack.forklift(action, self.mode, script_stage=1)
+            elif action.actionType == ActionType.TEST:
+                action_task = ActionPack.test(action, self.mode)
             if not action_task:
                 print("action_task error:", action_task)
                 return

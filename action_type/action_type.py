@@ -7,6 +7,7 @@ class ActionType:
     PICK = "pick"
     DROP = "drop"
     FORK_LIFT = "forklift",
+    TEST = "test"
 
 
 class ActionPack(pydantic.BaseModel):
@@ -88,6 +89,18 @@ class ActionPack(pydantic.BaseModel):
     def forklift(cls, action: order.Action, mode: PackMode, script_stage=2) -> dict:
         action_task = cls._pack_action(action, mode, script_stage)
         print("forklift:", action_task)
+        return action_task
+
+    @classmethod
+    def test(cls, action: order.Action, mode: PackMode, script_stage=2) -> dict:
+        action_task = {
+            "task_id": action.actionId,
+            "id": "SELF_POSITION",
+            "source_id": "SELF_POSITION",
+            "operation": "Wait",
+            "script_stage": script_stage
+        }
+        print("test:", action_task)
         return action_task
 
     @classmethod

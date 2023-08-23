@@ -67,7 +67,7 @@ class MyTestCase(unittest.TestCase):
                     ]
         data = ("LM87", par)
         datas.append(data)
-        o1 = a.creat_order(datas, released=True, order_count=100,init="LM87")
+        o1 = a.creat_order(datas, released=True, order_count=100,init="LM87",action_type="test")
         client = mqtt.Client()
         client.connect(get_mqtt_ip(), 1883, 60)
 

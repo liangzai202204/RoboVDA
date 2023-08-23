@@ -222,7 +222,7 @@ class SimOrder:
 
         return order_list
 
-    def creat_order(self, tasks: list, released: bool = True, order_count: int = 1,init = None):
+    def creat_order(self, tasks: list, released: bool = True, order_count: int = 1,init = None,action_type="test"):
         # 获取机器人当前位置
         if self.rbk.so_19204:
             _, res = self.rbk.robot_status_loc_req()
@@ -335,7 +335,7 @@ class SimOrder:
                 if params:
                     a = order.Action.creat()
                     a.actionId = str(uuid.uuid4())
-                    a.actionType = "pick"
+                    a.actionType = action_type
                     a.actionParameters = params
                     node.actions.append(a)
                 orders_1.nodes.append(node)
