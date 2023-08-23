@@ -51,7 +51,21 @@ class MyTestCase(unittest.TestCase):
         import sim_order as s
         a = s.SimOrder(ip="192.168.198.168")
         datas = []
-        data = ("LM87", [])
+        par = [
+                        {
+                            "key": "height",
+                            "value": "0.1"
+                        },
+                        {
+                            "key": "depth",
+                            "value": "0.9"
+                        },
+                        {
+                            "key": "loadId",
+                            "value": "21"
+                        }
+                    ]
+        data = ("LM87", par)
         datas.append(data)
         o1 = a.creat_order(datas, released=True, order_count=100,init="LM87")
         client = mqtt.Client()

@@ -396,7 +396,7 @@ class Robot:
 
     def send_order(self, task_list):
         print("收到訂單", task_list)
-        if not isinstance(task_list, list):
+        if not isinstance(task_list, list) or not task_list:
             self.logs.error("send_order is empty:", task_list)
             return
         move_task_list = {

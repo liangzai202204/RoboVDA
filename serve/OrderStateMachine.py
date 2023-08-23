@@ -161,9 +161,9 @@ class OrderStateMachine:
         with self.lock:
             for task_statu in task_pack_status:
                 task_id = task_statu.get("task_id")
-                c_edge = self.orders.orders.get_edge_by_id(task_id)  # 獲得order中的，edge，然後找出 起點的 nodeId 和終點的 nodeId
+                c_edge = self.orders.orders.get_task_by_id(task_id)  # 獲得order中的，edge，然後找出 起點的 nodeId 和終點的 nodeId
                 if not c_edge:
-                    print("嘗試更新edge，但是沒有這個edge，id：", task_id)
+                    print("嘗試更新edge，但是沒有這個edgeId：", task_id)
                     return
                 if task_statu["status"] == RobotOrderStatus.Completed:
                     self.orders.orders.set_node_and_edge_status(c_edge, Status.FINISHED)
@@ -230,6 +230,13 @@ class OrderStatus(pydantic.BaseModel):
     edges: dict[str, dict[str, Union[order.Edge, Status]]]
     actions: dict[str, dict[str, Union[order.Action, Status]]]
 
+    def get_task_by_id(self,ids: str):
+        # get edge or action
+        if self.edges.get(ids, {}):
+            return self.edges.get(ids, {}).get("edge")
+        return self.actions.get(ids, {}).get("action")
+
+
     def get_node_by_id(self, ids: str):
         return self.nodes.get(ids, {}).get("node")
 
@@ -250,10 +257,20 @@ class OrderStatus(pydantic.BaseModel):
         e = self.edges.get(ids, {})
         e["status"] = status
 
-    def set_node_and_edge_status(self, edge: order.Edge, status: Status):
-        self.set_node_status_by_id(edge.startNodeId, status)
-        self.set_node_status_by_id(edge.endNodeId, status)
-        self.set_edge_status_by_id(edge.edgeId, status)
+    def set_action_status_by_id(self, ids: str, status: Status):
+        e = self.actions.get(ids, {})
+        e["status"] = status
+
+    def set_node_and_edge_status(self, task: Union[order.Edge,order.Action], status: Status):
+        if isinstance(task,order.Edge):
+            self.set_node_status_by_id(task.startNodeId, status)
+            self.set_node_status_by_id(task.endNodeId, status)
+            self.set_edge_status_by_id(task.edgeId, status)
+        elif isinstance(task,order.Action):
+            self.set_action_status_by_id(task.actionId,status)
+        else:
+            print(f"error when set status,{type(task)}")
+
 
     def remove_node_by_id(self, ids: str):
         self.nodes.pop(ids)

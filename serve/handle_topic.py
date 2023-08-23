@@ -531,7 +531,7 @@ class RobotOrder:
             edge:order.Edge
             # 条件1，非VDA5050模式
             # 条件2，VDA5050模式
-            print(nodes_edges_lists)
+            #print(nodes_edges_lists)
             if (self.mode != PackMode.vda5050 and nodes_point.get(node.nodeId)) or self.mode == PackMode.vda5050:
                 self.pack_node(node, task_list)
 

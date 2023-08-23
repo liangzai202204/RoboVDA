@@ -93,6 +93,9 @@ class ActionPack(pydantic.BaseModel):
     @classmethod
     def _pack_action(cls, action: order.Action, mode: PackMode, script_stage) -> dict:
         try:
+            if not (mode != PackMode.params or mode != PackMode.binTask):
+                print("action type error:", mode)
+                return {}
             if mode == PackMode.params:
                 action_task = {
                     "task_id": action.actionId,
@@ -100,13 +103,14 @@ class ActionPack(pydantic.BaseModel):
                     "source_id": "SELF_POSITION",
                     "script_name": "ForkByModbusTcpCtr.py",
                     "script_args": {
-                        "action_parameters": action.actionParameters,
+                        "action_parameters": [a.model_dump() for a in action.actionParameters],
                         "operation": action.actionType,
                         "blocking_type": "node"
                     },
                     "operation": "Script",
                     "script_stage": script_stage
                 }
+                return action_task
             elif mode == PackMode.binTask:
                 action_task = {
                     "task_id": action.actionId
@@ -118,12 +122,9 @@ class ActionPack(pydantic.BaseModel):
                         action_task["id"] = param.value
                         action_task["source_id"] = param.value
                 if not (action_task.get("id") and action_task.get("binTask")):
-                    print(f"动作打包异常！！！ action_task：{action_task}|||action：{action}")
-                    action_task = {}
-            else:
-                print("action type error:", mode)
-                action_task = {}
-            return action_task
+                    print(f"动作打包异常(binTask模式)！！！ action_task：{action_task}|||action：{action}")
+                    return {}
+                return action_task
         except Exception as e:
             print("_pack_action error:", e)
             return {}
