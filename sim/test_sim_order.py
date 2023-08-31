@@ -3,6 +3,8 @@ import os
 import time
 import unittest
 import paho.mqtt.client as mqtt
+
+from serve.mode import PackMode
 from type import order
 from serve import OrderStateMachine
 
@@ -220,6 +222,24 @@ class InstantActionsTest(unittest.TestCase):
         # a.init_order(order.Order(**json_content))
         # a.orders.orders.set_node_status_by_id("7a434ec3-91c8-4334-89f8-31d30942fbb7",OrderStateMachine.Status.FINISHED)
         # n = a.orders.orders.get_status_by_id("7a434ec3-91c8-4334-89f8-31d30942fbb7")
+
+    def test_pack_class(self):
+        import json
+        import os
+        from serve.packTask import PackTask
+        # 假设包 B 的名称为 package_B，JSON 文件名为 data.json
+        path_to_B = os.path.abspath("../VDAExample")
+        json_filename = 'Transport Order.json'
+
+        json_file_path = os.path.join(path_to_B, json_filename)
+
+        with open(json_file_path, 'r') as json_file:
+            json_content = json.load(json_file)
+            print(json_content)
+        p=PackTask(2,{})
+        a=order.Order(**json_content)
+        t=p.pack(a)
+        print(t)
 
 
 if __name__ == '__main__':

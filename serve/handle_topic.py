@@ -1,5 +1,4 @@
 import asyncio
-import copy
 import datetime
 import threading
 from serve.OrderStateMachine import OrderStateMachine
@@ -11,6 +10,7 @@ from serve.mode import PackMode
 from action_type.action_type import ActionPack, ActionType
 from error_type import error_type as err
 from type.RobotOrderStatus import Status
+from serve.packTask import PackTask
 
 
 def timeit(func):
@@ -78,7 +78,6 @@ class RobotOrder:
         self.logs = logs
         self.state = state.State.create_state()
         self.init = False  # 表示第一次运行，用于判断运单逻辑
-        self.order_task_list = list()
         self.robot_state_thread = threading.Thread(group=loop, target=self.handle_state, name="run robot state")
         self.robot_connection_thread = threading.Thread(group=None, target=self.handle_connection, name="run robot "
                                                                                                         "connect")
@@ -88,6 +87,7 @@ class RobotOrder:
         self.mode = mode  # 定义动作模式 False为参数，True为binTask
         # 訂單狀態機
         self.order_state_machine = OrderStateMachine()
+        self.pack_task = PackTask(mode,self.robot.map_manager.map_point_index)
 
     def __del__(self):
         self._cls()
@@ -122,20 +122,6 @@ class RobotOrder:
         while True:
             state_sub = await self.chanel_state.get()
             self._enqueue(self.p_state, state_sub)
-
-    # async def handle_send_order_to_robot(self):
-    #     """
-    #         这里是最终将任务发给机器人执行入口
-    #     """
-    #     while True:
-    #         task_list = await self.order_cache_queue.get()
-    #         if self.robot.robot_online:
-    #             self.send_order(task_list)
-    #         else:
-    #             """
-    #               当机器人不在线时，需要做的逻辑，这里直接将任务丢弃
-    #             """
-    #             self.logs.info(f"robot not online,order pass and order detail:{task_list}")
 
     def update_state_loop(self):
         while True:
@@ -386,53 +372,16 @@ class RobotOrder:
         update_order = order.Order.create_order(sub_order)
         # 狀態機
         self.order_state_machine.update_order(update_order)
-        self.pack_send(update_order.nodes, update_order.edges)
+        self.pack_send(update_order)
 
-    def pack_send(self, nodes: List[order.Node], edges: List[order.Edge]):
-        if (len(nodes) - 1) != len(edges):
-            self.report_error(err.ErrorOrder.nodeAndEdgeNumErr)
-            return
-        nodes.sort(key=lambda x: x.sequenceId)
-        edges.sort(key=lambda y: y.sequenceId)
-        task_list = self.pack_tasks(nodes, edges)
-        self.robot.send_order(task_list)
+    def pack_send(self,new_order:order.Order):
+        task_list = self.pack_task.pack(new_order)
+        if isinstance(task_list,list) and not task_list:
+            self.robot.send_order(task_list)
+        else:
+            print(task_list,"error")
+            raise "1"
 
-    @staticmethod
-    def is_action_states_finished_empty(action_states) -> int:
-        action_tack_len = 0
-        if action_states is None:
-            return action_tack_len
-        for k, v in action_states.items():
-            if v.actionStatus != state.ActionStatus.FINISHED:
-                action_tack_len += 1
-        return action_tack_len
-
-    @staticmethod
-    def is_nodes_empty(node_states: dict) -> int:
-        node_task_len = 0
-        if len(node_states.keys()) == 0:
-            # print("len(node_states.keys()):",len(node_states.keys()),",node_states.keys():",node_states.keys())
-            return node_task_len
-        for node_state in node_states.values():
-            # print("node_state:",node_state)
-            if isinstance(node_state, state.NodeState):
-                if node_state.released:
-                    node_task_len += 1
-        # print("判断节点是否为空", node_states)
-        return node_task_len
-
-    @staticmethod
-    def is_edges_empty(edge_states: dict) -> int:
-        edge_task_len = 0
-        if len(edge_states.keys()) == 0:
-            return edge_task_len
-        for edge_state in edge_states.values():
-            if isinstance(edge_state, state.EdgeState):
-                # print("edge_state.released:",edge_state.released)
-                if edge_state.released:
-                    edge_task_len += 1
-        # print("return:",edge_task_len)
-        return edge_task_len
 
     @classmethod
     def is_match_node_start_end(cls, new_node: List[order.Node], old_node: List[order.Node]) -> bool:
@@ -474,13 +423,6 @@ class RobotOrder:
             if N_node.nodeId == end.nodeId and N_node.released == True:
                 return True
         return False
-        # if end is not None and start:
-        #     if end.nodeId == start.nodeId and end.sequenceId == start.sequenceId:
-        #         return True
-        #     else:
-        #         print(f"nodeId:{end.nodeId} 与 {start.nodeId},\nsequenceId:{end.sequenceId} 与 {start.sequenceId}")
-        #         return False
-        # return False
 
     def _enqueue(self, q, obj):
         asyncio.run_coroutine_threadsafe(q.put(obj), self._event_loop)
@@ -492,197 +434,10 @@ class RobotOrder:
         """
 
         try:
-            self.pack_send(self.current_order.nodes, self.current_order.edges)
+            self.pack_send(self.current_order)
         except Exception as e:
             self.logs.info(f"试图打包任务，发给机器人 失败:{e}")
             self.report_error(err.ErrorOrder.sendOrderToRobotErr)
-
-    @staticmethod
-    def check_nodes_edges(nodes: List[order.Node], edges: List[order.Edge]):
-        nodes.sort(key=lambda x: x.sequenceId)
-        edges.sort(key=lambda y: y.sequenceId)
-
-    @lock_decorator
-    def pack_tasks(self, nodes: List[order.Node], edges: List[order.Edge]):
-        """
-        根据 self.mode 打包任务
-        1、node 和 edge 分开打包
-        2、第一个点不打包
-        3、
-
-        """
-        if not nodes or not edges:
-            self.report_error(err.ErrorOrder.nodeOrEdgeEmpty)
-            return []
-        nodes_edges_lists = self.pack_nodes_edges_list(nodes, edges)
-        if not nodes_edges_lists:
-            self.report_error(err.ErrorOrder.packNodeEdgeListErr)
-            return []
-        task_list = []
-
-        nodes_point = dict()
-        if self.mode != PackMode.vda5050:
-            if not self.robot.map_manager.map_point_index:
-                self.logs.error(f"read map point but empty while packing tasks")
-                return []
-            nodes_point = {
-                node.nodeId: self.robot.map_manager.map_point_index.get((node.nodePosition.x, node.nodePosition.y)) for
-                node in
-                nodes}
-            print(nodes_point)
-
-        for edge, node in zip(nodes_edges_lists[::2], nodes_edges_lists[1::2]):
-            node: order.Node
-            edge: order.Edge
-            # 条件1，非VDA5050模式
-            # 条件2，VDA5050模式
-            # print(nodes_edges_lists)
-            if (self.mode != PackMode.vda5050 and nodes_point.get(node.nodeId)) or self.mode == PackMode.vda5050:
-                self.pack_node(node, task_list)
-
-            if self.mode != PackMode.vda5050:
-                edge_start_point = nodes_point.get(edge.startNodeId)
-                edge_end_point = nodes_point.get(edge.endNodeId)
-                if not edge_start_point or not edge_end_point:
-                    self.report_error(err.ErrorOrder.packTaskEdgeErr)
-                    return []
-                self.pack_edge(edge, task_list, edge_start_point, edge_end_point, angle=node.nodePosition.theta)
-            elif self.mode == PackMode.vda5050:
-                self.pack_edge(edge, task_list)
-
-        # angle = None
-        # for i_p, point in enumerate(nodes_edges_lists):
-        #     if isinstance(point, order.Node):
-        #         # print("node")
-        #         # 在地图中找一个点，匹配node的坐标点
-        #         angle = point.nodePosition.theta
-        #         if self.mode != PackMode.vda5050:
-        #             p = nodes_point.get(point.nodeId)
-        #             if p:
-        #                 self.pack_node(point, task_list)
-        #         elif self.mode == PackMode.vda5050:
-        #             self.pack_node(point, task_list)
-        #     elif isinstance(point, order.Edge):
-        #         if self.mode != PackMode.vda5050:
-        #             edge_start_point = nodes_point.get(point.startNodeId)
-        #             edge_end_point = nodes_point.get(point.endNodeId)
-        #             if not edge_start_point or not edge_end_point:
-        #                 self.report_error(err.ErrorOrder.packTaskEdgeErr)
-        #                 return []
-        #             self.pack_edge(point, task_list, edge_start_point, edge_end_point,angle=angle)
-        #         elif self.mode == PackMode.vda5050:
-        #             self.pack_edge(point, task_list)
-        #     else:
-        #         self.logs.error(f"pack_tasks:unknown msg")
-        return task_list
-
-    def pack_node(self, node: order.Node, task_list: list):
-        # 节点不会下发任务给机器人
-        # 创建节点
-        if node.actions:
-            self.pack_actions(node, task_list)
-
-    def pack_edge(self, edge: order.Edge, task_list: list, edge_start_point=None, edge_end_point=None, angle=None):
-        if edge_start_point and edge_end_point:
-            edge_task = {
-                "task_id": edge.edgeId,
-                "id": edge_end_point,
-                "source_id": edge_start_point,
-                "operation": "Wait",
-                "percentage": 1.0
-            }
-            if not angle and edge.actions is None:
-                edge_task["reach_angle"] = 3.141592653589793
-            if angle:
-                edge_task["angle"] = angle
-            if edge.released:
-                task_list.append(edge_task)
-            if edge.actions:
-                self.pack_actions(edge, task_list, edge_task)
-
-    def pack_actions(self, NE: Union[order.Node, order.Edge], task_list: list, task=None):
-        actions = NE.actions
-        for action in actions:
-            action_task = dict()
-            if action.actionType == ActionType.PICK:
-                action_task = ActionPack.pick(action, self.mode)
-            elif action.actionType == ActionType.DROP:
-                action_task = ActionPack.drop(action, self.mode)
-            elif action.actionType == ActionType.FORK_LIFT:
-                action_task = ActionPack.forklift(action, self.mode, script_stage=1)
-            elif action.actionType == ActionType.TEST:
-                action_task = ActionPack.test(action, self.mode)
-            if not action_task:
-                print("action_task error:", action_task)
-                return
-            if task:
-                task["script_name"] = action_task["script_name"]
-                task["script_args"] = action_task["script_args"]
-                task["operation"] = action_task["operation"]
-                task["script_stage"] = 1
-                action_task = task
-            if NE.released:
-                task_list.append(action_task)
-
-    @classmethod
-    def pack_nodes_edges_list(cls, nodes: List[order.Node], edges: List[order.Edge]):
-        """
-        将 node 和 edge 的任务打包在一起
-        :param nodes:
-        :param edges:
-        :return:list
-        """
-        nodes_copy = copy.deepcopy(nodes)
-        edges_copy = copy.deepcopy(edges)
-        nodes_edges_list = []
-        while nodes_copy and edges_copy:
-            node = nodes_copy.pop(0)
-            nodes_edges_list.append(node)
-            edge = edges_copy.pop(0)
-            if edge.startNodeId != node.nodeId:
-                return []
-            nodes_edges_list.append(edge)
-            if str(edge.endNodeId) != str(nodes_copy[0].nodeId):
-                return []
-            if not edges_copy and nodes_copy:
-                nodes_edges_list.append(nodes_copy[-1])
-        return nodes_edges_list[1:]
-
-    # def order_enqueue(self, task_list, type_id=3066):
-    #     """
-    #         任务入队
-    #     """
-    #     self._enqueue(self.order_cache_queue, task_list)
-
-    # @send_order_decorator
-    # def send_order(self, task_list):
-    #     self.robot.send_order(task_list)
-
-    # @send_order_decorator
-    # def send_order(self, task_list, type_id=3066):
-    #     if not isinstance(task_list, list):
-    #         self.logs.error("send_order is empty:", task_list)
-    #         return
-    #     move_task_list = {
-    #         'move_task_list': task_list
-    #     }
-    #     flag = True
-    #     try:
-    #         while flag:
-    #             if self.robot.lock:
-    #                 _, res_data = self.robot.rbk.request(type_id, msg=move_task_list)
-    #                 res_data_json = json.loads(res_data)
-    #                 self.logs.info(f"下发任务内容：{move_task_list}, rbk 返回结果：{res_data_json}")
-    #                 if res_data_json["ret_code"] == 0:
-    #                     self.logs.info(f"下发任务成功：{move_task_list}")
-    #                     flag = False
-    #                 else:
-    #                     self.logs.info(f"下发任务失败：{move_task_list}")
-    #
-    #             else:
-    #                 self.logs.info("没有控制权，无法下发任务")
-    #     except Exception.args as e:
-    #         self.logs.info("试图抢占控制权并下发任务失败，可能是没有链接到机器人" + e)
 
     @property
     def state_header_id(self):

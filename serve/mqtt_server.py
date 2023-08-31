@@ -89,6 +89,16 @@ class RobotServer:
         def getState():
             state = self.robot_order.robot.state.model_dump()
             return jsonify(state)
+
+        @self.app.route('/getPackTask', methods=['GET'])
+        def getPackTask():
+            PackTask = {
+                "task_pack_list":self.robot_order.pack_task.task_pack_list,
+                "pack_mode":self.robot_order.pack_task.pack_mode,
+                "nodes_point":self.robot_order.pack_task.nodes_point
+            }
+            return jsonify(PackTask)
+
     def start_web(self):
         # 启动Flask应用
         self.app.run(host=self.web_host, port=self.web_port)
