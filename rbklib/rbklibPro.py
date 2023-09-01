@@ -59,6 +59,8 @@ class Rbk:
             return self.so_19207.request(msgType, reqId, msg)
         elif 6000 <= msgType < 7000:
             return self.so_19210.request(msgType, reqId, msg)
+        elif 9000 <= msgType < 9999:
+            return self.so_19301.request(msgType, reqId, msg)
         else:
             # 如果报文类型不在范围内，则抛出异常
             raise ValueError("没有与报文类型对应的socket,或者需要指定一个socket")

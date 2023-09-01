@@ -41,6 +41,7 @@ class RobotMapManager:
         self.logs = logs
         self.map_point_index = None
         self.get_all_map()
+        self.set_push()
 
     def add_map(self, map_name, md5, map_path):
         self.maps[map_name] = {
@@ -163,26 +164,6 @@ class RobotMapManager:
         print(map_list)
         for m in map_list:
             self.load_map(self.map_dir, m)
-        # file_path = os.path.join(self.map_dir, ".smap")
-        # if os.path.isfile(file_path):
-        #     files = os.listdir(self.map_dir)
-        #     file_names = []  # 保存文件名的列表
-        #     for file in files:
-        #         # 添加文件名到列表
-        #         file_names.append(file)
-        #         # 构造文件的完整路径
-        #         file_path = os.path.join(self.map_dir, file)
-        #         if os.path.isfile(file_path):
-        #             with open(file_path, "r") as f:
-        #                 # 读取文件内容
-        #                 content = json.load(f)
-        #                 print(f"文件 {file} 的内容:")
-        #                 print(content)
-        #                 print("---")
-        #     print("文件名列表:", file_names)
-        # 獲取地圖的 md5
-
-        # 檢查是否需要更新地圖
 
     def map_index(self, maps: str):
         index = dict()
@@ -199,12 +180,16 @@ class RobotMapManager:
 
                 for key, value in nodes.items():
                     index[(value["x"], value["y"])] = key
+                self.map_point_index = index
                 self.logs.info(f"[map]map_index:{index}")
             except Exception as e:
                 print("map_index", e)
         else:
             self.logs.error(f" no exists map :{maps}")
         return index
+
+    def set_push(self):
+        pass
 
 
 def timeit(func):
@@ -242,6 +227,7 @@ class Robot:
         self.lock = False
         self.robot_version = "3.4.5"
         self.messages = queue.Queue()
+        self.set_push()
 
     def run(self):
         self.lock_robot()
@@ -394,11 +380,20 @@ class Robot:
             # print("*" * 20)
             return task_status
 
+    def set_push(self):
+        self.rbk.call_service(ApiReq.ROBOT_PUSH_CONFIG_REQ.value,
+                              {"interval":100})
+
     def send_order(self, task_list):
         print("收到訂單", task_list)
-        if not isinstance(task_list, list) or not task_list:
-            self.logs.error("send_order is empty:", task_list)
-            return
+        print("收到訂單2", type(task_list))
+        try:
+            if not isinstance(task_list, list) or not task_list:
+                self.logs.error("send_order is empty:", task_list)
+                return
+        except Exception as e:
+            print(f"收到訂單3:{e}")
+        print("收到訂單1", type(task_list))
         move_task_list = {
             'move_task_list': task_list
         }

@@ -54,7 +54,7 @@ def lock_decorator(func):
 @timeit
 class RobotOrder:
 
-    def __init__(self, logs, loop=None, mode=PackMode.binTask, state_report_frequency=1):
+    def __init__(self, logs,  mode, loop=None,state_report_frequency=1):
         self.state_report_frequency = state_report_frequency
         self.init = False
         self._event_loop = asyncio.get_event_loop() if loop is None else loop
@@ -375,7 +375,8 @@ class RobotOrder:
         self.pack_send(update_order)
 
     def pack_send(self,new_order:order.Order):
-        task_list = self.pack_task.pack(new_order)
+        task_list = self.pack_task.pack(new_order,self.robot.map_manager.map_point_index)
+        print(f"pack_task finish:{task_list}")
         if isinstance(task_list,list) and not task_list:
             self.robot.send_order(task_list)
         else:

@@ -62,7 +62,7 @@ def config_params():
     parser.add_argument("--mqtt_topic_factsheet", default=c.get('topic', 'factsheet'), type=str, nargs='?',
                         help="topic")
     parser.add_argument("--robot_ip", default=c.get('robot', 'robot_ip'), help="robot_ip")
-    parser.add_argument("--mode", default=c.getint('robot', 'mode'), type=int, help="robot_ip")
+    parser.add_argument("--mode", default=c.getint('robot', 'mode'), type=int, help="mode")
     parser.add_argument("--web_host", default=c.get('web', 'web_host'), help="web_host")
     parser.add_argument("--web_port", default=c.get('web', 'web_port'), help="web_port")
 

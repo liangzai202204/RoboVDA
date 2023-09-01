@@ -95,7 +95,8 @@ class RobotServer:
             PackTask = {
                 "task_pack_list":self.robot_order.pack_task.task_pack_list,
                 "pack_mode":self.robot_order.pack_task.pack_mode,
-                "nodes_point":self.robot_order.pack_task.nodes_point
+                "nodes_point":self.robot_order.pack_task.nodes_point,
+                # "map_point":self.robot_order.pack_task.map_point
             }
             return jsonify(PackTask)
 

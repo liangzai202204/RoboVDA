@@ -11,8 +11,7 @@ from error_type import error_type as err
 class PackTask:
     def __init__(self, pack_mode:PackMode, map_point=None):
         self.nodes_point = None
-        if map_point is None:
-            map_point = {}
+        self.map_point = map_point
         self.pack_mode = pack_mode
         self.map_point = map_point  # 保存了地图的站点
         self.order = None
@@ -21,7 +20,9 @@ class PackTask:
         self.nodes_edges_list = []
         self.task_pack_list = []
 
-    def pack(self, new_order: order.Order):
+    def pack(self, new_order: order.Order,map_point):
+        print("pask")
+        self.map_point = map_point
         self.order = new_order
         self.nodes = copy.deepcopy(new_order.nodes)
         self.edges = copy.deepcopy(new_order.edges)
@@ -37,6 +38,7 @@ class PackTask:
         l_err = self.pack_nodes_edges_list()
         if isinstance(l_err, err.ErrorOrder):
             return l_err
+        print("do_pack")
         self.do_pack()
         return self.task_pack_list
 
@@ -47,23 +49,26 @@ class PackTask:
         :param edges:
         :return:list
         """
-        nodes = copy.deepcopy(self.nodes)
-        edges = copy.deepcopy(self.edges)
-        while nodes and edges:
-            node = nodes.pop(0)
-            edge = edges.pop(0)
+        try:
+            nodes = copy.deepcopy(self.nodes)
+            edges = copy.deepcopy(self.edges)
+            while nodes and edges:
+                node = nodes.pop(0)
+                edge = edges.pop(0)
 
-            self.nodes_edges_list.append(node)
-            self.nodes_edges_list.append(edge)
+                self.nodes_edges_list.append(node)
+                self.nodes_edges_list.append(edge)
 
-            if edge.startNodeId != node.nodeId:
-                return err.ErrorOrder.startNodeIdNotNodeId
-            if str(edge.endNodeId) != str(nodes[0].nodeId):
-                return err.ErrorOrder.endNodeIdNotNodeId
-            if not edges and nodes:
-                self.nodes_edges_list.append(nodes[-1])
-        self.nodes_edges_list = self.nodes_edges_list[1:]
-        return True
+                if edge.startNodeId != node.nodeId:
+                    return err.ErrorOrder.startNodeIdNotNodeId
+                if str(edge.endNodeId) != str(nodes[0].nodeId):
+                    return err.ErrorOrder.endNodeIdNotNodeId
+                if not edges and nodes:
+                    self.nodes_edges_list.append(nodes[-1])
+            self.nodes_edges_list = self.nodes_edges_list[1:]
+            return True
+        except Exception as e:
+            print(f"pack_nodes_edges_list error:{e}")
 
     def do_pack(self):
         if self.pack_mode != PackMode.vda5050:
@@ -77,26 +82,37 @@ class PackTask:
         pass
 
     def pack_binTask(self):
-        self.load_map_point_in_order()
-        for edge, node in zip(self.nodes_edges_list[::2], self.nodes_edges_list[1::2]):
-            node: order.Node
-            edge: order.Edge
-            self.pack_node(node)
-            self.pack_edge(edge, node)
+        print("pack_binTask")
+        try:
+            self.load_map_point_in_order()
+            for edge, node in zip(self.nodes_edges_list[::2], self.nodes_edges_list[1::2]):
+                node: order.Node
+                edge: order.Edge
+                self.pack_node(node)
+                self.pack_edge(edge, node)
+        except Exception as e:
+            print(f"pack_binTask error:{e}")
 
     def pack_params(self):
-        self.load_map_point_in_order()
-        for edge, node in zip(self.nodes_edges_list[::2], self.nodes_edges_list[1::2]):
-            node: order.Node
-            edge: order.Edge
-            self.pack_node(node)
-            self.pack_edge(edge, node)
+        try:
+            print("pack_params")
+            self.load_map_point_in_order()
+            for edge, node in zip(self.nodes_edges_list[::2], self.nodes_edges_list[1::2]):
+                node: order.Node
+                edge: order.Edge
+                self.pack_node(node)
+                self.pack_edge(edge, node)
+        except Exception as e:
+            print(f"pack_params error:{e}")
 
     def load_map_point_in_order(self):
-        self.nodes_point = {
-            node.nodeId: self.map_point.get((node.nodePosition.x, node.nodePosition.y))
-            for node in self.nodes
-        }
+        try:
+            self.nodes_point = {
+                node.nodeId: self.map_point.get((node.nodePosition.x, node.nodePosition.y))
+                for node in self.nodes
+            }
+        except Exception as e:
+            print(f"load_map_point_in_order:{e}")
 
     def pack_node(self, node:order.Node):
         if node.actions:
@@ -105,6 +121,8 @@ class PackTask:
     def pack_edge(self, edge:order.Edge, node:order.Node):
         edge_start_point = self.nodes_point.get(edge.startNodeId)
         edge_end_point = self.nodes_point.get(edge.endNodeId)
+        print("5")
+
         if edge_start_point and edge_end_point:
             edge_task = {
                 "task_id": edge.edgeId,
@@ -113,13 +131,17 @@ class PackTask:
                 "operation": "Wait",
                 "percentage": 1.0
             }
+            print("6")
+
             if (not node.nodePosition.theta or node.nodePosition.theta == 0) and edge.actions is None:
                 edge_task["reach_angle"] = 3.141592653589793
             if node.nodePosition.theta:
                 edge_task["angle"] = node.nodePosition.theta
+            print("7")
 
             if edge.actions:
                 self.pack_actions(edge,edge_task)
+            print("8")
 
             if edge.released:
                 self.task_pack_list.append(edge_task)
@@ -127,9 +149,12 @@ class PackTask:
             print("地图没点",edge.startNodeId,edge.edgeId)
 
     def pack_actions(self, NE: Union[order.Node, order.Edge],edge_task=None):
+        print("1")
         actions = NE.actions
         for action in actions:
             action_task = dict()
+            print("2")
+
             if action.actionType == ActionType.PICK:
                 action_task = ActionPack.pick(action, self.pack_mode)
             elif action.actionType == ActionType.DROP:
@@ -140,12 +165,16 @@ class PackTask:
                 action_task = ActionPack.test(action, self.pack_mode)
             else:
                 print(action.actionType,action.actionParameters)
+            print("3")
+
             if not action_task:
                 print("action_task error:", action_task)
                 return
             if NE.released:
                 self.task_pack_list.append(action_task)
                 return
+            print("4")
+
             if edge_task:
                 edge_task["script_name"] = action_task["script_name"]
                 edge_task["script_args"] = action_task["script_args"]
