@@ -591,6 +591,8 @@ class RobotOrder:
                 "operation": "Wait",
                 "percentage": 1.0
             }
+            if edge.holdDir:
+                edge_task["hold_dir"] = edge.holdDir
             if not angle and edge.actions is None:
                 edge_task["reach_angle"] = 3.141592653589793
             if angle:
