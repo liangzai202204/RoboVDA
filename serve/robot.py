@@ -375,9 +375,7 @@ class Robot:
         res_edges = json.loads(res_edges_json)
         if res_edges:
             task_status = res_edges["task_status_package"]["task_status_list"]
-            # print("*" * 20)
-            # print(task_status)
-            # print("*" * 20)
+
             return task_status
 
     def set_push(self):
@@ -385,15 +383,12 @@ class Robot:
                               {"interval":100})
 
     def send_order(self, task_list):
-        print("收到訂單", task_list)
-        print("收到訂單2", type(task_list))
         try:
             if not isinstance(task_list, list) or not task_list:
-                self.logs.error("send_order is empty:", task_list)
+                self.logs.error(f"send_order is empty:{task_list}")
                 return
         except Exception as e:
             print(f"收到訂單3:{e}")
-        print("收到訂單1", type(task_list))
         move_task_list = {
             'move_task_list': task_list
         }

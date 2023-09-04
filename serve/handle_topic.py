@@ -375,13 +375,13 @@ class RobotOrder:
         self.pack_send(update_order)
 
     def pack_send(self,new_order:order.Order):
-        task_list = self.pack_task.pack(new_order,self.robot.map_manager.map_point_index)
-        print(f"pack_task finish:{task_list}")
-        if isinstance(task_list,list) and not task_list:
-            self.robot.send_order(task_list)
-        else:
-            print(task_list,"error")
-            raise "1"
+        res = self.pack_task.pack(new_order,self.robot.map_manager.map_point_index)
+        if isinstance(res,err.ErrorOrder):
+            self.report_error(res)
+        elif isinstance(res,list) and res:
+            self.robot.send_order(res)
+        elif not res:
+            self.report_error(err.ErrorOrder.sendOrderToRobotErr)
 
 
     @classmethod
