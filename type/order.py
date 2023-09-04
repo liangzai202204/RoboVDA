@@ -1,5 +1,5 @@
 import enum
-from typing import List, Optional
+from typing import List, Optional, Union
 from type import state
 import pydantic
 
@@ -14,7 +14,7 @@ class Header:
 
 class ActionParameter(pydantic.BaseModel):
     key: str
-    value: str
+    value: Union[str,float,int]
 
 
 class ActionBlockingType(str, enum.Enum):
