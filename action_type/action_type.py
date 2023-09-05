@@ -6,11 +6,25 @@ from serve.mode import PackMode
 class ActionType:
     PICK = "pick"
     DROP = "drop"
-    FORK_LIFT = "forklift",
+    FORK_LIFT = "forklift"
     TEST = "test"
 
 
 class ActionPack(pydantic.BaseModel):
+    @classmethod
+    def pack(cls,action: order.Action,pack_mode):
+        action_task = None
+        if action.actionType == ActionType.PICK:
+            action_task = ActionPack.pick(action, pack_mode)
+        elif action.actionType == ActionType.DROP:
+            action_task = ActionPack.drop(action, pack_mode)
+        elif action.actionType == ActionType.FORK_LIFT:
+            action_task = ActionPack.forklift(action, pack_mode, script_stage=1)
+        elif action.actionType == ActionType.TEST:
+            action_task = ActionPack.test(action, pack_mode)
+        else:
+            print("不支持动作类型：",action.actionType, action.actionParameters)
+        return action_task
 
     @staticmethod
     def startPause(action: order.Action) -> dict:
@@ -28,7 +42,6 @@ class ActionPack(pydantic.BaseModel):
     def startCharging(action: order.Action) -> dict:
         a = dict()
         print(action)
-
         return a
 
     @staticmethod

@@ -305,43 +305,71 @@ class So19210(BaseSo):
 class So19301(BaseSo):
     def __init__(self, ip: str = "127.0.0.1", socket_timeout=60, max_reconnect_attempts=5, pushDataSize=5):
         super().__init__(ip, 19301, socket_timeout, max_reconnect_attempts)
-        self.pushData = Queue(pushDataSize)
-        self.push_flag = True
-        thread = threading.Thread(target=self._robot_push, name="So19301_pushData")
-        thread.setDaemon(True)
-        thread.start()
+        # self.pushData = Queue(pushDataSize)
+        # self.push_flag = True
+        # # thread = threading.Thread(target=self._robot_push, name="So19301_pushData")
+        # # thread.setDaemon(True)
+        # # thread.start()
 
-    def _robot_push(self):
-        """
-        机器人推送API
-        """
+    # def _robot_push(self):
+    #     """
+    #     机器人推送API
+    #     """
+    #
+    #     while self.push_flag:
+    #         try:
+    #             if self.connected:
+    #                 self._send_put()
+    #             else:
+    #                 self.reconnect()
+    #         except Exception as e:
+    #             print("pushData error:", e)
+    #             self.connected = False
+    #             self.reconnect()
 
-        while self.push_flag:
-            try:
-                if self.connected:
-                    self._send_put()
-                else:
-                    self.reconnect()
-            except Exception as e:
-                print("pushData error:", e)
-                self.connected = False
-                self.reconnect()
+    # def _send_put(self):
+    #     # 接收报文头
+    #     headData = self.so.recv(16)
+    #     # 解析报文头
+    #     header = struct.unpack(self.PACK_FMT_STR, headData)
+    #     # 获取报文体长度
+    #     bodyLen = header[3]
+    #     readSize = 1024
+    #     recvData = b''
+    #     while bodyLen > 0:
+    #         recv = self.so.recv(readSize)
+    #         recvData += recv
+    #         bodyLen -= len(recv)
+    #         if bodyLen < readSize:
+    #             readSize = bodyLen
+    #     if self.pushData.full():
+    #         self.pushData.get()
+    #     self.pushData.put(recvData)
 
-    def _send_put(self):
-        # 接收报文头
-        headData = self.so.recv(16)
-        # 解析报文头
-        header = struct.unpack(self.PACK_FMT_STR, headData)
-        # 获取报文体长度
-        bodyLen = header[3]
-        readSize = 1024
-        recvData = b''
-        while bodyLen > 0:
-            recv = self.so.recv(readSize)
-            recvData += recv
-            bodyLen -= len(recv)
-            if bodyLen < readSize:
-                readSize = bodyLen
-        if self.pushData.full():
-            self.pushData.get()
-        self.pushData.put(recvData)
+    def get(self):
+        try:
+            # 接收报文头
+            headData = self.so.recv(16)
+            print("保头：",headData)
+            # 解析报文头
+            header = struct.unpack(self.PACK_FMT_STR, headData)
+            # 获取报文体长度
+            bodyLen = header[3]
+            print("body长度1：", bodyLen)
+            readSize = 1024 if bodyLen > 1024 else bodyLen
+            recvData = b''
+            while bodyLen > 0:
+                recv = self.so.recv(readSize)
+                recvData += recv
+                bodyLen -= len(recv)
+                if bodyLen < readSize:
+                    readSize = bodyLen
+            print("返回数据：",recvData)
+            print("body长度：",bodyLen)
+            print("返回数据长度：",len(recvData))
+            return recvData
+        except Exception as e:
+            print(f"获取机器人呢数据失败：{e}")
+            self.connected = False
+            self.reconnect()
+            return None

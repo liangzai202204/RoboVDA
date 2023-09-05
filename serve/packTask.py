@@ -150,27 +150,14 @@ class PackTask:
     def pack_actions(self, NE: Union[order.Node, order.Edge],edge_task=None):
         actions = NE.actions
         for action in actions:
-            action_task = dict()
-
-            if action.actionType == ActionType.PICK:
-                action_task = ActionPack.pick(action, self.pack_mode)
-            elif action.actionType == ActionType.DROP:
-                action_task = ActionPack.drop(action, self.pack_mode)
-            elif action.actionType == ActionType.FORK_LIFT:
-                action_task = ActionPack.forklift(action, self.pack_mode, script_stage=1)
-            elif action.actionType == ActionType.TEST:
-                action_task = ActionPack.test(action, self.pack_mode)
-            else:
-                print(action.actionType,action.actionParameters)
-
+            action_task = ActionPack.pack(action, self.pack_mode)
             if not action_task:
                 print("action_task error:", action_task)
                 self.error = err.ErrorOrder.actionPackEmpty
                 return
             if NE.released:
                 self.task_pack_list.append(action_task)
-                return
-
+                continue
             if edge_task:
                 edge_task["script_name"] = action_task["script_name"]
                 edge_task["script_args"] = action_task["script_args"]

@@ -260,7 +260,13 @@ class Robot:
         将机器人的数据，更新到 self.state 中
         :return:
         """
-        self.robot_push_msg = RobotPush(**json.loads(self.rbk.so_19301.pushData.get()))
+        try:
+            push_data = self.rbk.so_19301.get()
+            if push_data:
+                self.robot_push_msg = RobotPush(**json.loads(push_data))
+        except Exception as e:
+            print("json.loads(push_data)：",e)
+            return
         # state
         self.update_state()
         # 根據信息判斷邏輯
