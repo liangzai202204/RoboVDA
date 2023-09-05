@@ -350,12 +350,10 @@ class So19301(BaseSo):
         try:
             # 接收报文头
             headData = self.so.recv(16)
-            print("保头：",headData)
             # 解析报文头
             header = struct.unpack(self.PACK_FMT_STR, headData)
             # 获取报文体长度
             bodyLen = header[3]
-            print("body长度1：", bodyLen)
             readSize = 1024 if bodyLen > 1024 else bodyLen
             recvData = b''
             while bodyLen > 0:
@@ -364,9 +362,6 @@ class So19301(BaseSo):
                 bodyLen -= len(recv)
                 if bodyLen < readSize:
                     readSize = bodyLen
-            print("返回数据：",recvData)
-            print("body长度：",bodyLen)
-            print("返回数据长度：",len(recvData))
             return recvData
         except Exception as e:
             print(f"获取机器人呢数据失败：{e}")
