@@ -137,8 +137,7 @@ class PackTask:
 
             if (not node.nodePosition.theta or node.nodePosition.theta == 0) and edge.actions is None:
                 edge_task["reach_angle"] = 3.141592653589793
-            if node.nodePosition.theta:
-                edge_task["angle"] = node.nodePosition.theta
+            edge_task["angle"] = node.nodePosition.theta
 
             if edge.actions:
                 self.pack_actions(edge,edge_task)

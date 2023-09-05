@@ -100,6 +100,13 @@ class RobotServer:
             }
             return jsonify(PackTask)
 
+        @self.app.route('/getPushData', methods=['GET'])
+        def getPushData():
+            PushData = {
+                "PushData":self.robot_order.robot.robot_push_msg.model_dump()
+            }
+            return jsonify(PushData)
+
     def start_web(self):
         # 启动Flask应用
         self.app.run(host=self.web_host, port=self.web_port)
