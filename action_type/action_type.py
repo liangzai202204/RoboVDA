@@ -11,6 +11,10 @@ class ActionType:
 
 
 class ActionPack(pydantic.BaseModel):
+    """
+    script_stage = 1
+
+    """
     @classmethod
     def pack(cls,action: order.Action,pack_mode):
         action_task = None

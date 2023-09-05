@@ -92,8 +92,8 @@ class PackTask:
         for edge, node in zip(self.nodes_edges_list[::2], self.nodes_edges_list[1::2]):
             node: order.Node
             edge: order.Edge
-            self.pack_node(node)
             self.pack_edge(edge, node)
+            self.pack_node(node)
 
     def pack_params(self):
         try:
@@ -101,8 +101,8 @@ class PackTask:
             for edge, node in zip(self.nodes_edges_list[::2], self.nodes_edges_list[1::2]):
                 node: order.Node
                 edge: order.Edge
-                self.pack_node(node)
                 self.pack_edge(edge, node)
+                self.pack_node(node)
         except Exception as e:
             print(f"pack_params error:{e}")
 
