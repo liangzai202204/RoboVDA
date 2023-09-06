@@ -339,7 +339,7 @@ class So19301(BaseSo):
             bodyLen = header[3]
             recvData = b''
             while len(recvData) < bodyLen:
-                recv = self.so.recv(bodyLen - len(recvData))
+                recv = self.so.recv(1024)
                 if not recv:
                     break
                 recvData += recv
