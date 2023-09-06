@@ -335,11 +335,12 @@ class So19301(BaseSo):
             headData = self.so.recv(16)
             # 解析报文头
             header = struct.unpack(self.PACK_FMT_STR, headData)
+            print("版本号",hex(header[0]))
             # 获取报文体长度
             bodyLen = header[3]
             recvData = b''
             while len(recvData) < bodyLen:
-                recv = self.so.recv(1024)
+                recv = self.so.recv(bodyLen-len(recvData))
                 if not recv:
                     break
                 recvData += recv
