@@ -7,6 +7,8 @@ class ActionType:
     PICK = "pick"
     DROP = "drop"
     FORK_LIFT = "forklift"
+    FORK_LOAD = "ForkLoad"
+    FORK_UNLOAD = "ForkUnload"
     TEST = "test"
 
 
@@ -26,6 +28,10 @@ class ActionPack(pydantic.BaseModel):
             action_task = ActionPack.forklift(action, pack_mode, script_stage=1)
         elif action.actionType == ActionType.TEST:
             action_task = ActionPack.test(action, pack_mode)
+        elif action.actionType == ActionType.FORK_LOAD:
+            action_task = ActionPack.fork_load(action, pack_mode)
+        elif action.actionType == ActionType.TEST:
+            action_task = ActionPack.fork_unload(action, pack_mode)
         else:
             print("不支持动作类型：",action.actionType, action.actionParameters)
         return action_task
@@ -118,6 +124,30 @@ class ActionPack(pydantic.BaseModel):
             "script_stage": script_stage
         }
         print("test:", action_task)
+        return action_task
+
+    @classmethod
+    def fork_load(cls, action: order.Action, mode: PackMode, script_stage=2) -> dict:
+        action_task = {
+            "task_id": action.actionId,
+            "id": "SELF_POSITION",
+            "source_id": "SELF_POSITION",
+            "operation": action.actionType,
+            "script_stage": script_stage
+        }
+        print("fork_load:", action_task)
+        return action_task
+
+    @classmethod
+    def fork_unload(cls, action: order.Action, mode: PackMode, script_stage=2) -> dict:
+        action_task = {
+            "task_id": action.actionId,
+            "id": "SELF_POSITION",
+            "source_id": "SELF_POSITION",
+            "operation": action.actionType,
+            "script_stage": script_stage
+        }
+        print("fork_load:", action_task)
         return action_task
 
     @classmethod
