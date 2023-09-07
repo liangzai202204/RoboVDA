@@ -23,6 +23,7 @@ class ErrorPckTask(str):
     """
         topic : order error type
     """
+    MapNotPoint = None
     endNodeIdNotNodeId = "edge 的 endNodeId 不等于 NodeId"
     startNodeIdNotNodeId = "edge 的 startNodeId 不等于 NodeId"
     nodeAndEdgeNumErr = 0

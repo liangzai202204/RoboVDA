@@ -146,6 +146,7 @@ class PackTask:
                 self.task_pack_list.append(edge_task)
         else:
             print("地图没点",edge.startNodeId,edge.edgeId)
+            self.error = err.ErrorPckTask.mapNotNodePosition
 
     def pack_actions(self, NE: Union[order.Node, order.Edge],edge_task=None):
         actions = NE.actions
@@ -155,14 +156,16 @@ class PackTask:
                 print("action_task error:", action_task)
                 self.error = err.ErrorOrder.actionPackEmpty
                 return
-            if NE.released:
-                self.task_pack_list.append(action_task)
-                continue
-            if edge_task:
-                edge_task["script_name"] = action_task["script_name"]
-                edge_task["script_args"] = action_task["script_args"]
-                edge_task["operation"] = action_task["operation"]
-                edge_task["script_stage"] = 1
+            if isinstance(NE,order.Node):
+                if NE.released:
+                    self.task_pack_list.append(action_task)
+            if isinstance(NE,order.Edge):
+                if edge_task:
+                    edge_task["script_name"] = action_task["script_name"]
+                    edge_task["script_args"] = action_task["script_args"]
+                    edge_task["operation"] = action_task["operation"]
+                    edge_task["script_stage"] = 1
+
 
     def clear_pack(self):
         self.nodes = []
