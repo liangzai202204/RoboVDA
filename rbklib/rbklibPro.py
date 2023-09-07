@@ -305,6 +305,38 @@ class So19210(BaseSo):
 class So19301(BaseSo):
     def __init__(self, ip: str = "127.0.0.1", socket_timeout=60, max_reconnect_attempts=5, pushDataSize=5):
         super().__init__(ip, 19301, socket_timeout, max_reconnect_attempts)
+        self.pushData = Queue(pushDataSize)
+        thread = threading.Thread(target=self._robot_push)
+        thread.setDaemon(True)
+        thread.start()
+
+    def _robot_push(self):
+        """
+        机器人推送API
+        """
+
+        while True:
+            # 接收报文头
+            try:
+                headData = self.so.recv(16)
+                # 解析报文头
+                header = struct.unpack(self.PACK_FMT_STR, headData)
+                # 获取报文体长度
+                bodyLen = header[3]
+                recvData = b''
+                while len(recvData) < bodyLen:
+                    recv = self.so.recv(bodyLen - len(recvData))
+                    if not recv:
+                        break
+                    recvData += recv
+                if self.pushData.full():
+                    self.pushData.get()
+                self.pushData.put(recvData)
+            except Exception as e:
+                print(f"获取机器人数据失败：{e}")
+                self.connected = False
+                self.reconnect()
+                return None
 
     def getV1(self):
         try:

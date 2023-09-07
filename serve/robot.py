@@ -261,7 +261,7 @@ class Robot:
         :return:
         """
         try:
-            push_data = self.rbk.so_19301.get()
+            push_data = self.rbk.so_19301.pushData.get()
             if push_data:
                 self.robot_push_msg = RobotPush(**json.loads(push_data))
         except Exception as e:
