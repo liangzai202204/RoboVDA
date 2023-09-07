@@ -321,6 +321,10 @@ class So19301(BaseSo):
                 headData = self.so.recv(16)
                 # 解析报文头
                 header = struct.unpack(self.PACK_FMT_STR, headData)
+                while header[0] != 0x5a:
+                    additionalByte = self.so.recv(1)
+                    headData = headData[1:]+additionalByte
+                    header = struct.unpack(self.PACK_FMT_STR, headData)
                 # 获取报文体长度
                 bodyLen = header[3]
                 recvData = b''
@@ -329,6 +333,7 @@ class So19301(BaseSo):
                     if not recv:
                         break
                     recvData += recv
+                print(recvData)
                 if self.pushData.full():
                     self.pushData.get()
                 self.pushData.put(recvData)

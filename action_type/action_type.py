@@ -30,7 +30,7 @@ class ActionPack(pydantic.BaseModel):
             action_task = ActionPack.test(action, pack_mode)
         elif action.actionType == ActionType.FORK_LOAD:
             action_task = ActionPack.fork_load(action, pack_mode)
-        elif action.actionType == ActionType.TEST:
+        elif action.actionType == ActionType.FORK_UNLOAD:
             action_task = ActionPack.fork_unload(action, pack_mode)
         else:
             print("不支持动作类型：",action.actionType, action.actionParameters)
