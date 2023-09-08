@@ -256,6 +256,10 @@ class OrderStatus(pydantic.BaseModel):
     def set_edge_status_by_id(self, ids: str, status: Status):
         e = self.edges.get(ids, {})
         e["status"] = status
+        ed = self.get_edge_by_id(ids)
+        if ed.actions:
+            for a in ed.actions:
+                self.set_action_status_by_id(a.actionId,status)
 
     def set_action_status_by_id(self, ids: str, status: Status):
         e = self.actions.get(ids, {})
