@@ -264,9 +264,12 @@ class Robot:
             push_data = self.rbk.so_19301.pushData.get()
             if push_data:
                 self.robot_push_msg = RobotPush(**json.loads(push_data))
+        except queue.Empty:
+            # 如果队列为空，则跳过本次循环，继续等待下一个数据
+            self.logs.error(f"19301 push data is Empty,pass")
         except Exception as e:
             print("json.loads(push_data)：",e)
-            return
+
         # state
         self.update_state()
         # 根據信息判斷邏輯

@@ -144,6 +144,7 @@ class BaseSo:
             try:
                 self.so = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 self.so.settimeout(self.socket_timeout)
+
                 self.so.connect((self.ip, self.port))
                 self.connected = True
             except Exception as e:
@@ -303,7 +304,7 @@ class So19210(BaseSo):
 
 
 class So19301(BaseSo):
-    def __init__(self, ip: str = "127.0.0.1", socket_timeout=60, max_reconnect_attempts=5, pushDataSize=5):
+    def __init__(self, ip: str = "127.0.0.1", socket_timeout=60, max_reconnect_attempts=5, pushDataSize=50):
         super().__init__(ip, 19301, socket_timeout, max_reconnect_attempts)
         self.pushData = Queue(pushDataSize)
         thread = threading.Thread(target=self._robot_push)
@@ -321,10 +322,12 @@ class So19301(BaseSo):
                 headData = self.so.recv(16)
                 # 解析报文头
                 header = struct.unpack(self.PACK_FMT_STR, headData)
+                print(header)
                 while header[0] != 0x5a:
                     additionalByte = self.so.recv(1)
-                    headData = headData[1:]+additionalByte
+                    headData = headData[1:] + additionalByte
                     header = struct.unpack(self.PACK_FMT_STR, headData)
+
                 # 获取报文体长度
                 bodyLen = header[3]
                 recvData = b''
@@ -333,10 +336,16 @@ class So19301(BaseSo):
                     if not recv:
                         break
                     recvData += recv
-                print(recvData)
-                if self.pushData.full():
-                    self.pushData.get()
-                self.pushData.put(recvData)
+
+                # 检查是否接收到完整的报文体
+                if len(recvData) == bodyLen:
+                    print(recvData)
+                    if self.pushData.full():
+                        self.pushData.get()
+                    self.pushData.put(recvData)
+                else:
+                    print("接收到不完整的报文体，继续接收...")
+
             except Exception as e:
                 print(f"获取机器人数据失败：{e}")
                 self.connected = False
