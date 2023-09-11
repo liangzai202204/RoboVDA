@@ -11,6 +11,7 @@ class ActionType:
     FORK_UNLOAD = "ForkUnload"
     TEST = "test"
     Angle = "angle"
+    Ready = "ready"
 
 
 class ActionPack(pydantic.BaseModel):
@@ -35,6 +36,8 @@ class ActionPack(pydantic.BaseModel):
             action_task = ActionPack.fork_unload(action, pack_mode)
         elif action.actionType == ActionType.Angle:
             action_task = ActionPack.angle_action(action, pack_mode)
+        elif action.actionType == ActionType.Ready:
+            action_task = ActionPack.ready(action, pack_mode)
         else:
             print("不支持动作类型：",action.actionType, action.actionParameters)
         return action_task
@@ -156,6 +159,11 @@ class ActionPack(pydantic.BaseModel):
     def angle_action(cls, action: order.Action, mode: PackMode, script_stage=2) -> dict:
         action_task = cls._pack_action(action, mode, script_stage)
         print("angle:", action_task)
+        return action_task
+
+    def ready(cls, action: order.Action, mode: PackMode, script_stage=2) -> dict:
+        action_task = cls._pack_action(action, mode, script_stage)
+        print("ready:", action_task)
         return action_task
 
     @classmethod
