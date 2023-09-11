@@ -5,11 +5,13 @@ from queue import Queue
 import socket
 import time
 from type.ApiReq import ApiReq
+from log.log import MyLogger
 
 
 class Rbk:
     def __init__(self, ip: str):
         self.ip = ip
+        self.log = MyLogger()
         self.so_19204 = So19204(ip)
         self.so_19205 = So19205(ip)
         self.so_19206 = So19206(ip)
@@ -48,7 +50,7 @@ class Rbk:
         if self.so_19301 is not None:
             self.so_19301.so.close()
 
-    def request(self, msgType, msg=None,reqId=1):
+    def request(self, msgType, msg=None, reqId=1):
         if 1000 <= msgType < 2000:
             return self.so_19204.request(msgType, reqId, msg)
         elif msgType < 3000:
@@ -66,10 +68,10 @@ class Rbk:
             raise ValueError("没有与报文类型对应的socket,或者需要指定一个socket")
 
     def robot_config_download_map_req(self, map_name: str):
-        return self.request(4011,{"map_name": map_name})
+        return self.request(4011, {"map_name": map_name})
 
     def robot_status_map_md5_req(self, map_names):
-        return self.request(1302,{"map_names": map_names})
+        return self.request(1302, {"map_names": map_names})
 
     def robot_control_load_map_req(self, map_name: str):
         """
@@ -77,7 +79,7 @@ class Rbk:
 
         :param map_name: 要切换的地图名(不能包含中文等非法字符, 只能使用 0-9, a-z, A-Z, -, _)
         """
-        return self.request(2022,{"map_name": map_name})
+        return self.request(2022, {"map_name": map_name})
 
     def robot_control_reloc_req(self, x: float = None, y: float = None, angle: float = None, length: float = 0,
                                 home: bool = False):
@@ -101,7 +103,7 @@ class Rbk:
         if length is not None:
             d["length"] = length
         d["home"] = home
-        return self.request(2002,d)
+        return self.request(2002, d)
 
     def robot_status_map_req(self):
         """
@@ -110,10 +112,10 @@ class Rbk:
         return self.request(1300)
 
     def robot_config_lock_req(self, nick_name: str):
-        return self.request(4005,{"nick_name": nick_name})
+        return self.request(4005, {"nick_name": nick_name})
 
     def robot_task_go_target_list_req(self, **kwargs):
-        return self.request(3066,kwargs)
+        return self.request(3066, kwargs)
 
     def robot_task_cancel_req(self):
         return self.request(3003)
@@ -122,12 +124,13 @@ class Rbk:
         if request.__len__() == 1:
             return self.request(request[0])
         else:
-            return self.request(request[0],request[1])
+            return self.request(request[0], request[1])
 
 
 class BaseSo:
     def __init__(self, ip: str, port: int, socket_timeout=60, max_reconnect_attempts=10):
         self.PACK_FMT_STR = '!BBHLH6s'
+        self.log = MyLogger()
         self.ip = ip
         self.port = port
         self.so = None
@@ -148,16 +151,16 @@ class BaseSo:
                 self.so.connect((self.ip, self.port))
                 self.connected = True
             except Exception as e:
-                print(f"连接失败：{e}")
+                self.log.warning(f"连接失败：{e}")
                 self.connected = False
                 self.reconnect_attempts += 1
 
                 if self.reconnect_attempts > self.max_reconnect_attempts:
-                    print("达到最大重连尝试次数，繼續重新鏈接")
+                    self.log.warning(f"达到最大重连尝试次数，繼續重新鏈接")
                     self.reconnect_attempts = 0
                     self.initial_reconnect_delay = 1
                 reconnect_delay = self.get_reconnect_delay()
-                print(f"等待 {reconnect_delay} 秒后进行重连")
+                self.log.warning(f"等待 {reconnect_delay} 秒后进行重连")
                 time.sleep(reconnect_delay)
 
     def _request(self, so: socket.socket, msgType, reqId=1, msg=None):
@@ -253,22 +256,22 @@ class BaseSo:
             return body
         except socket.timeout:
             self.connected = False
-            print("连接超时异常，重新连接")
+            self.log.warning("连接超时异常，重新连接")
             self.reconnect()
         except ConnectionResetError:
             self.connected = False
-            print("连接重置异常，重新连接")
+            self.log.warning("连接重置异常，重新连接")
             self.reconnect()
         except Exception as e:
             self.connected = False
             self.reconnect()
-            print(f"其他异常：{e}")
+            self.log.warning(f"其他异常：{e}")
 
     def reconnect(self):
         self.so.close()  # 关闭原有的套接字
         self.so = None
         reconnect_delay = self.get_reconnect_delay()
-        print(f"等待 {reconnect_delay} 秒后进行重连")
+        self.log.warning(f"等待 {reconnect_delay} 秒后进行重连")
         time.sleep(reconnect_delay)
         self.connect()
 
@@ -294,7 +297,7 @@ class So19206(BaseSo):
 
 
 class So19207(BaseSo):
-    def __init__(self, ip: str = "127.0.0.1",socket_timeout=60, max_reconnect_attempts=5):
+    def __init__(self, ip: str = "127.0.0.1", socket_timeout=60, max_reconnect_attempts=5):
         super().__init__(ip, 19207, socket_timeout, max_reconnect_attempts)
 
 
@@ -322,9 +325,11 @@ class So19301(BaseSo):
                 headData = self.so.recv(16)
                 # 解析报文头
                 header = struct.unpack(self.PACK_FMT_STR, headData)
-                print(header)
-                while header[0] != 0x5a:
+                self.log.warning(f"header:{header}")
+                while header[0] != 0x5a and header[1] != 0x01:
                     additionalByte = self.so.recv(1)
+                    if not additionalByte:
+                        break
                     headData = headData[1:] + additionalByte
                     header = struct.unpack(self.PACK_FMT_STR, headData)
 
@@ -339,15 +344,15 @@ class So19301(BaseSo):
 
                 # 检查是否接收到完整的报文体
                 if len(recvData) == bodyLen:
-                    print(recvData)
+                    self.log.warning(f"19301 push raw data:{recvData}")
                     if self.pushData.full():
                         self.pushData.get()
                     self.pushData.put(recvData)
                 else:
-                    print("接收到不完整的报文体，继续接收...")
+                    self.log.warning(f"接收到不完整的报文体，继续接收...")
 
             except Exception as e:
-                print(f"获取机器人数据失败：{e}")
+                self.log.warning(f"获取机器人数据失败：{e}")
                 self.connected = False
                 self.reconnect()
                 return None
@@ -385,7 +390,7 @@ class So19301(BaseSo):
             bodyLen = header[3]
             recvData = b''
             while len(recvData) < bodyLen:
-                recv = self.so.recv(bodyLen-len(recvData))
+                recv = self.so.recv(bodyLen - len(recvData))
                 if not recv:
                     break
                 recvData += recv
@@ -395,3 +400,4 @@ class So19301(BaseSo):
             self.connected = False
             self.reconnect()
             return None
+

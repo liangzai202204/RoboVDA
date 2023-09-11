@@ -46,7 +46,7 @@ class RobotServer:
         # connect to MQTT
         self._mqtt_client = self._connect_to_mqtt(mqtt_host, mqtt_port, mqtt_transport)
         self._mqtt_messages: asyncio.Queue[RobotMessage] = asyncio.Queue()
-        self.robot_order: handle_topic.RobotOrder = handle_topic.RobotOrder(logs=logg, mode=mode,state_report_frequency=state_report_frequency)
+        self.robot_order: handle_topic.RobotOrder = handle_topic.RobotOrder(mode=mode,state_report_frequency=state_report_frequency)
 
         self.mode = mode
 

@@ -12,6 +12,7 @@ from typing import List
 import time
 from serve.pushMsgType import RobotPush
 from type.ApiReq import ApiReq
+from log.log import MyLogger
 
 
 def get_robot_ip():
@@ -32,13 +33,13 @@ rbk = Rbk(Robot_ip)
 
 
 class RobotMapManager:
-    def __init__(self, logs):
+    def __init__(self):
         self.map_dir = os.path.join(os.getcwd(), "robotMap")
         self.maps = {}
         self.current_map = None
         self.current_map_md5 = None
         self.rbk = rbk
-        self.logs = logs
+        self.logs = MyLogger()
         self.map_point_index = None
         self.get_all_map()
         self.set_push()
@@ -207,12 +208,12 @@ def timeit(func):
 @timeit
 class Robot:
 
-    def __init__(self, logs):
+    def __init__(self):
         self.rbk = rbk
         self.task_status: asyncio.Queue[dict] = asyncio.Queue()
         self.ApiReq_queue: asyncio.Queue[ApiReq] = asyncio.Queue()
-        self.map_manager = RobotMapManager(logs)
-        self.logs = logs
+        self.map_manager = RobotMapManager()
+        self.logs = MyLogger()
         self.robot_push_msg = RobotPush
 
         # 電池狀態

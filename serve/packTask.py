@@ -5,6 +5,8 @@ from action_type.action_type import ActionType, ActionPack
 from serve.mode import PackMode
 from type import order
 from error_type import error_type as err
+from log.log import MyLogger
+
 
 
 class PackTask:

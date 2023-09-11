@@ -11,6 +11,7 @@ from action_type.action_type import ActionPack, ActionType
 from error_type import error_type as err
 from type.RobotOrderStatus import Status
 from serve.packTask import PackTask
+from log.log import MyLogger
 
 
 def timeit(func):
@@ -54,11 +55,11 @@ def lock_decorator(func):
 @timeit
 class RobotOrder:
 
-    def __init__(self, logs,  mode, loop=None,state_report_frequency=1):
+    def __init__(self, mode, loop=None,state_report_frequency=1):
         self.state_report_frequency = state_report_frequency
         self.init = False
         self._event_loop = asyncio.get_event_loop() if loop is None else loop
-        self.robot: Robot = Robot(logs)
+        self.robot: Robot = Robot()
         self.lock_order = threading.Lock()
 
         self.p_state: asyncio.Queue[state.State] = asyncio.Queue()
@@ -75,7 +76,7 @@ class RobotOrder:
         self.robot_state_header_id = 0
         self.robot_connection_header_id = 0
         self.robot_visualization_header_id = 0
-        self.logs = logs
+        self.logs = MyLogger()
         self.state = state.State.create_state()
         self.init = False  # 表示第一次运行，用于判断运单逻辑
         self.robot_state_thread = threading.Thread(group=loop, target=self.handle_state, name="run robot state")

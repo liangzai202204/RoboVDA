@@ -5,7 +5,18 @@ from colorlog import ColoredFormatter
 
 
 class MyLogger:
+    _instance = None
+
+    def __new__(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance = super(MyLogger, cls).__new__(cls, *args, **kwargs)
+            cls._instance.__initialized = False
+        return cls._instance
+
     def __init__(self, name="SEER-robokit-VDA5050", interval=15 * 60):
+        if self.__initialized: return
+        self.__initialized = True
+
         log_dir = os.getcwd() + "/scripts-logs/"
         filename = "vda5050_debug.log"
         os.makedirs(log_dir, exist_ok=True)
@@ -57,5 +68,4 @@ class MyLogger:
 
     def critical(self, message):
         self.logger.critical(message)
-
 
