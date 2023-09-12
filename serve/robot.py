@@ -29,7 +29,6 @@ def get_robot_ip():
 
 Robot_ip = get_robot_ip()
 
-rbk = Rbk(Robot_ip)
 
 
 class RobotMapManager:
@@ -38,7 +37,7 @@ class RobotMapManager:
         self.maps = {}
         self.current_map = None
         self.current_map_md5 = None
-        self.rbk = rbk
+        self.rbk = Rbk(Robot_ip)
         self.logs = MyLogger()
         self.map_point_index = None
         self.get_all_map()
@@ -209,7 +208,7 @@ def timeit(func):
 class Robot:
 
     def __init__(self):
-        self.rbk = rbk
+        self.rbk = Rbk(Robot_ip)
         self.task_status: asyncio.Queue[dict] = asyncio.Queue()
         self.ApiReq_queue: asyncio.Queue[ApiReq] = asyncio.Queue()
         self.map_manager = RobotMapManager()

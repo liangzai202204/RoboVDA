@@ -5,6 +5,7 @@ import pydantic
 from type.RobotOrderStatus import RobotOrderStatus
 from type import order,state
 from type.RobotOrderStatus import Status
+from log.log import MyLogger
 
 
 class OrderStateMachine:
@@ -15,6 +16,7 @@ class OrderStateMachine:
         self.ready = True
         self.init = False
         self.lock = threading.Lock()
+        self.log = MyLogger()
 
     def init_order(self, order_data: order.Order):
         self.ready = False
@@ -67,7 +69,7 @@ class OrderStateMachine:
         :return: state
         """
         if not isinstance(robot_state,state.State):
-            print("robot_state:False")
+            self.log.error("robot_state:False")
             return robot_state
         if not self.init:
             return robot_state
@@ -84,7 +86,7 @@ class OrderStateMachine:
             edge_f_n = len(edges_status)
             action_f_n = len(actions_status)
             if node_f_n == 0 and edge_f_n == 0 and self.orders.orders.action_empty():
-                print("狀態機沒有任務")
+                self.log.error("狀態機沒有任務")
                 return robot_state
             for _, node_s in nodes_status.items():
                 n_s = node_s.get("status",None)
@@ -116,12 +118,12 @@ class OrderStateMachine:
                 self.ready = True
                 self.edges_and_actions_id_list.clear()
                 self.task_id_list.clear()
-                print("狀態機任務:", self.orders.orders.status)
+                self.log.info(f"狀態機任務: {self.orders.orders.status}")
                 self.orders = Orders
                 self.init = True
             else:
                 self.orders.orders.status = Status.RUNNING
-                print("狀態機任務:", self.orders.orders.status)
+                self.log.info(f"狀態機任務: {self.orders.orders.status}")
             return robot_state
 
     def update_order(self, order_data: order.Order):
@@ -129,7 +131,7 @@ class OrderStateMachine:
             return
             # 收到新的訂單，需要更新，在更新前，刪除所有不是released的node和edge
         if not isinstance(order_data,order.Order):
-            print("not isinstance order_data :order.Order")
+            self.log.error("not isinstance order_data :order.Order")
             return
         with self.lock:
             self._del_not_released_items()
@@ -156,14 +158,14 @@ class OrderStateMachine:
         if not self.init:
             return
         if not (isinstance(task_pack_status, list) and len(task_pack_status) != 0):
-            print("更新出錯update_order_status ，任務内容不對", task_pack_status)
+            self.log.error(f"更新出錯update_order_status ，任務内容不對{ task_pack_status}")
             return
         with self.lock:
             for task_statu in task_pack_status:
                 task_id = task_statu.get("task_id")
                 c_edge = self.orders.orders.get_task_by_id(task_id)  # 獲得order中的，edge，然後找出 起點的 nodeId 和終點的 nodeId
                 if not c_edge:
-                    print("嘗試更新edge，但是沒有這個edgeId：", task_id)
+                    self.log.error(f"嘗試更新edge，但是沒有這個edgeId：{task_id}")
                     return
                 if task_statu["status"] == RobotOrderStatus.Completed:
                     self.orders.orders.set_node_and_edge_status(c_edge, Status.FINISHED)
@@ -182,7 +184,8 @@ class OrderStateMachine:
                 elif task_statu["status"] == RobotOrderStatus.Waiting:
                     self.orders.orders.set_node_and_edge_status(c_edge, Status.WAITING)
                 else:
-                    print("未知狀態：", task_statu["status"])
+                    s =task_statu["status"]
+                    self.log.error(f"未知狀態：{s}")
 
     def _del_not_released_items(self):
         if not self.init:
@@ -213,7 +216,7 @@ class OrderStateMachine:
                         self.edges_and_actions_id_list.remove(ids)
                         edge_s_to_remove.append(ids)
         except Exception as e:
-            print("_del_not_released_items",e)
+            self.log.error(f"_del_not_released_items:{e}")
 
     def clear(self):
         self.orders = Orders

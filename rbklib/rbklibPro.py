@@ -9,16 +9,24 @@ from log.log import MyLogger
 
 
 class Rbk:
+    _instance = None
+
+    def __new__(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
     def __init__(self, ip: str):
-        self.ip = ip
-        self.log = MyLogger()
-        self.so_19204 = So19204(ip)
-        self.so_19205 = So19205(ip)
-        self.so_19206 = So19206(ip)
-        self.so_19207 = So19207(ip)
-        self.so_19210 = So19210(ip)
-        self.so_19301 = So19301(ip)
-        self.online_status = dict()
+        if not hasattr(self, 'ip'):
+            self.ip = ip
+            self.log = MyLogger()
+            self.so_19204 = So19204(ip)
+            self.so_19205 = So19205(ip)
+            self.so_19206 = So19206(ip)
+            self.so_19207 = So19207(ip)
+            self.so_19210 = So19210(ip)
+            self.so_19301 = So19301(ip)
+            self.online_status = dict()
 
     @property
     def online(self):

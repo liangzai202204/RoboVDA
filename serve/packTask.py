@@ -1,12 +1,11 @@
 import copy
 from typing import List, Union
 
-from action_type.action_type import ActionType, ActionPack
+from action_type.action_type import ActionPack
 from serve.mode import PackMode
 from type import order
 from error_type import error_type as err
 from log.log import MyLogger
-
 
 
 class PackTask:
@@ -21,6 +20,7 @@ class PackTask:
         self.nodes_edges_list = []
         self.task_pack_list = []
         self.error = None
+        self.log = MyLogger()
 
     def pack(self, new_order: order.Order,map_point):
         self.clear_pack()
@@ -53,8 +53,6 @@ class PackTask:
     def pack_nodes_edges_list(self):
         """
         将 node 和 edge 的任务打包在一起
-        :param nodes:
-        :param edges:
         :return:list
         """
         try:
@@ -76,7 +74,7 @@ class PackTask:
             self.nodes_edges_list = self.nodes_edges_list[1:]
             return True
         except Exception as e:
-            print(f"pack_nodes_edges_list error:{e}")
+            self.log.error(f"pack_nodes_edges_list error:{e}")
 
     def do_pack(self):
         if self.pack_mode != PackMode.vda5050:
@@ -106,7 +104,7 @@ class PackTask:
                 self.pack_edge(edge, node)
                 self.pack_node(node)
         except Exception as e:
-            print(f"pack_params error:{e}")
+            self.log.error(f"pack_params error:{e}")
 
     def load_map_point_in_order(self):
         try:
@@ -115,7 +113,7 @@ class PackTask:
                 for node in self.nodes
             }
         except Exception as e:
-            print(f"load_map_point_in_order:{e}")
+            self.log.error(f"load_map_point_in_order:{e}")
             self.error = err.ErrorOrder.orderNodeGetMapPointErr
 
     def pack_node(self, node:order.Node):
@@ -147,7 +145,7 @@ class PackTask:
             if edge.released:
                 self.task_pack_list.append(edge_task)
         else:
-            print("地图没点",edge.startNodeId,edge.edgeId)
+            self.log.error(f"maps has no point:{edge.startNodeId},{edge.edgeId}")
             self.error = err.ErrorPckTask.mapNotNodePosition
 
     def pack_actions(self, NE: Union[order.Node, order.Edge],edge_task=None):
@@ -155,7 +153,7 @@ class PackTask:
         for action in actions:
             action_task = ActionPack.pack(action, self.pack_mode)
             if not action_task:
-                print("action_task error:", action_task)
+                self.log.warning(f"action_task error:, {action_task}")
                 self.error = err.ErrorOrder.actionPackEmpty
                 return
             if isinstance(NE,order.Node):
@@ -168,11 +166,8 @@ class PackTask:
                     edge_task["operation"] = action_task["operation"]
                     edge_task["script_stage"] = 1
 
-
     def clear_pack(self):
         self.nodes = []
         self.edges = []
         self.nodes_edges_list = []
         self.task_pack_list = []
-
-
