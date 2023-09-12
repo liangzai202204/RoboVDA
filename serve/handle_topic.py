@@ -260,6 +260,8 @@ class RobotOrder:
 
     def report_state_current_order(self):
         self.update_state_by_order()
+        self.robot.state.orderId = self.current_order.orderId
+        self.robot.state.orderUpdateId = self.current_order.orderUpdateId
         self._enqueue(self.chanel_state, self.robot.state)
 
     def report(self):

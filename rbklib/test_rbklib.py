@@ -43,11 +43,13 @@ class MyTestCase(unittest.TestCase):
         print(b)
 
     def test_19301(self):
-        r = rbklib.Rbklib("192.168.17.73",push_flag=True)
-        a=r.pushData.get()
-        ro = RobotPush
-        b = ro(**json.loads(a))
-        print(b.model_dump())
+
+        r = rbklib.Rbklib("192.168.8.145",push_flag=True)
+        while True:
+            a=r.pushData.get()
+            ro = RobotPush
+            b = ro(**json.loads(a))
+            print(b.model_dump())
 
 if __name__ == '__main__':
     unittest.main()
