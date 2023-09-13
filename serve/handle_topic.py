@@ -55,12 +55,13 @@ def lock_decorator(func):
 @timeit
 class RobotOrder:
 
-    def __init__(self, mode, loop=None,state_report_frequency=1):
+    def __init__(self, mode, loop=None,state_report_frequency=1,robot_type=1):
         self.state_report_frequency = state_report_frequency
         self.init = False
         self._event_loop = asyncio.get_event_loop() if loop is None else loop
         self.robot: Robot = Robot()
         self.lock_order = threading.Lock()
+        self.robot_type = robot_type
 
         self.p_state: asyncio.Queue[state.State] = asyncio.Queue()
         self.s_order: asyncio.Queue[order.Order] = asyncio.Queue()
@@ -88,7 +89,7 @@ class RobotOrder:
         self.mode = mode  # 定义动作模式 False为参数，True为binTask
         # 訂單狀態機
         self.order_state_machine = OrderStateMachine()
-        self.pack_task = PackTask(mode,self.robot.map_manager.map_point_index)
+        self.pack_task = PackTask(mode,self.robot.map_manager.map_point_index,robot_type)
 
     def __del__(self):
         self._cls()
@@ -97,14 +98,6 @@ class RobotOrder:
         self._run()
 
     def _run(self):
-        # 拉取机器人状态，更新state
-        self.robot_run_thread.start()
-        # 上报state逻辑
-        self.robot_state_thread.start()
-        # topic connection
-        self.robot_connection_thread.start()
-
-        self.robot_visualization_thread.start()
         asyncio.gather(self.handle_order(), self.handle_report())
 
     async def handle_order(self):

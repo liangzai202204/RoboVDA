@@ -21,6 +21,7 @@ class RobotServer:
                  mqtt_port=1883,
                  mqtt_transport="tcp",
                  robot_ip="127.0.0.1",
+                 robot_type=1,
                  logg=None,
                  mode: int = 0,
                  web_host="127.0.0.1",
@@ -31,7 +32,7 @@ class RobotServer:
                  mqtt_topic_connection: str = None,
                  mqtt_topic_instantActions: str = None,
                  mqtt_topic_factsheet: str = None,
-                 state_report_frequency = 1
+                 state_report_frequency=1
                  ):
         self.connected = False
         self.logs = logg
@@ -46,7 +47,9 @@ class RobotServer:
         # connect to MQTT
         self._mqtt_client = self._connect_to_mqtt(mqtt_host, mqtt_port, mqtt_transport)
         self._mqtt_messages: asyncio.Queue[RobotMessage] = asyncio.Queue()
-        self.robot_order: handle_topic.RobotOrder = handle_topic.RobotOrder(mode=mode,state_report_frequency=state_report_frequency)
+        self.robot_order: handle_topic.RobotOrder = handle_topic.RobotOrder(mode=mode,
+                                                                            state_report_frequency=state_report_frequency,
+                                                                            robot_type=robot_type)
 
         self.mode = mode
 
@@ -79,11 +82,11 @@ class RobotServer:
 
         @self.app.route('/getOrderStatus', methods=['GET'])
         def getOrderStatus():
-            OrderStatus=self.robot_order.order_state_machine.orders.orders.model_dump()
+            OrderStatus = self.robot_order.order_state_machine.orders.orders.model_dump()
             if OrderStatus:
                 return jsonify(OrderStatus)
             else:
-                return jsonify({"code":201,"msg":"没有订单"})
+                return jsonify({"code": 201, "msg": "没有订单"})
 
         @self.app.route('/getState', methods=['GET'])
         def getState():
@@ -93,9 +96,9 @@ class RobotServer:
         @self.app.route('/getPackTask', methods=['GET'])
         def getPackTask():
             PackTask = {
-                "task_pack_list":self.robot_order.pack_task.task_pack_list,
-                "pack_mode":self.robot_order.pack_task.pack_mode,
-                "nodes_point":self.robot_order.pack_task.nodes_point,
+                "task_pack_list": self.robot_order.pack_task.task_pack_list,
+                "pack_mode": self.robot_order.pack_task.pack_mode,
+                "nodes_point": self.robot_order.pack_task.nodes_point,
                 # "map_point":self.robot_order.pack_task.map_point
             }
             return jsonify(PackTask)
@@ -103,7 +106,7 @@ class RobotServer:
         @self.app.route('/getPushData', methods=['GET'])
         def getPushData():
             PushData = {
-                "PushData":self.robot_order.robot.robot_push_msg.model_dump()
+                "PushData": self.robot_order.robot.robot_push_msg.model_dump()
             }
             return jsonify(PushData)
 
@@ -116,16 +119,24 @@ class RobotServer:
         web_thread = threading.Thread(target=self.start_web)
         web_thread.setDaemon(True)
         web_thread.start()
+        # 拉取机器人状态，更新state
+        self.robot_order.robot_run_thread.start()
+        # 上报state逻辑
+        self.robot_order.robot_state_thread.start()
+        # topic connection
+        self.robot_order.robot_connection_thread.start()
+
+        self.robot_order.robot_visualization_thread.start()
 
         self._event_loop.run_until_complete(self._run())
 
     async def _run(self):
         await asyncio.gather(
+            self._robot_run(),
             self._handle_mqtt_subscribe_messages(),
             self._handle_mqtt_publish_messages(),
             self._handle_mqtt_publish_messages_connection(),
-            self._handle_mqtt_publish_messages_visualization(),
-            self._robot_run()
+            self._handle_mqtt_publish_messages_visualization()
         )
 
     async def _handle_mqtt_subscribe_messages(self):

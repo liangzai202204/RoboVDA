@@ -36,7 +36,7 @@ class MyTestCase(unittest.TestCase):
         import sim_order as s
         a = s.SimOrder(ip="192.168.198.174")
         datas = []
-        data = ("LM99", [])
+        data = ("LM87", [])
         datas.append(data)
         o1 = a.creat_order(datas, released=True, order_count=100,init="LM87")
         client = mqtt.Client()
@@ -193,7 +193,7 @@ class InstantActionsTest(unittest.TestCase):
         import os
         # 假设包 B 的名称为 package_B，JSON 文件名为 data.json
         path_to_B = os.path.abspath("../VDAExample")
-        json_filename = 'Transport Order.json'
+        json_filename = 'Cancel Order InstantAction.json'
 
         json_file_path = os.path.join(path_to_B, json_filename)
 
@@ -201,8 +201,8 @@ class InstantActionsTest(unittest.TestCase):
             json_content = json.load(json_file)
             print(json_content)
         client = mqtt.Client()
-        client.connect("192.168.8.45", 1883, 60)
-        client.publish("robot/order", json.dumps(json_content))
+        client.connect("192.168.8.145", 1883, 60)
+        client.publish("robot/instantActions", json.dumps(json_content))
 
     def test_OOO(self):
         from serve import OrderStateMachine
@@ -241,6 +241,12 @@ class InstantActionsTest(unittest.TestCase):
         t=p.pack(a)
         print(t)
 
+    def test_a(self):
+        print(182323 - 67996)
+        print((182323 - 67996) / 1000)
+
 
 if __name__ == '__main__':
-    unittest.main()
+    # unittest.main()
+    print(182323-67996)
+    print((182323-67996)/1000)

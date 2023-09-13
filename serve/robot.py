@@ -449,7 +449,7 @@ class Robot:
         while send:
             try:
                 if self.robot_online and self.lock:
-                    self.rbk.call_service(ApiReq.ROBOT_TASK_CANCEL_REQ)
+                    self.rbk.call_service(ApiReq.ROBOT_TASK_CANCEL_REQ.value)
                     send = False
                 else:
                     self.lock_robot()

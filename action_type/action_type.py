@@ -124,12 +124,14 @@ class ActionPack(pydantic.BaseModel):
     @classmethod
     def drop_fork(cls, action: order.Action, mode: PackMode, script_stage=2) -> dict:
         action_task = cls._pack_fork_action(action, mode, script_stage)
+        action_task.pop("script_stage")
         print("drop_fork:", action_task)
         return action_task
 
     @classmethod
     def pick_fork(cls, action: order.Action, mode: PackMode, script_stage=2) -> dict:
         action_task = cls._pack_fork_action(action, mode, script_stage)
+        action_task.pop("script_stage")
         print("pick_fork:", action_task)
         return action_task
 
@@ -173,10 +175,12 @@ class ActionPack(pydantic.BaseModel):
             "script_stage": script_stage
         }
         print("fork_load:", action_task)
+
         return action_task
 
     def angle_action(cls, action: order.Action, mode: PackMode, script_stage=2) -> dict:
         action_task = cls._pack_action(action, mode, script_stage)
+        action_task.pop("script_stage")
         print("angle:", action_task)
         return action_task
 

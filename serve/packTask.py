@@ -9,7 +9,7 @@ from log.log import MyLogger
 
 
 class PackTask:
-    def __init__(self, pack_mode:PackMode, map_point=None):
+    def __init__(self, pack_mode:PackMode, map_point=None,robot_type=1):
         self.nodes_point = None
         self.map_point = map_point
         self.pack_mode = pack_mode
@@ -21,10 +21,14 @@ class PackTask:
         self.task_pack_list = []
         self.error = None
         self.log = MyLogger()
+        self.robot_type = robot_type
 
     def pack(self, new_order: order.Order,map_point):
         self.clear_pack()
         self.map_point = map_point
+        if not self.map_point:
+            self.log.error(f"init map error,map_point is empty!!!")
+            return err.ErrorPckTask.mapNotNodePosition
         self.order = new_order
         self.nodes = copy.deepcopy(new_order.nodes)
         self.edges = copy.deepcopy(new_order.edges)
@@ -101,6 +105,7 @@ class PackTask:
             for edge, node in zip(self.nodes_edges_list[::2], self.nodes_edges_list[1::2]):
                 node: order.Node
                 edge: order.Edge
+
                 self.pack_edge(edge, node)
                 self.pack_node(node)
         except Exception as e:
@@ -164,6 +169,7 @@ class PackTask:
                     edge_task["script_name"] = action_task["script_name"]
                     edge_task["script_args"] = action_task["script_args"]
                     edge_task["operation"] = action_task["operation"]
+                if self.robot_type == 1:
                     edge_task["script_stage"] = 1
 
     def clear_pack(self):

@@ -29,6 +29,7 @@ def read_config():
         config.add_section('robot')
         config.set('robot', 'robot_ip', '192.168.0.1')
         config.set('robot', 'mode', '0')
+        config.set('robot', 'robot_type', '1')
 
         config.add_section('web')
         config.set('web', 'web_host', 'localhost')
@@ -62,6 +63,7 @@ def config_params():
     parser.add_argument("--mqtt_topic_factsheet", default=c.get('topic', 'factsheet'), type=str, nargs='?',
                         help="topic")
     parser.add_argument("--robot_ip", default=c.get('robot', 'robot_ip'), help="robot_ip")
+    parser.add_argument("--robot_type", default=c.get('robot', 'robot_type'), type=int, help="机器人类型")
     parser.add_argument("--mode", default=c.getint('robot', 'mode'), type=int, help="mode")
     parser.add_argument("--web_host", default=c.get('web', 'web_host'), help="web_host")
     parser.add_argument("--web_port", default=c.get('web', 'web_port'), help="web_port")
