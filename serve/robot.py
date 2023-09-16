@@ -6,6 +6,7 @@ import queue
 import socket
 import datetime
 
+import rbklib.rbklibPro
 from rbklib.rbklibPro import Rbk
 from type import state
 from typing import List
@@ -15,33 +16,282 @@ from type.ApiReq import ApiReq
 from log.log import MyLogger
 
 
-def get_robot_ip():
-    config = configparser.ConfigParser()
-    config_path = os.path.join(os.getcwd(), 'config.ini')
-    # 读取配置文件
-    print(os.getcwd())
-    print(config_path)
-    config.read(config_path)
-    ip = config.get('robot', 'robot_ip')
-    print("robot ip:", ip)
-    return ip
+class Robot:
 
+    def __init__(self, rbk:rbklib.rbklibPro.Rbk):
+        self.rbk = rbk
+        #self.set_push()
+        self.task_status: asyncio.Queue[dict] = asyncio.Queue()
+        self.ApiReq_queue: asyncio.Queue[ApiReq] = asyncio.Queue()
+        self.map_manager = RobotMapManager(rbk)
+        self.logs = MyLogger()
+        self.robot_push_msg = RobotPush
 
-Robot_ip = get_robot_ip()
+        # 電池狀態
+        self.battery_state = state.BatteryState
+        # 機器人位置
+        self.agv_position = state.AgvPosition
+        # todo
+        # 機器人掉綫后，仍處於在綫狀態
+        # 第一次啓動時，如果機器人不在綫，地圖管理的rbk會有問題，這期間機器人上綫，不會拿到鏈接，無法更新地圖
+        self.state = state.State.create_state()
+        self.nick_name = "seer-vda5050"
+        self.lock = False
+        self.robot_version = "3.4.5"
+        self.messages = queue.Queue()
 
+    def run(self):
+        self.map_manager.get_all_map()
+        self.lock_robot()
+        while True:
+            if self.robot_online:
+                self.update()
+            self.logs.info(f'[robot]online status:{self.rbk.online_status}')
+
+            time.sleep(1)
+
+    @property
+    def robot_online(self) -> bool:
+        """
+        check robot online status,and check robot lock status
+        :return:
+        """
+        if self.rbk.online:
+            return True
+        self.lock = False
+        return False
+
+    def update(self):
+        """
+        将机器人的数据，更新到 self.state 中
+        :return:
+        """
+        try:
+            push_data = self.rbk.so_19301.pushData.get()
+            new_push_ata = RobotPush(**json.loads(push_data))
+            self.logs.info(f"19301 push raw data ok")
+            if push_data:
+                self.robot_push_msg = new_push_ata
+                # state
+                self.update_state()
+                # 根據信息判斷邏輯
+                # 控制權
+                self.update_lock()
+                # 當前地圖
+                self.update_map()
+                # 依次爲：在綫、控制權、定位、置信度、任務狀態、目標點
+                self.logs.info(
+                    f'[robot]robot status:{self.robot_online}|{self.lock}|{self.robot_push_msg.reloc_status}|'
+                    f'{self.robot_push_msg.confidence}|{self.robot_push_msg.task_status}|'
+                    f'{self.robot_push_msg.target_id}')
+                # 定位信息
+        except queue.Empty:
+            # 如果队列为空，则跳过本次循环，继续等待下一个数据
+            self.logs.error(f"19301 push data is Empty,pass")
+        except Exception as e:
+            print("json.loads(push_data)：", e)
+
+    def update_state(self):
+        self.state.headerId += 1
+        self.state.timestamp = datetime.datetime.now().isoformat(timespec='milliseconds') + 'Z'
+        self.state.batteryState = self.battery_state(
+            batteryCharge=self.robot_push_msg.battery_level,
+            charging=self.robot_push_msg.charging,
+            batteryVoltage=self.robot_push_msg.voltage
+        )
+        # 操作模式
+        self.state.operatingMode = self.update_operating_mode()
+        # 位置信息
+        self.state.agvPosition = self.agv_position(x=self.robot_push_msg.x,
+                                                   y=self.robot_push_msg.y,
+                                                   theta=self.robot_push_msg.angle,
+                                                   mapId=self.robot_push_msg.current_map,
+                                                   positionInitialized=True if (
+                                                           self.robot_push_msg.reloc_status == 2 or
+                                                           self.robot_push_msg.reloc_status == 4) else False,
+                                                   deviationRange=0.,
+                                                   localizationScore=0.,
+                                                   mapDescription="")
+        # 机器人名称、rbk版本
+        self.state.serialNumber = self.robot_push_msg.vehicle_id
+        self.state.version = self.robot_version
+        self.state.loads = [] if not self.robot_push_msg.goods_region.point else self.update_goods()
+        self.state.driving = True if self.robot_push_msg.task_status == 2 else False
+        self.state.waitingForInteractionZoneRelease = False  # TODO
+        self.state.velocity = state.Velocity(vx=self.robot_push_msg.vx,
+                                             vy=self.robot_push_msg.vy,
+                                             omega=self.robot_push_msg.w)
+        # 更新 error seer
+
+        self.state.errors = self.update_errors()
+
+    def update_goods(self):
+        goods = self.robot_push_msg.goods_region
+        load_goods = state.Load()
+        load_goods.loadId = ""
+        load_goods.loadType = goods.name
+        load_goods.loadPosition = str(json.dumps(goods.point))
+        return load_goods
+
+    def update_operating_mode(self) -> state.OperatingMode:
+        mode = state.OperatingMode.MANUAL
+        if self.robot_online and self.lock:
+            mode = state.OperatingMode.AUTOMATIC
+        if not self.lock:
+            mode = state.OperatingMode.SERVICE
+        return mode
+
+    def update_errors(self) -> List[state.Error]:
+        def err(ers: list, e_list: list, level):
+            errs = e_list
+            for er in ers:
+                f_child = state.Error.create_error()
+                for key, value in er.items():
+                    if key not in ["desc", "times"]:
+                        f_child.errorType = key
+                    if key in ["desc"]:
+                        f_child.errorDescription = value
+                    f_child.errorLevel = level
+                errs.append(f_child)
+
+        err_list = []
+        if self.robot_push_msg.fatals:
+            err(self.robot_push_msg.fatals, err_list, state.ErrorLevel.FATAL)
+        if self.robot_push_msg.errors:
+            err(self.robot_push_msg.errors, err_list, state.ErrorLevel.FATAL)
+        if self.robot_push_msg.warnings:
+            err(self.robot_push_msg.warnings, err_list, state.ErrorLevel.WARNING)
+        if self.robot_push_msg.notices:
+            err(self.robot_push_msg.notices, err_list, state.ErrorLevel.WARNING)
+        return err_list
+
+    def update_lock(self):
+        if self.robot_push_msg.current_lock.nick_name == self.nick_name:
+            self.lock = True
+            return
+        else:
+            if not self.robot_push_msg.current_lock.locked:
+                self.lock_robot()
+                self.lock = True
+            else:
+                self.lock = False
+
+    def update_map(self):
+        if self.robot_push_msg.current_map != self.map_manager.current_map or \
+                self.robot_push_msg.current_map_md5 != self.map_manager.current_map_md5:
+            self.logs.info(f"[map]current_map:{self.robot_push_msg.current_map}||{self.map_manager.current_map}"
+                           f"current_map_md5:{self.robot_push_msg.current_map_md5}||{self.map_manager.current_map_md5}")
+            self.map_manager.get_current_map(self.robot_push_msg.current_map, self.robot_push_msg.current_map_md5)
+
+    def lock_robot(self):
+        if self.robot_online:
+            # self.rbk.robot_config_lock_req(self.nick_name)
+            self.rbk.call_service(ApiReq.ROBOT_CONFIG_LOCK_REQ.value, {"nick_name": self.nick_name})
+            self.lock = True
+            self.logs.info("master has lock")
+
+    def get_task_status(self, edges_id_list):
+        res_edges_json = self.rbk.call_service(ApiReq.ROBOT_STATUS_TASK_STATUS_PACKAGE_REQ.value,
+                                               {"task_ids": edges_id_list})
+        # print("res_edges_json",res_edges_json)
+        res_edges = json.loads(res_edges_json)
+        if res_edges:
+            task_status = res_edges["task_status_package"]["task_status_list"]
+
+            return task_status
+
+    def set_push(self):
+        self.rbk.call_service(ApiReq.ROBOT_PUSH_CONFIG_REQ.value,
+                              {"interval": 100})
+
+    def send_order(self, task_list):
+        try:
+            if not isinstance(task_list, list) or not task_list:
+                self.logs.error(f"send_order is empty:{task_list}")
+                return
+        except Exception as e:
+            print(f"收到訂單3:{e}")
+        move_task_list = {
+            'move_task_list': task_list
+        }
+        flag = True
+        try:
+            while flag:
+                if self.lock:
+                    # res_data = self.rbk.request(3066, msg=move_task_list)
+                    res_data = self.rbk.call_service(ApiReq.ROBOT_TASK_GOTARGETLIST_REQ.value, move_task_list)
+                    res_data_json = json.loads(res_data)
+                    self.logs.info(f"下发任务内容：{move_task_list}, rbk 返回结果：{res_data_json}")
+                    if res_data_json["ret_code"] == 0:
+                        self.logs.info(f"下发任务成功：{move_task_list}")
+                        flag = False
+                    else:
+                        self.logs.info(f"下发任务失败：{move_task_list}")
+
+                else:
+                    self.logs.info("没有控制权，无法下发任务")
+        except Exception as e:
+            self.logs.info(f"试图抢占控制权并下发任务失败，可能是没有链接到机器人,{e}")
+
+    def instant_stop_pause(self):
+        send = True
+        while send:
+            if self.robot_online and self.lock:
+                _, res = self.robot.rbk.robot_task_pause_req()
+                res_json = json.loads(res)
+                if "ret_code" in res_json:
+                    if res_json["res_json"] == 0:
+                        send = False
+            else:
+                self.lock_robot()
+
+    def instant_start_pause(self):
+        send = True
+        while send:
+            if self.robot_online and self.lock:
+                _, res = self.robot.rbk.robot_task_resume_req()
+                res_json = json.loads(res)
+                if "ret_code" in res_json:
+                    if res_json["res_json"] == 0:
+                        send = False
+            else:
+                self.lock_robot()
+
+    def instant_cancel_task(self):
+        send = True
+        while send:
+            try:
+                if self.robot_online and self.lock:
+                    self.rbk.call_service(ApiReq.ROBOT_TASK_CANCEL_REQ.value)
+                    send = False
+                else:
+                    self.lock_robot()
+            except Exception as e:
+                self.logs.error(f"instant_cancel_task error:{e}")
+                send = False
+
+    def instant_init_position(self, task):
+        free_go = task
+        res_data = self.rbk.call_service(ApiReq.ROBOT_TASK_GO_TARGET_REQ.value, free_go)
+        res_data_json = json.loads(res_data)
+        self.logs.info(f"下发任务内容：{free_go}, rbk 返回结果：{res_data_json}")
+        if res_data_json["ret_code"] == 0:
+            self.logs.info(f"下发任务成功：{free_go}")
+            flag = False
+        else:
+            self.logs.info(f"下发任务失败：{free_go}")
 
 
 class RobotMapManager:
-    def __init__(self):
+    def __init__(self, rbk):
         self.map_dir = os.path.join(os.getcwd(), "robotMap")
         self.maps = {}
         self.current_map = None
         self.current_map_md5 = None
-        self.rbk = Rbk(Robot_ip)
+        self.rbk = rbk
         self.logs = MyLogger()
         self.map_point_index = None
-        self.get_all_map()
-        self.set_push()
+
 
     def add_map(self, map_name, md5, map_path):
         self.maps[map_name] = {
@@ -188,282 +438,3 @@ class RobotMapManager:
             self.logs.error(f" no exists map :{maps}")
         return index
 
-    def set_push(self):
-        pass
-
-
-def timeit(func):
-    def wrapper(*args, **kwargs):
-        start = time.time()
-        print(f"{func.__name__} start init")
-        result = func(*args, **kwargs)
-        end = time.time()
-        print(f"{func.__name__} start {(end - start) / 60:.6f}min")
-        return result
-
-    return wrapper
-
-
-@timeit
-class Robot:
-
-    def __init__(self):
-        self.rbk = Rbk(Robot_ip)
-        self.task_status: asyncio.Queue[dict] = asyncio.Queue()
-        self.ApiReq_queue: asyncio.Queue[ApiReq] = asyncio.Queue()
-        self.map_manager = RobotMapManager()
-        self.logs = MyLogger()
-        self.robot_push_msg = RobotPush
-
-        # 電池狀態
-        self.battery_state = state.BatteryState
-        # 機器人位置
-        self.agv_position = state.AgvPosition
-        # todo
-        # 機器人掉綫后，仍處於在綫狀態
-        # 第一次啓動時，如果機器人不在綫，地圖管理的rbk會有問題，這期間機器人上綫，不會拿到鏈接，無法更新地圖
-        self.state = state.State.create_state()
-        self.nick_name = "seer-vda5050"
-        self.lock = False
-        self.robot_version = "3.4.5"
-        self.messages = queue.Queue()
-        self.set_push()
-
-    def run(self):
-        self.lock_robot()
-        self._run()
-
-    def _run(self):
-        # self.map_manager.start_map_checking()
-        while True:
-            self.get_robot_massage()
-            self.logs.info(f'[robot]online status:{self.rbk.online_status}')
-            # 依次爲：在綫、控制權、定位、置信度、任務狀態、目標點
-            self.logs.info(f'[robot]robot status:{self.robot_online}|{self.lock}|{self.robot_push_msg.reloc_status}|'
-                           f'{self.robot_push_msg.confidence}|{self.robot_push_msg.task_status}|'
-                           f'{self.robot_push_msg.target_id}')
-            time.sleep(1)
-
-    @property
-    def robot_online(self) -> bool:
-        """
-        check robot online status,and check robot lock status
-        :return:
-        """
-        if self.rbk.online:
-            return True
-        self.lock = False
-        return False
-
-    def update(self):
-        """
-        将机器人的数据，更新到 self.state 中
-        :return:
-        """
-        try:
-            push_data = self.rbk.so_19301.pushData.get()
-            if push_data:
-                self.robot_push_msg = RobotPush(**json.loads(push_data))
-        except queue.Empty:
-            # 如果队列为空，则跳过本次循环，继续等待下一个数据
-            self.logs.error(f"19301 push data is Empty,pass")
-        except Exception as e:
-            print("json.loads(push_data)：",e)
-
-        # state
-        self.update_state()
-        # 根據信息判斷邏輯
-        # 控制權
-        self.update_lock()
-        # 當前地圖
-        self.update_map()
-        # 定位信息
-
-    def update_state(self):
-        self.state.headerId += 1
-        self.state.timestamp = datetime.datetime.now().isoformat(timespec='milliseconds') + 'Z'
-        self.state.batteryState = self.battery_state(
-            batteryCharge=self.robot_push_msg.battery_level,
-            charging=self.robot_push_msg.charging,
-            batteryVoltage=self.robot_push_msg.voltage
-        )
-        # 操作模式
-        self.state.operatingMode = self.update_operating_mode()
-        # 位置信息
-        self.state.agvPosition = self.agv_position(x=self.robot_push_msg.x,
-                                                   y=self.robot_push_msg.y,
-                                                   theta=self.robot_push_msg.angle,
-                                                   mapId=self.robot_push_msg.current_map,
-                                                   positionInitialized=True if (
-                                                           self.robot_push_msg.reloc_status == 2 or
-                                                           self.robot_push_msg.reloc_status == 4) else False,
-                                                   deviationRange=0.,
-                                                   localizationScore=0.,
-                                                   mapDescription="")
-        # 机器人名称、rbk版本
-        self.state.serialNumber = self.robot_push_msg.vehicle_id
-        self.state.version = self.robot_version
-        self.state.driving = True if self.robot_push_msg.task_status == 2 else False
-        self.state.waitingForInteractionZoneRelease = False  # TODO
-        self.state.velocity = state.Velocity(vx=self.robot_push_msg.vx,
-                                             vy=self.robot_push_msg.vy,
-                                             omega=self.robot_push_msg.w)
-        # 更新 error seer
-
-        self.state.errors = self.update_errors()
-
-    def update_operating_mode(self) -> state.OperatingMode:
-        mode = state.OperatingMode.MANUAL
-        if self.robot_online and self.lock:
-            mode = state.OperatingMode.AUTOMATIC
-        if not self.lock:
-            mode = state.OperatingMode.SERVICE
-        return mode
-
-    def update_errors(self) -> List[state.Error]:
-        def err(ers: list, e_list: list, level):
-            errs = e_list
-            for er in ers:
-                f_child = state.Error.create_error()
-                for key, value in er.items():
-                    if key not in ["desc", "times"]:
-                        f_child.errorType = key
-                    if key in ["desc"]:
-                        f_child.errorDescription = value
-                    f_child.errorLevel = level
-                errs.append(f_child)
-
-        err_list = []
-        if self.robot_push_msg.fatals:
-            err(self.robot_push_msg.fatals, err_list, state.ErrorLevel.FATAL)
-        if self.robot_push_msg.errors:
-            err(self.robot_push_msg.errors, err_list, state.ErrorLevel.FATAL)
-        if self.robot_push_msg.warnings:
-            err(self.robot_push_msg.warnings, err_list, state.ErrorLevel.WARNING)
-        if self.robot_push_msg.notices:
-            err(self.robot_push_msg.notices, err_list, state.ErrorLevel.WARNING)
-        return err_list
-
-    def update_lock(self):
-        if self.robot_push_msg.current_lock.nick_name == self.nick_name:
-            self.lock = True
-            return
-        else:
-            if not self.robot_push_msg.current_lock.locked:
-                self.lock_robot()
-                self.lock = True
-            else:
-                self.lock = False
-
-    def update_map(self):
-        if self.robot_push_msg.current_map != self.map_manager.current_map or \
-                self.robot_push_msg.current_map_md5 != self.map_manager.current_map_md5:
-            self.logs.info(f"[map]current_map:{self.robot_push_msg.current_map}||{self.map_manager.current_map}"
-                           f"current_map_md5:{self.robot_push_msg.current_map_md5}||{self.map_manager.current_map_md5}")
-            self.map_manager.get_current_map(self.robot_push_msg.current_map, self.robot_push_msg.current_map_md5)
-
-    def lock_robot(self):
-        if self.robot_online:
-            # self.rbk.robot_config_lock_req(self.nick_name)
-            self.rbk.call_service(ApiReq.ROBOT_CONFIG_LOCK_REQ.value, {"nick_name": self.nick_name})
-            self.lock = True
-            self.logs.info("master has lock")
-
-    def get_robot_massage(self):
-        if self.robot_online:
-            try:
-                self.update()
-
-            except Exception as e:
-                self.logs.info(f"[robot][map]get_robot_massage error {e}")
-
-    def get_task_status(self, edges_id_list):
-        res_edges_json = self.rbk.call_service(ApiReq.ROBOT_STATUS_TASK_STATUS_PACKAGE_REQ.value,
-                                               {"task_ids": edges_id_list})
-        # print("res_edges_json",res_edges_json)
-        res_edges = json.loads(res_edges_json)
-        if res_edges:
-            task_status = res_edges["task_status_package"]["task_status_list"]
-
-            return task_status
-
-    def set_push(self):
-        self.rbk.call_service(ApiReq.ROBOT_PUSH_CONFIG_REQ.value,
-                              {"interval":100})
-
-    def send_order(self, task_list):
-        try:
-            if not isinstance(task_list, list) or not task_list:
-                self.logs.error(f"send_order is empty:{task_list}")
-                return
-        except Exception as e:
-            print(f"收到訂單3:{e}")
-        move_task_list = {
-            'move_task_list': task_list
-        }
-        flag = True
-        try:
-            while flag:
-                if self.lock:
-                    # res_data = self.rbk.request(3066, msg=move_task_list)
-                    res_data = self.rbk.call_service(ApiReq.ROBOT_TASK_GOTARGETLIST_REQ.value, move_task_list)
-                    res_data_json = json.loads(res_data)
-                    self.logs.info(f"下发任务内容：{move_task_list}, rbk 返回结果：{res_data_json}")
-                    if res_data_json["ret_code"] == 0:
-                        self.logs.info(f"下发任务成功：{move_task_list}")
-                        flag = False
-                    else:
-                        self.logs.info(f"下发任务失败：{move_task_list}")
-
-                else:
-                    self.logs.info("没有控制权，无法下发任务")
-        except Exception as e:
-            self.logs.info(f"试图抢占控制权并下发任务失败，可能是没有链接到机器人,{e}")
-
-    def instant_stop_pause(self):
-        send = True
-        while send:
-            if self.robot_online and self.lock:
-                _, res = self.robot.rbk.robot_task_pause_req()
-                res_json = json.loads(res)
-                if "ret_code" in res_json:
-                    if res_json["res_json"] == 0:
-                        send = False
-            else:
-                self.lock_robot()
-
-    def instant_start_pause(self):
-        send = True
-        while send:
-            if self.robot_online and self.lock:
-                _, res = self.robot.rbk.robot_task_resume_req()
-                res_json = json.loads(res)
-                if "ret_code" in res_json:
-                    if res_json["res_json"] == 0:
-                        send = False
-            else:
-                self.lock_robot()
-
-    def instant_cancel_task(self):
-        send = True
-        while send:
-            try:
-                if self.robot_online and self.lock:
-                    self.rbk.call_service(ApiReq.ROBOT_TASK_CANCEL_REQ.value)
-                    send = False
-                else:
-                    self.lock_robot()
-            except Exception as e:
-                self.logs.error(f"instant_cancel_task error:{e}")
-                send = False
-
-    def instant_init_position(self,task):
-        free_go = task
-        res_data = self.rbk.call_service(ApiReq.ROBOT_TASK_GO_TARGET_REQ.value, free_go)
-        res_data_json = json.loads(res_data)
-        self.logs.info(f"下发任务内容：{free_go}, rbk 返回结果：{res_data_json}")
-        if res_data_json["ret_code"] == 0:
-            self.logs.info(f"下发任务成功：{free_go}")
-            flag = False
-        else:
-            self.logs.info(f"下发任务失败：{free_go}")

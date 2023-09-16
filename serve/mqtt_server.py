@@ -7,6 +7,8 @@ import pydantic
 from flask import Flask, render_template, jsonify
 from memory_profiler import profile
 from paho.mqtt import client as mqtt_client
+
+import rbklib.rbklibPro
 from type import state, order, instantActions, connection, visualization
 from typing import Union
 import time
@@ -22,7 +24,6 @@ class RobotServer:
                  mqtt_transport="tcp",
                  robot_ip="127.0.0.1",
                  robot_type=1,
-                 logg=None,
                  mode: int = 0,
                  web_host="127.0.0.1",
                  web_port=5000,
@@ -32,10 +33,11 @@ class RobotServer:
                  mqtt_topic_connection: str = None,
                  mqtt_topic_instantActions: str = None,
                  mqtt_topic_factsheet: str = None,
-                 state_report_frequency=1
+                 state_report_frequency=1,
+                 rbk:rbklib.rbklibPro.Rbk = None
                  ):
         self.connected = False
-        self.logs = logg
+        self.logs = MyLogger()
         self._event_loop = asyncio.get_event_loop()
         # topic route
         self.mqtt_topic_order = mqtt_topic_order
@@ -47,7 +49,8 @@ class RobotServer:
         # connect to MQTT
         self._mqtt_client = self._connect_to_mqtt(mqtt_host, mqtt_port, mqtt_transport)
         self._mqtt_messages: asyncio.Queue[RobotMessage] = asyncio.Queue()
-        self.robot_order: handle_topic.RobotOrder = handle_topic.RobotOrder(mode=mode,
+        self.robot_order: handle_topic.RobotOrder = handle_topic.RobotOrder(rbk=rbk,
+                                                                            mode=mode,
                                                                             state_report_frequency=state_report_frequency,
                                                                             robot_type=robot_type)
 
@@ -120,6 +123,10 @@ class RobotServer:
         web_thread.setDaemon(True)
         web_thread.start()
         # 拉取机器人状态，更新state
+
+        self._event_loop.run_until_complete(self._run())
+
+    async def _run(self):
         self.robot_order.robot_run_thread.start()
         # 上报state逻辑
         self.robot_order.robot_state_thread.start()
@@ -127,10 +134,6 @@ class RobotServer:
         self.robot_order.robot_connection_thread.start()
 
         self.robot_order.robot_visualization_thread.start()
-
-        self._event_loop.run_until_complete(self._run())
-
-    async def _run(self):
         await asyncio.gather(
             self._robot_run(),
             self._handle_mqtt_subscribe_messages(),

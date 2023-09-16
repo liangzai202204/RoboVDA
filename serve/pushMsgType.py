@@ -58,6 +58,11 @@ class Fork(BaseModel):
     forward_val: float = 0.0
 
 
+class GoodsRegion(BaseModel):
+    name: str = ""
+    point: List[dict] = []
+
+
 class Hook(BaseModel):
     hook_angle: int = 0
     hook_clamping_state: bool = False
@@ -165,6 +170,7 @@ class RobotPush(BaseModel):
     notices: List[dict] = []
     finished_path: List[str] = []
     fork: Fork = Fork()
+    goods_region: GoodsRegion = GoodsRegion()
     gyro_version: str = ''
     hook: Hook = Hook()
     imu_header: Dict[str, str] = {}
@@ -193,8 +199,8 @@ class RobotPush(BaseModel):
     r_vx: float = 0.
     r_vy: float = 0.
     r_w: float = 0.
-    reliabilities: List[Union[str,int]] = []
-    reloc_status: int = 0
+    reliabilities: List[Union[str, int]] = []
+    reloc_status: Optional[int] = 0
     requestCurrent: float = 0.
     requestVoltage: float = 0.
     ret_code: int = 0

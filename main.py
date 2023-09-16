@@ -2,7 +2,7 @@ import argparse
 import configparser
 import os
 import sys
-
+from rbklib import rbklibPro
 from log.log import MyLogger
 from serve.mqtt_server import RobotServer
 
@@ -34,51 +34,47 @@ def read_config():
         config.add_section('web')
         config.set('web', 'web_host', 'localhost')
         config.set('web', 'web_port', '5000')
+        config.add_section('network')
         config.set('network', 'state_report_frequency', '1')
 
         with open('config.ini', 'w') as configfile:
             config.write(configfile)
 
     config.read('config.ini')
+    print(config.sections())
+
     return config
 
 
 def config_params():
     c = read_config()
-    parser = argparse.ArgumentParser()
-    # 添加参数
-    parser.add_argument("--mqtt_host", default=c.get('mqtt', 'mqtt_host'), help="name")
-    parser.add_argument("--mqtt_port", default=c.getint('mqtt', 'mqtt_port'), type=int, help="port")
-    parser.add_argument("--mqtt_transport", default=c.get('mqtt', 'mqtt_transport'), choices=("tcp", "websockets"),
-                        help="TCP")
-    parser.add_argument("--logg", default=MyLogger(), help="log")
-    parser.add_argument("--mqtt_topic_order", default=c.get('topic', 'order'), type=str, nargs='?', help="topic")
-    parser.add_argument("--mqtt_topic_state", default=c.get('topic', 'state'), type=str, nargs='?', help="topic")
-    parser.add_argument("--mqtt_topic_visualization", default=c.get('topic', 'visualization'), type=str, nargs='?',
-                        help="topic")
-    parser.add_argument("--mqtt_topic_connection", default=c.get('topic', 'connection'), type=str, nargs='?',
-                        help="topic")
-    parser.add_argument("--mqtt_topic_instantActions", default=c.get('topic', 'instantActions'), type=str,
-                        nargs='?', help="topic")
-    parser.add_argument("--mqtt_topic_factsheet", default=c.get('topic', 'factsheet'), type=str, nargs='?',
-                        help="topic")
-    parser.add_argument("--robot_ip", default=c.get('robot', 'robot_ip'), help="robot_ip")
-    parser.add_argument("--robot_type", default=c.get('robot', 'robot_type'), type=int, help="机器人类型")
-    parser.add_argument("--mode", default=c.getint('robot', 'mode'), type=int, help="mode")
-    parser.add_argument("--web_host", default=c.get('web', 'web_host'), help="web_host")
-    parser.add_argument("--web_port", default=c.get('web', 'web_port'), help="web_port")
-
-    parser.add_argument("--state_report_frequency", default=c.get('network', 'state_report_frequency'),
-                        type=int,help="state_report_frequency")
-
-    return parser.parse_args()
+    arg = {
+        "mqtt_host": c.get('mqtt', 'mqtt_host'),
+        "mqtt_port": c.getint('mqtt', 'mqtt_port'),
+        "mqtt_transport": c.get('mqtt', 'mqtt_transport'),
+        "robot_ip": c.get('robot', 'robot_ip'),
+        "robot_type": c.getint('robot', 'robot_type'),
+        "mode": c.getint('robot', 'mode'),
+        'web_host': c.get('web', 'web_host'),
+        "web_port": c.getint('web', 'web_port'),
+        'mqtt_topic_order': c.get('topic', 'order'),
+        'mqtt_topic_state': c.get('topic', 'state'),
+        'mqtt_topic_visualization': c.get('topic', 'visualization'),
+        'mqtt_topic_connection': c.get('topic', 'connection'),
+        "mqtt_topic_instantActions": c.get('topic', 'instantActions'),
+        "mqtt_topic_factsheet": c.get('topic', 'factsheet'),
+        "state_report_frequency": c.getint('network', 'state_report_frequency')
+    }
+    print(arg)
+    return arg
 
 
 if __name__ == "__main__":
     # 创建配置文件
     args = config_params()
     # 启动服务
-    s = RobotServer(**vars(args))
+    rbk = rbklibPro.Rbk(args.get("robot_ip"))
+    args["rbk"] = rbk
+    s = RobotServer(**args)
     # 运行服务
     s.run()
-

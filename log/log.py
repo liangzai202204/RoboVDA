@@ -1,7 +1,8 @@
 import logging
 import os
-from logging.handlers import TimedRotatingFileHandler
+from logging.handlers import RotatingFileHandler
 from colorlog import ColoredFormatter
+from datetime import datetime
 
 
 class MyLogger:
@@ -13,21 +14,43 @@ class MyLogger:
             cls._instance.__initialized = False
         return cls._instance
 
-    def __init__(self, name="SEER-robokit-VDA5050", interval=15 * 60):
-        if self.__initialized: return
+    def __init__(self, name="SEER-robokit-VDA5050", max_bytes=1024 * 1024):
+        if self.__initialized:
+            return
         self.__initialized = True
 
         log_dir = os.getcwd() + "/scripts-logs/"
-        filename = "vda5050_debug.log"
         os.makedirs(log_dir, exist_ok=True)
+
+        # 获取已有的日志文件名列表
+        existing_logs = [filename for filename in os.listdir(log_dir) if filename.endswith(".log")]
+        existing_logs.sort(reverse=True)
+        print(existing_logs)
+
+        # 计算当前时间段
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
+        # 获取当前日志文件名的尾部数字
+        log_number = -1
+        if existing_logs:
+            last_log = existing_logs[0]
+            print(last_log)
+            log_number = int(last_log.split("_")[-1].split(".")[0])
+
+        # 创建新的日志文件名
+        log_number += 1
+        if log_number >= 0:
+            filename = f"vda5050_debug_{timestamp}_{log_number:05d}.log"
+        else:
+            filename = f"vda5050_debug_{timestamp}.log"
+
         self.logger = logging.getLogger(name)
         self.logger.setLevel(logging.INFO)
 
-        fh = TimedRotatingFileHandler(
-            filename=log_dir + filename,
-            when='M',
-            interval=interval,
-            backupCount=7,
+        fh = RotatingFileHandler(
+            filename=os.path.join(log_dir, filename),
+            maxBytes=max_bytes,
+            backupCount=10,
             encoding='utf-8'
         )
         fh.setLevel(logging.DEBUG)
@@ -68,4 +91,3 @@ class MyLogger:
 
     def critical(self, message):
         self.logger.critical(message)
-

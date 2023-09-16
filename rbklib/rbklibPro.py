@@ -20,12 +20,13 @@ class Rbk:
         if not hasattr(self, 'ip'):
             self.ip = ip
             self.log = MyLogger()
+            self.so_19301 = So19301(ip)
             self.so_19204 = So19204(ip)
             self.so_19205 = So19205(ip)
             self.so_19206 = So19206(ip)
             self.so_19207 = So19207(ip)
             self.so_19210 = So19210(ip)
-            self.so_19301 = So19301(ip)
+
             self.online_status = dict()
 
     @property
@@ -317,6 +318,7 @@ class So19210(BaseSo):
 class So19301(BaseSo):
     def __init__(self, ip: str = "127.0.0.1", socket_timeout=60, max_reconnect_attempts=5, pushDataSize=50):
         super().__init__(ip, 19301, socket_timeout, max_reconnect_attempts)
+        self.request(9300, 1, {"interval": 100})
         self.pushData = Queue(pushDataSize)
         thread = threading.Thread(target=self._robot_push)
         thread.setDaemon(True)
@@ -330,41 +332,36 @@ class So19301(BaseSo):
         while True:
             # 接收报文头
             try:
-                headData = self.so.recv(16)
-                # 解析报文头
-                header = struct.unpack(self.PACK_FMT_STR, headData)
-                self.log.warning(f"header:{header}")
-                while header[0] != 0x5a and header[1] != 0x01:
-                    additionalByte = self.so.recv(1)
-                    if not additionalByte:
-                        break
-                    headData = headData[1:] + additionalByte
-                    header = struct.unpack(self.PACK_FMT_STR, headData)
-
-                # 获取报文体长度
-                bodyLen = header[3]
-                recvData = b''
-                while len(recvData) < bodyLen:
-                    recv = self.so.recv(bodyLen - len(recvData))
-                    if not recv:
-                        break
-                    recvData += recv
-
-                # 检查是否接收到完整的报文体
-                if len(recvData) == bodyLen:
-                    self.log.warning(f"19301 push raw data:{recvData}")
-                    if self.pushData.full():
-                        self.pushData.get()
-                    self.pushData.put(recvData)
-                else:
-                    self.log.warning(f"接收到不完整的报文体，继续接收...")
+                self.recv()
 
             except Exception as e:
                 self.log.warning(f"获取机器人数据失败：{e}")
                 self.connected = False
                 self.reconnect()
                 return None
-
+    def recv(self):
+        headData = self.so.recv(16)
+        # 解析报文头
+        header = struct.unpack(self.PACK_FMT_STR, headData)
+        # 获取报文体长度
+        bodyLen = header[3]
+        readSize = 1024
+        recvData = b''
+        while bodyLen > 0:
+            recv = self.so.recv(readSize)
+            recvData += recv
+            bodyLen -= len(recv)
+            if bodyLen < readSize:
+                readSize = bodyLen
+        # 检查是否接收到完整的报文体
+        print(recvData)
+        if len(recvData) == header[3]:
+            # self.log.warning(f"19301 push raw data:{recvData}")
+            if self.pushData.full():
+                self.pushData.get()
+            self.pushData.put(recvData)
+        else:
+            self.log.warning(f"接收到不完整的报文体，继续接收...")
     def getV1(self):
         try:
             # 接收报文头

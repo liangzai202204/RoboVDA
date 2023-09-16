@@ -12,8 +12,7 @@ class MyTestCase(unittest.TestCase):
             pass
 
     def test_19301(self):
-
-        r = rbklibPro.Rbk("192.168.8.145",push_flag=True)
+        r = rbklibPro.Rbk("192.168.8.145")
         while True:
             a=r.so_19301.pushData.get()
             print(a)

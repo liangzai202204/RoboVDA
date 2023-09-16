@@ -1,6 +1,8 @@
 import asyncio
 import datetime
 import threading
+
+import rbklib.rbklibPro
 from serve.OrderStateMachine import OrderStateMachine
 from type import state, order, instantActions, connection, visualization
 from typing import List, Union
@@ -55,11 +57,11 @@ def lock_decorator(func):
 @timeit
 class RobotOrder:
 
-    def __init__(self, mode, loop=None,state_report_frequency=1,robot_type=1):
+    def __init__(self, rbk:rbklib.rbklibPro.Rbk,mode, loop=None,state_report_frequency=1,robot_type=1):
         self.state_report_frequency = state_report_frequency
         self.init = False
         self._event_loop = asyncio.get_event_loop() if loop is None else loop
-        self.robot: Robot = Robot()
+        self.robot: Robot = Robot(rbk)
         self.lock_order = threading.Lock()
         self.robot_type = robot_type
 
@@ -298,42 +300,42 @@ class RobotOrder:
             # 狀態機
             self.order_state_machine.init_order(order.Order.create_order(task))
             self.execute_order()
-        else:
-            # 判断机器人当前的订单Id和新的订单Id是否一致
-            self.logs.info(f"[order] try creat order")
-            if self.current_order.orderId != task.orderId:
-                # 订单不一致，开始创建新订单逻辑
-                if self.order_state_machine.orders.orders.status != Status.FINISHED:
-                    self.report_error(err.ErrorOrder.newOrderIdButOrderRunning)
-                else:
-                    # 创建新的订单
-                    self._try_create_order(task)
+            return
+        # 判断机器人当前的订单Id和新的订单Id是否一致
+        self.logs.info(f"[order] try creat order")
+        if self.current_order.orderId != task.orderId:
+            # 订单不一致，开始创建新订单逻辑
+            if self.order_state_machine.orders.orders.status != Status.FINISHED:
+                self.report_error(err.ErrorOrder.newOrderIdButOrderRunning)
             else:
-                # 订单一致，开始订单更新逻辑
-                # orderUpdateId 比较
-                if self.current_order.orderUpdateId <= task.orderUpdateId:
-                    if self.current_order.orderUpdateId == task.orderUpdateId:
-                        # 订单orderUpdateId已存在，丢弃信息
-                        self.logs.info(f"orderUpdateId已存在，丢弃信息")
-                    else:
-                        if self.order_state_machine.orders.orders.status != Status.FINISHED:
-                            """
-                                机器人正在从1到10，在4的时候，order说，可以去115了，这个时候，需要更新订单 4-15
-                            """
-                            # 更新订单
-                            # ------------------------------------------
-                            #          重要节点
-                            # ------------------------------------------
-                            self._try_update_order(task)
-                        else:
-                            """
-                                机器人正在从1到10，已经在10了，在等order，然后order说，可以去15了，这个时候，需要更新订单 10-15
-                            """
-                            # 创建新的订单
-                            self._try_update_order(task)
-                else:
-                    # orderUpdateId 错误，上报错误，拒绝订单
-                    self.report_error(err.ErrorOrder.orderUpdateIdLowerErr)
+                # 创建新的订单
+                self._try_create_order(task)
+            return
+        # 订单一致，开始订单更新逻辑
+        # orderUpdateId 比较
+        if self.current_order.orderUpdateId <= task.orderUpdateId:
+            if self.current_order.orderUpdateId == task.orderUpdateId:
+                # 订单orderUpdateId已存在，丢弃信息
+                self.logs.info(f"orderUpdateId已存在，丢弃信息")
+                return
+            if self.order_state_machine.orders.orders.status != Status.FINISHED:
+                """
+                    机器人正在从1到10，在4的时候，order说，可以去115了，这个时候，需要更新订单 4-15
+                """
+                # 更新订单
+                # ------------------------------------------
+                #          重要节点
+                # ------------------------------------------
+                self._try_update_order(task)
+            else:
+                """
+                    机器人正在从1到10，已经在10了，在等order，然后order说，可以去15了，这个时候，需要更新订单 10-15
+                """
+                # 创建新的订单
+                self._try_update_order(task)
+            return
+        # orderUpdateId 错误，上报错误，拒绝订单
+        self.report_error(err.ErrorOrder.orderUpdateIdLowerErr)
 
     def _try_create_order(self, sub_order):
         print("收到新的orderId，并且当前没有任务，尝试创建新的订单。。。")
