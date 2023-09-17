@@ -1,5 +1,4 @@
 import asyncio
-import configparser
 import json
 import os
 import queue
@@ -7,18 +6,17 @@ import socket
 import datetime
 
 import rbklib.rbklibPro
-from rbklib.rbklibPro import Rbk
 from type import state
 from typing import List
 import time
-from serve.pushMsgType import RobotPush
+from type.pushMsgType import RobotPush
 from type.ApiReq import ApiReq
 from log.log import MyLogger
 
 
 class Robot:
 
-    def __init__(self, rbk:rbklib.rbklibPro.Rbk):
+    def __init__(self, rbk: rbklib.rbklibPro.Rbk):
         self.rbk = rbk
         self.task_status: asyncio.Queue[dict] = asyncio.Queue()
         self.ApiReq_queue: asyncio.Queue[ApiReq] = asyncio.Queue()
@@ -262,7 +260,7 @@ class Robot:
         while send:
             try:
                 if self.robot_online and self.lock:
-                    self.rbk.call_service(ApiReq.ROBOT_TASK_CANCEL_REQ.value)
+                    self.rbk.call_service(ApiReq.ROBOT_TASK_CLEARTARGETLIST_REQ.value)
                     send = False
                 else:
                     self.lock_robot()
@@ -436,4 +434,3 @@ class RobotMapManager:
         else:
             self.logs.error(f" no exists map :{maps}")
         return index
-

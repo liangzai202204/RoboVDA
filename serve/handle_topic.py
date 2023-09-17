@@ -200,6 +200,9 @@ class RobotOrder:
     def _cls(self):
         self.order = None
         self.current_order = None
+        self.robot.state.nodeStates = []
+        self.robot.state.edgeStates = []
+        self.robot.state.actionStates = []
         # 清除狀態機狀態
         self.order_state_machine.clear()
 
@@ -266,7 +269,6 @@ class RobotOrder:
         elif typ == err.ErrorOrder.nodeAndEdgeNumErr:
             pass
 
-    @lock_decorator
     def _run_order(self, task: order.Order):
         self.logs.info("[order] rec and start")
         if self.order_state_machine.ready:

@@ -2,7 +2,7 @@ import json
 import time
 import unittest
 import rbklib
-from serve.pushMsgType import RobotPush
+from type.pushMsgType import RobotPush
 
 
 class MyTestCase(unittest.TestCase):

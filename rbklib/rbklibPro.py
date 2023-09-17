@@ -61,6 +61,7 @@ class Rbk:
             self.so_19301.so.close()
 
     def request(self, msgType, msg=None, reqId=1):
+        print("request:",msgType)
         if 1000 <= msgType < 2000:
             return self.so_19204.request(msgType, reqId, msg)
         elif msgType < 3000:
@@ -261,7 +262,7 @@ class BaseSo:
             return None
         try:
             h, body = self._request(self.so, msgType, reqId, msg)
-
+            print(body)
             return body
         except socket.timeout:
             self.connected = False
@@ -381,7 +382,7 @@ class So19301(BaseSo):
             if bodyLen < readSize:
                 readSize = bodyLen
         # 检查是否接收到完整的报文体
-        print(recvData)
+        # print(recvData)
         if len(recvData) == header[3]:
             # self.log.warning(f"19301 push raw data:{recvData}")
             if self.pushData.full():
@@ -390,28 +391,6 @@ class So19301(BaseSo):
         else:
             self.log.warning(f"接收到不完整的报文体，继续接收...")
 
-    def getV1(self):
-        try:
-            # 接收报文头
-            headData = self.so.recv(16)
-            # 解析报文头
-            header = struct.unpack(self.PACK_FMT_STR, headData)
-            # 获取报文体长度
-            bodyLen = header[3]
-            readSize = 1024 if bodyLen > 1024 else bodyLen
-            recvData = b''
-            while bodyLen > 0:
-                recv = self.so.recv(readSize)
-                recvData += recv
-                bodyLen -= len(recv)
-                if bodyLen < readSize:
-                    readSize = bodyLen
-            return recvData
-        except Exception as e:
-            print(f"获取机器人呢数据失败：{e}")
-            self.connected = False
-            self.reconnect()
-            return None
 
     def get(self):
         try:

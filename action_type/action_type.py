@@ -1,6 +1,6 @@
 from type import order
 import pydantic
-from serve.mode import PackMode
+from type.mode import PackMode
 
 
 class ActionType:

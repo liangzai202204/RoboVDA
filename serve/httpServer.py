@@ -7,7 +7,7 @@ from log.log import MyLogger
 
 
 class HttpServer:
-    def __init__(self, web_host, web_port, robot_order:RobotOrder, robot:Robot):
+    def __init__(self, web_host, web_port, robot_order: RobotOrder, robot: Robot):
         self.robot = robot
         self.robot_order = robot_order
         self.log = MyLogger()
@@ -43,6 +43,10 @@ class HttpServer:
         @self.app.route('/getPushData', methods=['GET'])
         def getPushData():
             return self._get_push_data()
+
+        @self.app.route('/cancelOrder', methods=['POST'])
+        def cancelOrder():
+            return self._cancelOrder()
 
     def _get_data(self):
         order1 = None
@@ -84,3 +88,11 @@ class HttpServer:
     def start_web(self):
         # 启动Flask应用
         self.app.run(host=self.web_host, port=self.web_port)
+
+    def _cancelOrder(self):
+        self.robot_order.instant_cancel_task()
+        data = {
+            "code": 200,
+            "msg": "OK"
+        }
+        return jsonify(data)

@@ -219,7 +219,13 @@ class OrderStateMachine:
             self.log.error(f"_del_not_released_items:{e}")
 
     def clear(self):
-        self.orders = Orders
+        self.orders.orders = OrderStatus(**{
+            "orderId": "",
+            "status": Status.INITIALIZING,
+            "nodes": {},
+            "edges": {},
+            "actions": {}
+        })
         self.task_id_list = []
         self.edges_and_actions_id_list = []
         self.ready = True

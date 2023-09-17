@@ -4,9 +4,7 @@ import time
 import unittest
 import paho.mqtt.client as mqtt
 
-from serve.mode import PackMode
 from type import order
-from serve import OrderStateMachine
 
 
 def get_mqtt_ip():
@@ -36,7 +34,7 @@ class MyTestCase(unittest.TestCase):
         import sim_order as s
         a = s.SimOrder(ip="192.168.198.174")
         datas = []
-        data = ("LM87", [])
+        data = ("LM99", [])
         datas.append(data)
         o1 = a.creat_order(datas, released=True, order_count=100,init="LM87")
         client = mqtt.Client()
@@ -201,13 +199,11 @@ class InstantActionsTest(unittest.TestCase):
             json_content = json.load(json_file)
             print(json_content)
         client = mqtt.Client()
-        client.connect("192.168.8.145", 1883, 60)
+        client.connect("192.168.0.108", 1883, 60)
         client.publish("robot/instantActions", json.dumps(json_content))
 
     def test_OOO(self):
         from serve import OrderStateMachine
-        import json
-        import os
         # # 假设包 B 的名称为 package_B，JSON 文件名为 data.json
         # path_to_B = os.path.abspath("../VDAExample")
         # json_filename = 'Transport Order.json'
