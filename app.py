@@ -5,6 +5,7 @@ from rbklib.rbklibPro import Rbk
 from serve.handle_topic import RobotOrder
 from serve.robot import Robot
 from serve.mqtt_server import RobotServer
+from serve.httpServer import HttpServer
 from config.config import Config
 from serve.topicQueue import EventLoop
 
@@ -15,6 +16,7 @@ class RoboVda:
     mqtt_server_class = RobotServer
     robot_order_class = RobotOrder
     robot_class = Robot
+    http_server_class = HttpServer
 
     def __init__(self):
         self.config = self.get_configs()
@@ -22,10 +24,12 @@ class RoboVda:
         self.robot = self.creat_robot()
         self.robot_order = self.creat_robot_order()
         self.mqtt_server = self.creat_mqtt_server()
+        self.http_server = self.creat_http_server()
 
         # 线程设置
         self.rbk_connect_t = threading.Thread(target=self.rbk.connect, name="rbk connect")
         self.robot_run_t = threading.Thread(target=self.robot.run, name="robot run")
+        self.http_server_t = threading.Thread(target=self.http_server.start_web, name="http server")
         self.rbk_connect_t.setDaemon(True)
 
     def run(self):
@@ -33,6 +37,7 @@ class RoboVda:
         self.robot_run_t.start()
         self.mqtt_server.mqtt_client_s.loop_start()
         self.robot_order.thread_start()
+        self.http_server_t.start()
         coroutines = [self.robot_order.run(), self.mqtt_server.run()]
         EventLoop.event_loop.run_until_complete(asyncio.gather(*coroutines))
         print("pppp")
@@ -62,6 +67,14 @@ class RoboVda:
 
     def creat_mqtt_server(self):
         return self.mqtt_server_class(**self.config.config_mqtt())
+
+    def creat_http_server(self):
+        return self.http_server_class(
+            web_host=self.config.config.get("web", "web_host"),
+            web_port=self.config.config.getint("web", "web_port"),
+            robot_order=self.robot_order,
+            robot=self.robot
+        )
 
 
 if __name__ == '__main__':

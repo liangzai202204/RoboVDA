@@ -1,161 +1,140 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Robot Order</title>
-    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.7.2/styles/default.min.css">
-    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/10.7.2/highlight.min.js"></script>
+    <title>URL数据展示</title>
+    <meta charset="utf-8">
     <style>
-        .json-entry {
-            margin-bottom: 5px;
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #333;
+            background-color: #f7f7f7;
         }
 
-        .json-object {
-            margin-left: 15px;
+        .header {
+            text-align: center;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
         }
 
-        .json-value {
-            color: blue;
+        .header h1 {
+            font-size: 32px;
+            margin-top: 0;
         }
-    .header {
-        background-color: red;
-        height: 50px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        font-weight: bold;
-        color: white;
-    }
-         /* 菜单栏样式 */
-        .menu-bar {
-            height: 100vh;
-            width: 200px;
-            background-color: #f5f5f5;
-            position: fixed;
-            left: 0;
-            top: 0;
+
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
             display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
+            flex-wrap: wrap;
+            justify-content: space-between;
         }
 
-        /* 菜单项样式 */
-        .menu-item {
-            margin-bottom: 20px;
-            padding: 10px;
-            border-radius: 5px;
-            background-color: #ffffff;
-            color: #333333;
-            text-decoration: none;
-            font-weight: bold;
-            transition: background-color 0.3s;
+        .url-list {
+            margin: 20px 0;
         }
 
-        /* 菜单项鼠标悬停样式 */
-        .menu-item:hover {
-            background-color: #eeeeee;
+        .url-list ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-start;
         }
 
+        .url-list li {
+            margin: 10px;
+        }
+
+        .button-container {
+            float: left;
+            width: 30%;
+        }
+
+        .data-display {
+            float: right;
+            width: 65%;
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .button-container button {
+            padding: 10px 16px;
+            background-color: #008cdd;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        .button-container button:hover {
+            background-color: #006fad;
+        }
+
+        pre {
+            margin: 0;
+            padding: 0;
+            font-size: 14px;
+            line-height: 1.5;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            background-color: #f7f7f7;
+            border-radius: 4px;
+            max-height: 300px;
+        }
     </style>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script>
-        // 函数在页面加载完成后执行
-        $(document).ready(function() {
-            // 定义刷新数据的时间间隔（单位：毫秒）
-            var refreshInterval = 5000;  // 5秒
-
-            // 定义刷新数据的函数
-            function refreshData() {
-                $.ajax({
-                    url: '/get_data',  // 发送请求的URL，根据实际情况调整
-                    method: 'GET',
-                    success: function(response) {
-                        // 更新页面中的数据
-                        displayData(response.current_order, $('#current_order'));
-                        displayData(response.current_order_state, $('#current_order_state'));
-                    },
-                    error: function(error) {
-                        console.log('Error:', error);
-                    }
-                });
-            }
-
-
-
-// 显示数据
-function displayData(data, element, level = 0) {
-    // 清空旧的内容
-    element.empty();
-    data = JSON.parse(data)
-    // 遍历JSON对象的每个键值对
-    for (var key in data) {
-        // 获取当前值
-        var value = data[key];
-
-        // 创建DOM元素来显示键名和值
-        var keyElement = $('<span>').text(key);
-        var valueElement = $('<span>').addClass('json-value');
-
-        if (typeof value === 'object') {
-            // 若值为对象，则递归调用displayData函数
-            var subElement = $('<div>').addClass('json-object');
-            subElement.append(keyElement, ':');
-            displayData(value, subElement, level + 1);
-            valueElement.append(subElement);
-        } else {
-            // 否则直接显示值
-            valueElement.text(value);
-        }
-
-        // 添加缩进
-        keyElement.prepend("&nbsp;".repeat(level * 4));
-
-        // 添加到父元素中
-        var entryElement = $('<div>').addClass('json-entry');
-        entryElement.append(keyElement, ':', valueElement);
-        element.append(entryElement);
-    }
-}})
-
-        // 获取所有的菜单项和内容区域
-var menuItems = document.querySelectorAll('.menu-item');
-var contentDivs = document.querySelectorAll('.content');
-
-// 遍历菜单项，为每个菜单项添加点击事件监听器
-menuItems.forEach(function(menuItem) {
-  menuItem.addEventListener('click', function() {
-    // 获取目标标识符
-    var target = this.getAttribute('data-target');
-
-    // 隐藏所有的内容区域
-    contentDivs.forEach(function(contentDiv) {
-      contentDiv.style.display = 'none';
-    });
-
-    // 显示目标内容区域
-    var targetDiv = document.getElementById(target);
-    if (targetDiv) {
-      targetDiv.style.display = 'block';
-    }
-  });
-});
-
-    </script>
 </head>
 <body>
-<div class="header">信息看板</div>
-    <div class="menu-bar">
-        <a href="#" class="menu-item" data-target="order">Order</a>
-        <a href="#" class="menu-item" data-target="state">State</a>
-        <a href="#" class="menu-item" data-target="robot">Robot</a>
+    <div class="header">
+        <h1>URL数据展示</h1>
     </div>
-<div id="order" class="content">    <div>Current Order:</div>
-    <pre><code id="current_order"></code></pre>
-    <div>订单信息</div>
-    <div id="orderData"></div>
-    <div>Current Order State: <span id="current_order_state"></span></div></div>
-<div id="state" class="content">State content</div>
-<div id="robot" class="content">Robot content</div>
 
+    <div class="container">
+        <div class="button-container">
+            <h2>可用的数据获取链接:</h2>
+            <ul>
+                <li>
+                    <button onclick="getData('/get_data')">获取数据1</button>
+                </li>
+                <li>
+                    <button onclick="getData('/getOrderStatus')">获取数据2</button>
+                </li>
+                <li>
+                    <button onclick="getData('/getState')">获取数据3</button>
+                </li>
+                <li>
+                    <button onclick="getData('/getPackTask')">获取数据4</button>
+                </li>
+                <li>
+                    <button onclick="getData('/getPushData')">获取数据5</button>
+                </li>
+            </ul>
+        </div>
+
+        <div class="data-display">
+            <h2>数据展示:</h2>
+            <pre id="data-container"></pre>
+        </div>
+    </div>
+
+    <script>
+        function getData(url) {
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    const dataContainer = document.getElementById('data-container');
+                    dataContainer.innerHTML = JSON.stringify(data, null, 2);
+                });
+        }
+    </script>
 </body>
 </html>
