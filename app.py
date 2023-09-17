@@ -1,0 +1,69 @@
+import asyncio
+import threading
+
+from rbklib.rbklibPro import Rbk
+from serve.handle_topic import RobotOrder
+from serve.robot import Robot
+from serve.mqtt_server import RobotServer
+from config.config import Config
+from serve.topicQueue import EventLoop
+
+
+class RoboVda:
+    config_class = Config
+    rbk_lib_class = Rbk
+    mqtt_server_class = RobotServer
+    robot_order_class = RobotOrder
+    robot_class = Robot
+
+    def __init__(self):
+        self.config = self.get_configs()
+        self.rbk = self.creat_rbk()
+        self.robot = self.creat_robot()
+        self.robot_order = self.creat_robot_order()
+        self.mqtt_server = self.creat_mqtt_server()
+
+        # 线程设置
+        self.rbk_connect_t = threading.Thread(target=self.rbk.connect, name="rbk connect")
+        self.robot_run_t = threading.Thread(target=self.robot.run, name="robot run")
+        self.rbk_connect_t.setDaemon(True)
+
+    def run(self):
+        self.rbk_connect_t.start()
+        self.robot_run_t.start()
+        self.mqtt_server.mqtt_client_s.loop_start()
+        self.robot_order.thread_start()
+        coroutines = [self.robot_order.run(), self.mqtt_server.run()]
+        EventLoop.event_loop.run_until_complete(asyncio.gather(*coroutines))
+        print("pppp")
+
+    def creat_rbk(self):
+        """
+        创建一个rbk tcp api 类，用于唯一负责与机器人的通讯
+        :return:
+        """
+        return self.rbk_lib_class(self.config.config.get("robot","robot_ip"))
+
+    def get_configs(self):
+        """
+        获取配置文件
+        :return:
+        """
+        return self.config_class()
+
+    def creat_robot(self):
+        return self.robot_class(self.rbk)
+
+    def creat_robot_order(self):
+        return self.robot_order_class(self.robot,
+                                      mode=self.config.config.getint("robot","mode"),
+                                      state_report_frequency=self.config.config.getint("network","state_report_frequency"),
+                                      robot_type=self.config.config.getint("robot","robot_type"))
+
+    def creat_mqtt_server(self):
+        return self.mqtt_server_class(**self.config.config_mqtt())
+
+
+if __name__ == '__main__':
+    app = RoboVda()
+    app.run()

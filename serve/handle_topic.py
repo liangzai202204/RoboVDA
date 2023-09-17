@@ -1,42 +1,17 @@
 import asyncio
 import datetime
 import threading
-
-import rbklib.rbklibPro
 from serve.OrderStateMachine import OrderStateMachine
+from serve.topicQueue import TopicQueue
 from type import state, order, instantActions, connection, visualization
 from typing import List, Union
 import time
 from serve.robot import Robot as Robot
-from serve.mode import PackMode
-from action_type.action_type import ActionPack, ActionType
+from action_type.action_type import ActionPack
 from error_type import error_type as err
 from type.RobotOrderStatus import Status
 from serve.packTask import PackTask
 from log.log import MyLogger
-
-
-def timeit(func):
-    def wrapper(*args, **kwargs):
-        start = time.time()
-        print(f"{func.__name__} start init")
-        result = func(*args, **kwargs)
-        end = time.time()
-        print(f"{func.__name__} start {(end - start) / 60:.6f}min")
-        return result
-
-    return wrapper
-
-
-def send_order_decorator(func):
-    def wrapper(self, task_list):
-        self.logs.info(f"[state] decorator by send order")
-        func(self, task_list)
-        # 在执行完成后调用 _enqueue 方法
-        self._enqueue(self.p_state, self.state)
-        self.logs.info(f"[state]enqueue:{self.state.dict().__len__}")
-
-    return wrapper
 
 
 # 定义装饰器函数
@@ -54,23 +29,15 @@ def lock_decorator(func):
     return wrapper
 
 
-@timeit
 class RobotOrder:
 
-    def __init__(self, rbk:rbklib.rbklibPro.Rbk,mode, loop=None,state_report_frequency=1,robot_type=1):
+    def __init__(self, robot: Robot,mode, loop=None,state_report_frequency=1,robot_type=1):
         self.state_report_frequency = state_report_frequency
         self.init = False
         self._event_loop = asyncio.get_event_loop() if loop is None else loop
-        self.robot: Robot = Robot(rbk)
+        self.robot: Robot = robot
         self.lock_order = threading.Lock()
         self.robot_type = robot_type
-
-        self.p_state: asyncio.Queue[state.State] = asyncio.Queue()
-        self.s_order: asyncio.Queue[order.Order] = asyncio.Queue()
-        self.p_connection: asyncio.Queue[connection.Connection] = asyncio.Queue()
-        self.p_visualization: asyncio.Queue[visualization.Visualization] = asyncio.Queue()
-        self.chanel_state: asyncio.Queue[state.State] = asyncio.Queue()
-        # self.order_cache_queue: asyncio.Queue[dict] = asyncio.Queue()
         self.order = None
         self.current_order = None
         self.current_order_state: state.State = state.State.create_state()
@@ -82,12 +49,11 @@ class RobotOrder:
         self.logs = MyLogger()
         self.state = state.State.create_state()
         self.init = False  # 表示第一次运行，用于判断运单逻辑
-        self.robot_state_thread = threading.Thread(group=loop, target=self.handle_state, name="run robot state")
+        self.robot_state_thread = threading.Thread(group=loop, target=self.handle_state_report, name="run robot state")
         self.robot_connection_thread = threading.Thread(group=None, target=self.handle_connection, name="run robot "
                                                                                                         "connect")
         self.robot_visualization_thread = threading.Thread(group=None, target=self.handle_visualization,
                                                            name="run robot visualization")
-        self.robot_run_thread = threading.Thread(group=None, target=self.robot.run, name="run robot")
         self.mode = mode  # 定义动作模式 False为参数，True为binTask
         # 訂單狀態機
         self.order_state_machine = OrderStateMachine()
@@ -96,11 +62,19 @@ class RobotOrder:
     def __del__(self):
         self._cls()
 
+    def thread_start(self):
+        self.robot_state_thread.start()
+        self.robot_visualization_thread.start()
+        self.robot_connection_thread.start()
+
     async def run(self):
+
         self._run()
 
     def _run(self):
-        asyncio.gather(self.handle_order(), self.handle_report())
+        asyncio.gather(self.handle_order(),
+                       self.handle_state(),
+                       self.handle_instantActions())
 
     async def handle_order(self):
         """
@@ -108,25 +82,25 @@ class RobotOrder:
         """
         while True:
             self.logs.info("waiting order........")
-            o = await self.s_order.get()
+            o = await TopicQueue.s_order.get()
             self._run_order(o)
 
-    async def handle_report(self):
+    async def handle_instantActions(self):
+        """
+            订单统一入口
+        """
+        while True:
+            self.logs.info("handle_instantActions ........")
+            instantAction = await TopicQueue.s_instantActions.get()
+            self._handle_instantActions(instantAction)
+
+    async def handle_state(self):
         """
             发布 state 统一入口
         """
         while True:
-            state_sub = await self.chanel_state.get()
-            self._enqueue(self.p_state, state_sub)
-
-    def update_state_loop(self):
-        while True:
-            time.sleep(self.state_report_frequency)
-            print("-=" * 20)
-            try:
-                self.update_state_by_order()
-            except Exception as e:
-                print("更新任务状态出错：", e)
+            state_sub = await TopicQueue.chanel_state.get()
+            self._enqueue(TopicQueue.p_state, state_sub)
 
     def update_state_by_order(self):
         if not self.robot.robot_online:
@@ -145,7 +119,7 @@ class RobotOrder:
             self.connection.connectionState = "ONLINE" if self.connection_online else ""
             self.connection.headerId = self.connection_header_id
             self.connection.timestamp = datetime.datetime.now().isoformat(timespec='milliseconds') + 'Z'
-            self._enqueue(self.p_connection, self.connection)
+            self._enqueue(TopicQueue.p_connection, self.connection)
             time.sleep(60 * 10)
 
     def handle_visualization(self):
@@ -158,7 +132,7 @@ class RobotOrder:
             self.visualization.velocity = self.robot.state.velocity
             self.visualization.headerId = self.visualization_header_id
             self.visualization.timestamp = datetime.datetime.now().isoformat(timespec='milliseconds') + 'Z'
-            self._enqueue(self.p_visualization, self.visualization)
+            self._enqueue(TopicQueue.p_visualization, self.visualization)
             time.sleep(10)
         except Exception as e:
             print(f"handle_visualization error:{e}")
@@ -175,7 +149,7 @@ class RobotOrder:
             online = True
         return online
 
-    def handle_instantActions(self, instant: instantActions.InstantActions):
+    def _handle_instantActions(self, instant: instantActions.InstantActions):
         self.logs.info("handle_instantActions")
         actions = instant.instantActions
         for action in actions:
@@ -224,15 +198,12 @@ class RobotOrder:
         self.robot.instant_init_position(task)
 
     def _cls(self):
-        #self.s_order = asyncio.Queue()
-        #self.p_state = asyncio.Queue()
-        #self.chanel_state = asyncio.Queue()
         self.order = None
         self.current_order = None
         # 清除狀態機狀態
         self.order_state_machine.clear()
 
-    def handle_state(self):
+    def handle_state_report(self):
         """
         Events that trigger the transmission of the state message are:
 
@@ -257,14 +228,19 @@ class RobotOrder:
         self.update_state_by_order()
         self.robot.state.orderId = self.current_order.orderId
         self.robot.state.orderUpdateId = self.current_order.orderUpdateId
-        self._enqueue(self.chanel_state, self.robot.state)
+        self._enqueue(TopicQueue.chanel_state, self.robot.state)
 
     def report(self):
         time.sleep(self.state_report_frequency)
         self.logs.info(
-            f"order status:|"
-            f"{self.chanel_state.qsize()}|{self.p_state.qsize()}|{self.s_order.qsize()}|"
-            f"{self.p_connection.qsize()}|")
+            f"TopicQueue status:|"
+            f"{TopicQueue.chanel_state.qsize()}|"
+            f"{TopicQueue.p_state.qsize()}|"
+            f"{TopicQueue.p_connection.qsize()}|"
+            f"{TopicQueue.p_visualization.qsize()}|"
+            f"{TopicQueue.s_order.qsize()}|"
+            f"{TopicQueue.s_instantActions.qsize()}|"
+        )
 
         if not self.robot.robot_online or not self.current_order:
             self.report_robot_not_online()
@@ -275,7 +251,7 @@ class RobotOrder:
 
     def report_robot_not_online(self):
         self.update_state_by_order()
-        self._enqueue(self.chanel_state, self.robot.state)
+        self._enqueue(TopicQueue.chanel_state, self.robot.state)
 
     def _report_order_error(self, sub_order):
         self.logs.info("todo" + sub_order.orderId)
@@ -355,16 +331,13 @@ class RobotOrder:
         :param sub_order:
         :return:
         """
-
-        #print("尝试更新订单")
-        flag = self.is_match_node_start_end(sub_order.nodes, self.current_order.nodes)
-        if flag:
+        if self.is_match_node_start_end(sub_order.nodes, self.current_order.nodes):
             # self.current_order = sub_order
             self.current_order.orderUpdateId = sub_order.orderUpdateId
             self.update_order(sub_order)
-        else:
-            print("node and edge errors")
-            self._report_order_error(sub_order)
+            return
+        print("node and edge errors")
+        self._report_order_error(sub_order)
 
     def update_order(self, sub_order: order.Order):
         update_order = order.Order.create_order(sub_order)

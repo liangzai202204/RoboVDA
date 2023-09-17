@@ -20,7 +20,6 @@ class Robot:
 
     def __init__(self, rbk:rbklib.rbklibPro.Rbk):
         self.rbk = rbk
-        #self.set_push()
         self.task_status: asyncio.Queue[dict] = asyncio.Queue()
         self.ApiReq_queue: asyncio.Queue[ApiReq] = asyncio.Queue()
         self.map_manager = RobotMapManager(rbk)
@@ -41,8 +40,9 @@ class Robot:
         self.messages = queue.Queue()
 
     def run(self):
-        self.map_manager.get_all_map()
-        self.lock_robot()
+        if self.robot_online:
+            self.map_manager.get_all_map()
+            self.lock_robot()
         while True:
             if self.robot_online:
                 self.update()
@@ -291,7 +291,6 @@ class RobotMapManager:
         self.rbk = rbk
         self.logs = MyLogger()
         self.map_point_index = None
-
 
     def add_map(self, map_name, md5, map_path):
         self.maps[map_name] = {

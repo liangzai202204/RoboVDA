@@ -9,25 +9,26 @@ from log.log import MyLogger
 
 
 class Rbk:
-    _instance = None
-
-    def __new__(cls, *args, **kwargs):
-        if not cls._instance:
-            cls._instance = super().__new__(cls)
-        return cls._instance
 
     def __init__(self, ip: str):
-        if not hasattr(self, 'ip'):
-            self.ip = ip
-            self.log = MyLogger()
-            self.so_19301 = So19301(ip)
-            self.so_19204 = So19204(ip)
-            self.so_19205 = So19205(ip)
-            self.so_19206 = So19206(ip)
-            self.so_19207 = So19207(ip)
-            self.so_19210 = So19210(ip)
+        print("rbk")
+        self.ip = ip
+        self.log = MyLogger()
+        self.so_19301 = So19301(self.ip)
+        self.so_19204 = So19204(self.ip)
+        self.so_19205 = So19205(self.ip)
+        self.so_19206 = So19206(self.ip)
+        self.so_19207 = So19207(self.ip)
+        self.so_19210 = So19210(self.ip)
+        self.online_status = dict()
 
-            self.online_status = dict()
+    def connect(self):
+        self.so_19301.connect_push()
+        self.so_19204.connect()
+        self.so_19205.connect()
+        self.so_19206.connect()
+        self.so_19207.connect()
+        self.so_19210.connect()
 
     @property
     def online(self):
@@ -149,7 +150,6 @@ class BaseSo:
         self.max_reconnect_attempts = max_reconnect_attempts  # 最大重连尝试次数
         self.initial_reconnect_delay = 1  # 初始重连延迟（秒）
         self.max_reconnect_delay = 60  # 最大重连延迟（秒）
-        self.connect()
 
     def connect(self):
         while not self.connected:
@@ -294,35 +294,61 @@ class So19204(BaseSo):
     def __init__(self, ip: str = "127.0.0.1", socket_timeout=60, max_reconnect_attempts=5):
         super().__init__(ip, 19204, socket_timeout, max_reconnect_attempts)
 
+    @property
+    def get_connected(self):
+        return self.so.connected
+
 
 class So19205(BaseSo):
     def __init__(self, ip: str = "127.0.0.1", socket_timeout=60, max_reconnect_attempts=5):
         super().__init__(ip, 19205, socket_timeout, max_reconnect_attempts)
+
+    @property
+    def get_connected(self):
+        return self.so.connected
 
 
 class So19206(BaseSo):
     def __init__(self, ip: str = "127.0.0.1", socket_timeout=60, max_reconnect_attempts=5):
         super().__init__(ip, 19206, socket_timeout, max_reconnect_attempts)
 
+    @property
+    def get_connected(self):
+        return self.so.connected
 
 class So19207(BaseSo):
     def __init__(self, ip: str = "127.0.0.1", socket_timeout=60, max_reconnect_attempts=5):
         super().__init__(ip, 19207, socket_timeout, max_reconnect_attempts)
+
+    @property
+    def get_connected(self):
+        return self.so.connected
 
 
 class So19210(BaseSo):
     def __init__(self, ip: str = "127.0.0.1", socket_timeout=60, max_reconnect_attempts=5):
         super().__init__(ip, 19210, socket_timeout, max_reconnect_attempts)
 
+    @property
+    def get_connected(self):
+        return self.so.connected
+
 
 class So19301(BaseSo):
     def __init__(self, ip: str = "127.0.0.1", socket_timeout=60, max_reconnect_attempts=5, pushDataSize=50):
         super().__init__(ip, 19301, socket_timeout, max_reconnect_attempts)
-        self.request(9300, 1, {"interval": 100})
         self.pushData = Queue(pushDataSize)
-        thread = threading.Thread(target=self._robot_push)
-        thread.setDaemon(True)
-        thread.start()
+        self.thread = threading.Thread(target=self._robot_push)
+        self.thread.setDaemon(True)
+
+    def connect_push(self):
+        self.connect()
+        self.request(9300, 1, {"interval": 100})
+        self.thread.start()
+
+    @property
+    def get_connected(self):
+        return self.so.connected
 
     def _robot_push(self):
         """
@@ -339,6 +365,7 @@ class So19301(BaseSo):
                 self.connected = False
                 self.reconnect()
                 return None
+
     def recv(self):
         headData = self.so.recv(16)
         # 解析报文头
@@ -362,6 +389,7 @@ class So19301(BaseSo):
             self.pushData.put(recvData)
         else:
             self.log.warning(f"接收到不完整的报文体，继续接收...")
+
     def getV1(self):
         try:
             # 接收报文头
@@ -405,4 +433,3 @@ class So19301(BaseSo):
             self.connected = False
             self.reconnect()
             return None
-
