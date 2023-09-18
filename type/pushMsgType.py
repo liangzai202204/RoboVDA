@@ -149,7 +149,7 @@ class RobotPush(BaseModel):
     controller_humi: float = 0.
     controller_temp: float = 0.
     controller_voltage: float = 0.
-    correction_errs: List[int] = []
+    correction_errs: List[Union[int,float]] = []
     create_on: str = ''
     current: float = 0.
     current_lock: Optional[Lock] = None

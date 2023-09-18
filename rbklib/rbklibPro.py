@@ -4,7 +4,6 @@ import threading
 from queue import Queue
 import socket
 import time
-from type.ApiReq import ApiReq
 from log.log import MyLogger
 
 

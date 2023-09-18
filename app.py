@@ -40,7 +40,6 @@ class RoboVda:
         self.http_server_t.start()
         coroutines = [self.robot_order.run(), self.mqtt_server.run()]
         EventLoop.event_loop.run_until_complete(asyncio.gather(*coroutines))
-        print("pppp")
 
     def creat_rbk(self):
         """

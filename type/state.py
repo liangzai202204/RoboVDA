@@ -269,7 +269,7 @@ class State(BaseModel):
     operatingMode: OperatingMode = OperatingMode.AUTOMATIC
     agvPosition: AgvPosition
     velocity: Velocity
-    loads: List[Load] = []
+    loads: Optional[List[Load]] = []
     errors: List[Error] = []
     safetyState: SafetyState
     information: List[Information] = []
