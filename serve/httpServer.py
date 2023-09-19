@@ -73,9 +73,10 @@ class HttpServer:
     def _get_pack_task(self):
         pack_task = {
             "task_pack_list": self.robot_order.pack_task.task_pack_list,
+            "pack_nodes_edges_list": self.robot_order.pack_task.pack_nodes_edges_list(),
             "pack_mode": self.robot_order.pack_task.pack_mode,
             "nodes_point": self.robot_order.pack_task.nodes_point,
-            # "map_point":self.robot_order.pack_task.map_point
+            "map_point":self.robot_order.pack_task.map_point if self.robot_order.pack_task.map_point else ""
         }
         return jsonify(pack_task)
 

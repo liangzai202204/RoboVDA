@@ -11,6 +11,7 @@ from log.log import MyLogger
 class OrderStateMachine:
     def __init__(self):
         self.orders = Orders
+        self.current_order = None
         self.task_id_list = []  # 包含所有 nodes，edges，actions 的所有 id
         self.edges_and_actions_id_list = []  # 只包含 edges，actions 的所有 id
         self.ready = True
@@ -19,6 +20,7 @@ class OrderStateMachine:
         self.log = MyLogger()
 
     def init_order(self, order_data: order.Order):
+        self.current_order = order_data
         self.ready = False
         order_id = order_data.orderId
         nodes = dict()
@@ -133,23 +135,17 @@ class OrderStateMachine:
         if not isinstance(order_data,order.Order):
             self.log.error("not isinstance order_data :order.Order")
             return
+
         with self.lock:
             self._del_not_released_items()
             # 添加新的node和edge
             new_edges = order_data.edges
             new_nodes = order_data.nodes
             for node in new_nodes:
-                old_node = self.orders.orders.get_node_by_id(node.nodeId)
-                if old_node:
-                    continue
-                else:
-                    self.orders.orders.add_node(node)
-                    self.task_id_list.append(node.nodeId)
+                if not self.orders.orders.get_node_by_id(node.nodeId):
+                    self.orders.orders.add_node(node,self.task_id_list,self.edges_and_actions_id_list)
             for edge in new_edges:
-                old_edge = self.orders.orders.get_edge_by_id(edge.edgeId)
-                if old_edge:
-                    continue
-                else:
+                if not self.orders.orders.get_edge_by_id(edge.edgeId):
                     self.orders.orders.add_edge(edge)
                     self.task_id_list.append(edge.edgeId)
                     self.edges_and_actions_id_list.append(edge.edgeId)
@@ -166,7 +162,7 @@ class OrderStateMachine:
                 c_edge = self.orders.orders.get_task_by_id(task_id)  # 獲得order中的，edge，然後找出 起點的 nodeId 和終點的 nodeId
                 if not c_edge:
                     self.log.error(f"嘗試更新edge，但是沒有這個edgeId：{task_id}")
-                    return
+                    continue
                 if task_statu["status"] == RobotOrderStatus.Completed:
                     self.orders.orders.set_node_and_edge_status(c_edge, Status.FINISHED)
                 elif task_statu["status"] == RobotOrderStatus.Failed:
@@ -291,15 +287,29 @@ class OrderStatus(pydantic.BaseModel):
     def remove_edge_by_id(self, ids: str):
         self.edges.pop(ids)
 
-    def add_node(self, node: order.Node):
+    def add_node(self, node: order.Node,task_id:list,task_id_all:list):
         self.nodes[node.nodeId] = {
             "node": node,
             "status": Status.INITIALIZING
         }
+        task_id_all.append(node.nodeId)
+        if node.actions:
+            for a in node.actions:
+                task_id.append(a.actionId)
+                self.add_action(a)
 
     def add_edge(self, edge: order.Edge):
         self.edges[edge.edgeId] = {
             "edge": edge,
+            "status": Status.INITIALIZING
+        }
+        if edge.actions:
+            for a in edge.actions:
+                self.add_action(a)
+
+    def add_action(self, action: order.Action):
+        self.edges[action.edgeId] = {
+            "action": action,
             "status": Status.INITIALIZING
         }
 
