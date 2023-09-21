@@ -67,7 +67,7 @@ class Robot:
         try:
             push_data = self.rbk.so_19301.pushData.get()
             new_push_ata = RobotPush(**json.loads(push_data))
-            self.logs.info(f"19301 push raw data ok")
+            self.logs.info(f"[robot][19301] push raw data ok.|{new_push_ata.model_dump().__len__()}")
             if push_data:
                 self.robot_push_msg = new_push_ata
                 # state

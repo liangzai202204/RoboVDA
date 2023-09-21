@@ -51,7 +51,7 @@ class HttpServer:
     def _get_data(self):
         order1 = None
         if self.robot_order.current_order:
-            order1 = json.dumps(self.robot_order.current_order.dict())
+            order1 = self.robot_order.current_order.model_dump()
         # 这里需要根据具体情况编写逻辑，在此给出一个示例
         data = {
             'current_order': order1,

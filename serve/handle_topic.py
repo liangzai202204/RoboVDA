@@ -398,7 +398,9 @@ class RobotOrder:
                 return True
         return False
 
-    def _enqueue(self, q, obj):
+    def _enqueue(self, q:asyncio.Queue, obj):
+        if q.full():
+            q.get()
         asyncio.run_coroutine_threadsafe(q.put(obj), self._event_loop)
 
     def execute_order(self):

@@ -56,7 +56,7 @@ class RobotServer:
             if isinstance(message, state.State):
                 self.logs.info(f"[subscribe]"
                                f"[{self.mqtt_topic_state}]|"
-                               f"{len(message.model_dump())}|{message.model_dump()}")
+                               f"{len(message.model_dump())}|{message.model_dump().__len__()}")
             elif isinstance(message, order.Order):
                 self.logs.info(f"[subscribe][{self.mqtt_topic_order}]|"
                                f"{len(message.model_dump())}|{message.model_dump()}")
