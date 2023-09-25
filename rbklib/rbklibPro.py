@@ -1,3 +1,4 @@
+import asyncio
 import json
 import struct
 import threading
@@ -11,7 +12,6 @@ from serve.topicQueue import TopicQueue
 class Rbk:
 
     def __init__(self, ip: str):
-        print("rbk")
         self.ip = ip
         self.log = MyLogger()
         self.so_19301 = So19301(self.ip)
@@ -61,7 +61,7 @@ class Rbk:
             self.so_19301.so.close()
 
     def request(self, msgType, msg=None, reqId=1):
-        print("request:",msgType)
+        print("request:", msgType)
         if 1000 <= msgType < 2000:
             return self.so_19204.request(msgType, reqId, msg)
         elif msgType < 3000:
@@ -258,11 +258,11 @@ class BaseSo:
 
     def request(self, msgType, reqId=1, msg=None):
         if not self.connected:
-            print("未连接到服务器")
+            self.log.warning("未连接到服务器")
             return None
         try:
             h, body = self._request(self.so, msgType, reqId, msg)
-            print(body)
+            # print(body)
             return body
         except socket.timeout:
             self.connected = False
@@ -317,6 +317,7 @@ class So19206(BaseSo):
     def get_connected(self):
         return self.so.connected
 
+
 class So19207(BaseSo):
     def __init__(self, ip: str = "127.0.0.1", socket_timeout=60, max_reconnect_attempts=5):
         super().__init__(ip, 19207, socket_timeout, max_reconnect_attempts)
@@ -338,19 +339,19 @@ class So19210(BaseSo):
 class So19301(BaseSo):
     def __init__(self, ip: str = "127.0.0.1", socket_timeout=60, max_reconnect_attempts=5, pushDataSize=50):
         super().__init__(ip, 19301, socket_timeout, max_reconnect_attempts)
-        self.thread = threading.Thread(target=self._robot_push)
-        self.thread.setDaemon(True)
+        self.loop = asyncio.new_event_loop()
+        self.thread = threading.Thread(target=_run_loop, args=(self.loop,), daemon=True)
 
     def connect_push(self):
         self.connect()
-        self.request(9300, 1, {"interval": 100})
+        self.loop.call_soon_threadsafe(self.loop.create_task, self.robot_push())
         self.thread.start()
 
     @property
     def get_connected(self):
         return self.so.connected
 
-    def _robot_push(self):
+    async def robot_push(self):
         """
         机器人推送API
         """
@@ -358,7 +359,7 @@ class So19301(BaseSo):
         while True:
             # 接收报文头
             try:
-                self.recv()
+                await self.recv()
 
             except Exception as e:
                 self.log.warning(f"获取机器人数据失败：{e}")
@@ -366,7 +367,7 @@ class So19301(BaseSo):
                 self.reconnect()
                 return None
 
-    def recv(self):
+    async def recv(self):
         headData = self.so.recv(16)
         # 解析报文头
         header = struct.unpack(self.PACK_FMT_STR, headData)
@@ -381,15 +382,13 @@ class So19301(BaseSo):
             if bodyLen < readSize:
                 readSize = bodyLen
         # 检查是否接收到完整的报文体
-        # print(recvData)
         if len(recvData) == header[3]:
             # self.log.warning(f"19301 push raw data:{recvData}")
             if TopicQueue.pushData.full():
-                TopicQueue.pushData.get()
-            TopicQueue.pushData.put(recvData)
+                await TopicQueue.pushData.get()
+            await TopicQueue.pushData.put(recvData)
         else:
             self.log.warning(f"接收到不完整的报文体，继续接收...")
-
 
     def get(self):
         try:
@@ -411,3 +410,8 @@ class So19301(BaseSo):
             self.connected = False
             self.reconnect()
             return None
+
+
+def _run_loop(loop):
+    asyncio.set_event_loop(loop)
+    loop.run_forever()

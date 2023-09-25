@@ -13,12 +13,13 @@ from serve.topicQueue import EventLoop
 class RoboVda:
     config_class = Config
     rbk_lib_class = Rbk
-    RobotServer = MqttServer
+    MqttServer_class = MqttServer
     robot_order_class = HandleTopic
     robot_class = Robot
     http_server_class = HttpServer
 
     def __init__(self):
+
         self.config = self.get_configs()
         self.rbk = self.creat_rbk()
         self.robot = self.creat_robot()
@@ -28,18 +29,29 @@ class RoboVda:
 
         # 线程设置
         self.rbk_connect_t = threading.Thread(target=self.rbk.connect, name="rbk connect")
+
+        # self.loop = asyncio.new_event_loop()
+        # self.robot_run_t = threading.Thread(target=self._run_loop,name="robot run")
         self.robot_run_t = threading.Thread(target=self.robot.run, name="robot run")
         self.http_server_t = threading.Thread(target=self.http_server.start_web, name="http server")
         self.rbk_connect_t.setDaemon(True)
 
     def run(self):
         self.rbk_connect_t.start()
-        self.robot_run_t.start()
+
+        # self.loop.call_soon_threadsafe(self.loop.create_task, self.robot.run())
+        # self.robot_run_t.start()
+
         self.mqtt_server.mqtt_client_s.loop_start()
         self.robot_order.thread_start()
         self.http_server_t.start()
-        coroutines = [self.robot_order.run(), self.mqtt_server.run()]
+        coroutines = [self.robot.run(),self.robot_order.run(), self.mqtt_server.run()]
         EventLoop.event_loop.run_until_complete(asyncio.gather(*coroutines))
+    def _run_loop(self):
+        asyncio.set_event_loop(None)
+        loop_robot = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop_robot)
+        loop_robot.run_forever()
 
     def creat_rbk(self):
         """
@@ -65,7 +77,7 @@ class RoboVda:
                                       robot_type=self.config.config.getint("robot","robot_type"))
 
     def creat_mqtt_server(self):
-        return self.mqtt_server_class(**self.config.config_mqtt())
+        return self.MqttServer_class(**self.config.config_mqtt())
 
     def creat_http_server(self):
         return self.http_server_class(
@@ -74,6 +86,7 @@ class RoboVda:
             robot_order=self.robot_order,
             robot=self.robot
         )
+
 
 
 if __name__ == '__main__':

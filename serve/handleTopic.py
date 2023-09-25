@@ -112,7 +112,7 @@ class HandleTopic:
                         self.order_state_machine.edges_and_actions_id_list))
                 self.order_state_machine.update_state(self.robot.state)
         except Exception as e:
-            print("狀態機 error", e)
+            self.logs.error(f"狀態機 error:{e}")
 
     def handle_connection(self):
         while True:
@@ -135,7 +135,7 @@ class HandleTopic:
             self._enqueue(TopicQueue.p_visualization, self.visualization)
             time.sleep(10)
         except Exception as e:
-            print(f"handle_visualization error:{e}")
+            self.logs.error(f"handle_visualization error:{e}")
             time.sleep(20)
 
     @property
@@ -243,6 +243,7 @@ class HandleTopic:
             f"{TopicQueue.p_visualization.qsize()}|"
             f"{TopicQueue.s_order.qsize()}|"
             f"{TopicQueue.s_instantActions.qsize()}|"
+            f"{TopicQueue.pushData.qsize()}|"
         )
 
         if not self.robot.robot_online or not self.current_order:
@@ -250,7 +251,7 @@ class HandleTopic:
         elif self.current_order is not None:
             self.report_state_current_order()
         else:
-            print("over")
+            self.logs.warning("report over")
 
     def report_robot_not_online(self):
         self.update_state_by_order()
@@ -271,58 +272,57 @@ class HandleTopic:
 
     def _run_order(self, task: order.Order):
         self.logs.info("[order] rec and start")
-        if self.order_state_machine.ready:
-            # 初始化，直接创建订单
-            self.logs.info(f"[order] init,creat order")
-            self.current_order = order.Order.create_order(task)
-            # 狀態機
-            self.order_state_machine.init_order(order.Order.create_order(task))
-            self.execute_order()
-            return
-        # 判断机器人当前的订单Id和新的订单Id是否一致
-        self.logs.info(f"[order] try creat order")
-        if self.current_order.orderId != task.orderId:
-            # 订单不一致，开始创建新订单逻辑
-            if self.order_state_machine.orders.orders.status != Status.FINISHED:
-                self.report_error(err.ErrorOrder.newOrderIdButOrderRunning)
-            else:
-                # 创建新的订单
-                self._try_create_order(task)
-            return
-        # 订单一致，开始订单更新逻辑
-        # orderUpdateId 比较
-        if self.current_order.orderUpdateId <= task.orderUpdateId:
-            if self.current_order.orderUpdateId == task.orderUpdateId:
-                # 订单orderUpdateId已存在，丢弃信息
-                self.logs.info(f"orderUpdateId已存在，丢弃信息")
+        with self.lock_order:
+            if self.order_state_machine.ready:
+                # 初始化，直接创建订单
+                self.logs.info(f"[order] init,creat order")
+                self.current_order = order.Order.create_order(task)
+                # 狀態機
+                self.order_state_machine.init_order(self.current_order)
+                self.execute_order()
                 return
-            if self.order_state_machine.orders.orders.status != Status.FINISHED:
-                """
-                    机器人正在从1到10，在4的时候，order说，可以去115了，这个时候，需要更新订单 4-15
-                """
-                # 更新订单
-                # ------------------------------------------
-                #          重要节点
-                # ------------------------------------------
-                self._try_update_order(task)
-            else:
-                """
-                    机器人正在从1到10，已经在10了，在等order，然后order说，可以去15了，这个时候，需要更新订单 10-15
-                """
-                # 创建新的订单
-                self._try_update_order(task)
-            return
-        # orderUpdateId 错误，上报错误，拒绝订单
-        self.report_error(err.ErrorOrder.orderUpdateIdLowerErr)
+            # 判断机器人当前的订单Id和新的订单Id是否一致
+            self.logs.info(f"[order] try creat order")
+            if self.current_order.orderId != task.orderId:
+                # 订单不一致，开始创建新订单逻辑
+                if self.order_state_machine.orders.orders.status != Status.FINISHED:
+                    self.report_error(err.ErrorOrder.newOrderIdButOrderRunning)
+                else:
+                    # 创建新的订单
+                    self._try_create_order(task)
+                return
+            # 订单一致，开始订单更新逻辑
+            # orderUpdateId 比较
+            if self.current_order.orderUpdateId <= task.orderUpdateId:
+                if self.current_order.orderUpdateId == task.orderUpdateId:
+                    # 订单orderUpdateId已存在，丢弃信息
+                    self.logs.info(f"orderUpdateId已存在，丢弃信息")
+                    return
+                if self.order_state_machine.orders.orders.status != Status.FINISHED:
+                    """
+                        机器人正在从1到10，在4的时候，order说，可以去115了，这个时候，需要更新订单 4-15
+                    """
+                    # 更新订单
+                    # ------------------------------------------
+                    #          重要节点
+                    # ------------------------------------------
+                    self._try_update_order(task)
+                else:
+                    """
+                        机器人正在从1到10，已经在10了，在等order，然后order说，可以去15了，这个时候，需要更新订单 10-15
+                    """
+                    # 创建新的订单
+                    self._try_update_order(task)
+                return
+            # orderUpdateId 错误，上报错误，拒绝订单
+            self.report_error(err.ErrorOrder.orderUpdateIdLowerErr)
 
     def _try_create_order(self, sub_order):
         print("收到新的orderId，并且当前没有任务，尝试创建新的订单。。。")
         self.order = order.Order.create_order(sub_order)
 
-        self.lock_order.acquire()
         self.current_order = self.order
         self.order_state_machine.init_order(self.current_order)
-        self.lock_order.release()
         # self.logs.info(self.order.nodes)
         # self.logs.info(self.order.nodes)
         self.execute_order()
@@ -390,8 +390,6 @@ class HandleTopic:
                     break
                 if old_node[i + 1].released is False:
                     end = old_node[i]
-                    # print(i, end)
-                    # print(i, old_node[i + 1])
                     break
         for i, N_node in enumerate(new_node):
             if N_node.nodeId == end.nodeId and N_node.released == True:

@@ -13,6 +13,7 @@ import time
 from type.pushMsgType import RobotPush
 from type.ApiReq import ApiReq
 from log.log import MyLogger
+from parse_protobuf.Model import Model
 
 
 class Robot:
@@ -22,9 +23,10 @@ class Robot:
         self.task_status: asyncio.Queue[dict] = asyncio.Queue()
         self.ApiReq_queue: asyncio.Queue[ApiReq] = asyncio.Queue()
         self.map_manager = RobotMapManager(rbk)
+        self.model = RobotModel(rbk)
         self.logs = MyLogger()
         self.robot_push_msg = RobotPush
-
+        self.init = False
         # 電池狀態
         self.battery_state = state.BatteryState
         # 機器人位置
@@ -38,16 +40,18 @@ class Robot:
         self.robot_version = "3.4.5"
         self.messages = queue.Queue()
 
-    def run(self):
-        if self.robot_online:
-            self.map_manager.get_all_map()
-            self.lock_robot()
+    async def run(self):
         while True:
             if self.robot_online:
-                self.update()
-            self.logs.info(f'[robot]online status:{self.rbk.online_status}')
+                if self.init:
+                    await self.update()
+                else:
+                    self.map_manager.get_all_map()
+                    self.lock_robot()
 
-            time.sleep(1)
+                    self.model.get_model()
+                    self.init = True
+                self.logs.info(f'[robot]online status:{self.rbk.online_status}')
 
     @property
     def robot_online(self) -> bool:
@@ -60,13 +64,13 @@ class Robot:
         self.lock = False
         return False
 
-    def update(self):
+    async def update(self):
         """
         将机器人的数据，更新到 self.state 中
         :return:
         """
         try:
-            push_data = TopicQueue.pushData.get()
+            push_data = await TopicQueue.pushData.get()
             new_push_ata = RobotPush(**json.loads(push_data))
             self.logs.info(f"[robot][19301] push raw data ok.|{new_push_ata.model_dump().__len__()}")
             if push_data:
@@ -88,7 +92,7 @@ class Robot:
             # 如果队列为空，则跳过本次循环，继续等待下一个数据
             self.logs.error(f"19301 push data is Empty,pass")
         except Exception as e:
-            print("json.loads(push_data)：", e)
+            self.logs.error(f"json.loads(push_data)：{e}")
 
     def update_state(self):
         self.state.headerId += 1
@@ -192,7 +196,6 @@ class Robot:
     def get_task_status(self, edges_id_list):
         res_edges_json = self.rbk.call_service(ApiReq.ROBOT_STATUS_TASK_STATUS_PACKAGE_REQ.value,
                                                {"task_ids": edges_id_list})
-        # print("res_edges_json",res_edges_json)
         res_edges = json.loads(res_edges_json)
         if res_edges:
             task_status = res_edges["task_status_package"]["task_status_list"]
@@ -209,7 +212,7 @@ class Robot:
                 self.logs.error(f"send_order is empty:{task_list}")
                 return
         except Exception as e:
-            print(f"收到訂單3:{e}")
+            self.logs.error(f"收到訂單,发送失败:{e}")
         move_task_list = {
             'move_task_list': task_list
         }
@@ -313,7 +316,7 @@ class RobotMapManager:
         return self.maps.get(map_name).get('md5')
 
     def get_map_path(self, map_name):
-        print(f"path:{self.maps.get(map_name).get('path')}")
+        self.logs.info(f"path:{self.maps.get(map_name).get('path')}")
         return self.maps.get(map_name).get('path')
 
     def reload_map(self, map_dir, name, md5):
@@ -346,15 +349,15 @@ class RobotMapManager:
                     md5_map = c_md5_json["map_info"][0]["md5"]
                     return md5_map
                 else:
-                    print("獲取地圖md5時，返回的地圖名稱不相等")
+                    self.logs.error(f"[map]獲取地圖md5時，返回的地圖名稱不相等")
             else:
-                print(f"獲取地圖md5時,返回異常，{c_md5_json}")
+                self.logs.error(f"[map]獲取地圖md5時,返回異常，{c_md5_json}")
         except KeyError as k:
-            print(f"get_updated_md5{k}")
+            self.logs.error(f"[map]get_updated_md5{k}")
         except socket.timeout as s:
-            print(f"get_updated_md5{s}")
+            self.logs.error(f"[map]get_updated_md5{s}")
         except Exception as e:
-            print(f"get_updated_md5{e}")
+            self.logs.error(f"[map]get_updated_md5{e}")
 
     def switch_map(self, target_map: str) -> bool:
         # map_res = self.rbk.robot_control_load_map_req(target_map)
@@ -384,17 +387,16 @@ class RobotMapManager:
         try:
             map_req = self.rbk.call_service(ApiReq.ROBOT_STATUS_MAP_REQ.value)
             if not map_req:
-                print("req error")
+                self.logs.error("[map]req error")
                 return {}
-            print(map_req)
+            self.logs.info(f"[map]map_req{map_req}")
             map_req_json = json.loads(map_req)
             return map_req_json
         except OSError as o:
-            print("_get_map", o)
+            self.logs.error(f"_get_map:{o}")
             return {}
-
         except Exception as e:
-            print("_get_map c", e)
+            self.logs.error(f"[map]_get_map error:{e}")
         return None
 
     def get_all_map(self):
@@ -407,9 +409,9 @@ class RobotMapManager:
         map_req = self._get_map()
         map_list = map_req.get("maps")
         if not map_list:
-            print("加載失敗")
+            self.logs.error(f"[map]加載失敗")
             return
-        print(map_list)
+        self.logs.info(f"map_list:{map_list}")
         for m in map_list:
             self.load_map(self.map_dir, m)
 
@@ -422,7 +424,6 @@ class RobotMapManager:
             try:
                 with open(maps, "r", encoding="utf-8") as f:
                     map_data = json.load(f)
-                # print(map_data)
                 for node in map_data['advancedPointList']:
                     nodes[node['instanceName']] = node["pos"]
 
@@ -431,7 +432,50 @@ class RobotMapManager:
                 self.map_point_index = index
                 self.logs.info(f"[map]map_index:{index}")
             except Exception as e:
-                print("map_index", e)
+                self.logs.error(f"[map]map_index{e}")
         else:
-            self.logs.error(f" no exists map :{maps}")
+            self.logs.error(f"[map]no exists map :{maps}")
         return index
+
+
+class RobotModel:
+    def __init__(self, rbk):
+        self.model_dir = os.path.join(os.getcwd(), "robotModel")
+        if not os.path.exists(self.model_dir):
+            os.makedirs(self.model_dir)
+        self.model_path =  os.path.join(os.path.join(os.getcwd(), "robotModel"),"robot.model")
+        self.rbk = rbk
+        self.model = None
+        self.log = MyLogger()
+
+    def _get_model(self):
+        try:
+            model_req = self.rbk.call_service(ApiReq.ROBOT_STATUS_MODEL_REQ.value)
+            if not model_req:
+                self.log.error(f"req error")
+                return {}
+            self.log.info(f"model_req len :{len(model_req)}")
+            print(self.model_path)
+            # 将模型文件写入硬盘
+            with open(self.model_path, 'wb') as file:
+                # 可选：写入内容到文件
+                file.write(model_req)
+                self.log.info(f"[robot] load model OK!")
+            # 解析模型文件
+            return json.loads(model_req)
+        except OSError as o:
+            self.log.error(f"_get model:{o}")
+            return {}
+        except Exception as e:
+            self.log.error(f"_get model:{e}")
+        return None
+
+    def get_model(self):
+        self.log.info(f"----------------------get_model----------------------------")
+        model_req = self._get_model()
+
+        self.model = Model(model_req)
+        for m in self.model.device_types:
+            print(m.name)
+
+

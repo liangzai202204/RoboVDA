@@ -20,49 +20,57 @@ class OrderStateMachine:
         self.log = MyLogger()
 
     def init_order(self, order_data: order.Order):
-        self.current_order = order_data
-        self.ready = False
-        order_id = order_data.orderId
-        nodes = dict()
-        edges = dict()
-        actions = dict()
-        for node in order_data.nodes:
-            self.task_id_list.append(node.nodeId)
-            nodes[node.nodeId] = {
-                "node": node,
-                "status": Status.FINISHED if node.sequenceId == 0 else Status.INITIALIZING
-            }
-            if node.actions:
-                for action in node.actions:
-                    self.task_id_list.append(action.actionId)
-                    self.edges_and_actions_id_list.append(action.actionId)
-                    actions[action.actionId] = {
-                        "action": action,
-                        "status": Status.INITIALIZING
-                    }
-        for edge in order_data.edges:
-            self.task_id_list.append(edge.edgeId)
-            self.edges_and_actions_id_list.append(edge.edgeId)
-            edges[edge.edgeId] = {
-                "edge": edge,
-                "status": Status.INITIALIZING
-            }
-            if edge.actions:
-                for action in edge.actions:
-                    self.task_id_list.append(action.actionId)
-                    self.edges_and_actions_id_list.append(action.actionId)
-                    actions[action.actionId] = {
-                        "action": action,
-                        "status": Status.INITIALIZING
-                    }
-        self.orders.orders = OrderStatus(**{
-            "orderId": order_id,
-            "status": Status.INITIALIZING,
-            "nodes": nodes,
-            "edges": edges,
-            "actions": actions
-        })
-        self.init = True
+        with self.lock:
+            self.current_order = order_data
+            self.ready = False
+            order_id = order_data.orderId
+            nodes = dict()
+            edges = dict()
+            actions = dict()
+
+            for node in order_data.nodes:
+                self.task_id_list.append(node.nodeId)
+                nodes[node.nodeId] = {
+                    "node": node,
+                    "status": Status.FINISHED if node.sequenceId == 0 else Status.INITIALIZING
+                }
+                if node.actions:
+                    for action in node.actions:
+                        self.task_id_list.append(action.actionId)
+                        self.edges_and_actions_id_list.append(action.actionId)
+                        actions[action.actionId] = {
+                            "action": action,
+                            "status": Status.INITIALIZING
+                        }
+            for edge in order_data.edges:
+                self.task_id_list.append(edge.edgeId)
+                self.edges_and_actions_id_list.append(edge.edgeId)
+                edges[edge.edgeId] = {
+                    "edge": edge,
+                    "status": Status.INITIALIZING
+                }
+                if edge.actions:
+                    for action in edge.actions:
+                        self.task_id_list.append(action.actionId)
+                        self.edges_and_actions_id_list.append(action.actionId)
+                        actions[action.actionId] = {
+                            "action": action,
+                            "status": Status.INITIALIZING
+                        }
+            try:
+                self.orders.orders = OrderStatus(**{
+                    "orderId": order_id,
+                    "status": Status.INITIALIZING,
+                    "nodes": nodes,
+                    "edges": edges,
+                    "actions": actions,
+                    "lastNode":{}
+                })
+            except Exception as e:
+                print("An error occurred:", str(e))
+
+            self.init = True
+            self.log.warning(f"OrderStateMachine init ok!!!")
 
     def update_state(self, robot_state: state.State) -> state.State:
         """
@@ -74,7 +82,9 @@ class OrderStateMachine:
             self.log.error("robot_state:False")
             return robot_state
         if not self.init:
+            print("not self.init")
             return robot_state
+        print("init")
         with self.lock:
             nodes_status = self.orders.orders.nodes
             actions_status = self.orders.orders.actions
@@ -90,7 +100,7 @@ class OrderStateMachine:
 
             # 在 topic state 中更在 lastNode 字段
             robot_state.lastNodeId = self.orders.orders.lastNode.get("nodeId","")
-            robot_state.lastNodeSequenceId = self.orders.orders.lastNode.get("NodeSequenceId",0)
+            robot_state.lastNodeSequenceId = self.orders.orders.lastNode.get("sequenceId",0)
 
             if node_f_n == 0 and edge_f_n == 0 and self.orders.orders.action_empty():
                 self.log.error("狀態機沒有任務")
@@ -142,18 +152,21 @@ class OrderStateMachine:
             return
 
         with self.lock:
-            self._del_not_released_items()
-            # 添加新的node和edge
-            new_edges = order_data.edges
-            new_nodes = order_data.nodes
-            for node in new_nodes:
-                if not self.orders.orders.get_node_by_id(node.nodeId):
-                    self.orders.orders.add_node(node,self.task_id_list,self.edges_and_actions_id_list)
-            for edge in new_edges:
-                if not self.orders.orders.get_edge_by_id(edge.edgeId):
-                    self.orders.orders.add_edge(edge)
-                    self.task_id_list.append(edge.edgeId)
-                    self.edges_and_actions_id_list.append(edge.edgeId)
+            try:
+                self._del_not_released_items()
+                # 添加新的node和edge
+                new_edges = order_data.edges
+                new_nodes = order_data.nodes
+                for node in new_nodes:
+                    if not self.orders.orders.get_node_by_id(node.nodeId):
+                        self.orders.orders.add_node(node,self.task_id_list,self.edges_and_actions_id_list)
+                for edge in new_edges:
+                    if not self.orders.orders.get_edge_by_id(edge.edgeId):
+                        self.orders.orders.add_edge(edge)
+                        self.task_id_list.append(edge.edgeId)
+                        self.edges_and_actions_id_list.append(edge.edgeId)
+            except Exception as e:
+                print(f"update_order:{e}")
 
     def update_order_status(self, task_pack_status: dict):
         if not self.init:
@@ -225,7 +238,8 @@ class OrderStateMachine:
             "status": Status.INITIALIZING,
             "nodes": {},
             "edges": {},
-            "actions": {}
+            "actions": {},
+            "lastNode":{}
         })
         self.task_id_list = []
         self.edges_and_actions_id_list = []
@@ -280,7 +294,7 @@ class OrderStatus(pydantic.BaseModel):
     def set_node_and_edge_status(self, task: Union[order.Edge,order.Action], status: Status):
         if isinstance(task,order.Edge):
             self.set_node_status_by_id(task.startNodeId, status)
-            self.set_last_node(task.startNodeId,)
+            self.set_last_node(task.startNodeId)
             self.set_node_status_by_id(task.endNodeId, status)
             self.set_edge_status_by_id(task.edgeId, status)
         elif isinstance(task,order.Action):
@@ -327,7 +341,7 @@ class OrderStatus(pydantic.BaseModel):
                 self.add_action(a)
 
     def add_action(self, action: order.Action):
-        self.edges[action.edgeId] = {
+        self.actions[action.actionId] = {
             "action": action,
             "status": Status.INITIALIZING
         }
