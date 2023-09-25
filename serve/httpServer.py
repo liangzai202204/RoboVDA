@@ -1,13 +1,13 @@
 import json
 from serve.robot import Robot
-from serve.handle_topic import RobotOrder
+from serve.handleTopic import HandleTopic
 from flask import Flask, jsonify, render_template
 
 from log.log import MyLogger
 
 
 class HttpServer:
-    def __init__(self, web_host, web_port, robot_order: RobotOrder, robot: Robot):
+    def __init__(self, web_host, web_port, robot_order: HandleTopic, robot: Robot):
         self.robot = robot
         self.robot_order = robot_order
         self.log = MyLogger()

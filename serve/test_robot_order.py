@@ -4,7 +4,7 @@ import uuid
 import json
 import uuid
 import paho.mqtt.client as mqtt
-from serve.handle_topic import RobotOrder
+from serve.handleTopic import HandleTopic
 from type.RobotOrderStatus import RobotOrderStatus
 from type import order
 from log.log import MyLogger
@@ -90,7 +90,7 @@ class MyTestCase(unittest.TestCase):
 
 class RobotOrderT(unittest.TestCase):
     def test_order(self):
-        r = RobotOrder()
+        r = HandleTopic()
         asyncio.gather(r.report())
         self.assertEqual(True, False)  # add assertion here
 
@@ -146,7 +146,7 @@ class RobotOrderT(unittest.TestCase):
 
     def test_packag_tasksV1(self):
         l = MyLogger()
-        r = RobotOrder(logs=l)
+        r = HandleTopic(logs=l)
         # 空 node
         node0 = {}
         # r.packag_tasks([order.Node(**node0)],[])
@@ -271,7 +271,7 @@ class RobotOrderT(unittest.TestCase):
             json_content = json.load(json_file)
         o = order.Order(**json_content)
         l = MyLogger()
-        r = RobotOrder(logs=l)
+        r = HandleTopic(logs=l)
         l = len(o.nodes) + len(o.edges)
         n = o.nodes
         e = o.edges
@@ -294,7 +294,7 @@ class RobotOrderT(unittest.TestCase):
             print(json_content)
         o = order.Order(**json_content)
         l = MyLogger()
-        r = RobotOrder(logs=l)
+        r = HandleTopic(logs=l)
 
         task = r.pack_tasks(o.nodes, o.edges)
         print("node id:", r.nodes_id_list)

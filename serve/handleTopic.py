@@ -29,7 +29,7 @@ def lock_decorator(func):
     return wrapper
 
 
-class RobotOrder:
+class HandleTopic:
 
     def __init__(self, robot: Robot,mode, loop=None,state_report_frequency=1,robot_type=1):
         self.state_report_frequency = state_report_frequency

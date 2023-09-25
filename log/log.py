@@ -25,16 +25,14 @@ class MyLogger:
         # 获取已有的日志文件名列表
         existing_logs = [filename for filename in os.listdir(log_dir) if filename.endswith(".log")]
         existing_logs.sort(reverse=True)
-        print(existing_logs)
 
         # 计算当前时间段
-        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S.%f")
 
         # 获取当前日志文件名的尾部数字
         log_number = -1
         if existing_logs:
             last_log = existing_logs[0]
-            print(last_log)
             log_number = int(last_log.split("_")[-1].split(".")[0])
 
         # 创建新的日志文件名
@@ -60,7 +58,7 @@ class MyLogger:
 
         # 设置输出格式
         formatter = ColoredFormatter(
-            "[%(asctime)s] %(log_color)s[%(name)s] %(levelname)s%(reset)s %(message)s",
+            "[%(asctime)s.%(msecs)03d] %(log_color)s[%(name)s] %(levelname)s%(reset)s %(message)s",
             datefmt='%Y-%m-%d %H:%M:%S',
             log_colors={
                 'DEBUG': 'blue',

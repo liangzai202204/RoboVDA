@@ -1,5 +1,5 @@
 import asyncio
-from type import state, order, connection, visualization, instantActions
+from type import state, order, connection, visualization, instantActions,pushMsgType
 
 
 class TopicQueue:
@@ -15,6 +15,8 @@ class TopicQueue:
     s_state: asyncio.Queue[state.State] = asyncio.Queue(3)
     s_order: asyncio.Queue[order.Order] = asyncio.Queue(3)
     s_instantActions: asyncio.Queue[instantActions.InstantActions] = asyncio.Queue(3)
+
+    pushData = asyncio.Queue(3)
 
 
 class EventLoop:

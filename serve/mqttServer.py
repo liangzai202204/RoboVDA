@@ -12,7 +12,7 @@ from type import state, order, instantActions, connection, visualization
 RobotMessage = Union[state.State, str, bytes, order.Order, instantActions.InstantActions, connection.Connection]
 
 
-class RobotServer:
+class MqttServer:
     def __init__(self,
                  mqtt_host="127.0.0.1",
                  mqtt_port=1883,

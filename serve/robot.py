@@ -6,6 +6,7 @@ import socket
 import datetime
 
 import rbklib.rbklibPro
+from serve.topicQueue import TopicQueue
 from type import state
 from typing import List
 import time
@@ -65,7 +66,7 @@ class Robot:
         :return:
         """
         try:
-            push_data = self.rbk.so_19301.pushData.get()
+            push_data = TopicQueue.pushData.get()
             new_push_ata = RobotPush(**json.loads(push_data))
             self.logs.info(f"[robot][19301] push raw data ok.|{new_push_ata.model_dump().__len__()}")
             if push_data:

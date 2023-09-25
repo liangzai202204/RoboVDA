@@ -5,6 +5,7 @@ from queue import Queue
 import socket
 import time
 from log.log import MyLogger
+from serve.topicQueue import TopicQueue
 
 
 class Rbk:
@@ -337,7 +338,6 @@ class So19210(BaseSo):
 class So19301(BaseSo):
     def __init__(self, ip: str = "127.0.0.1", socket_timeout=60, max_reconnect_attempts=5, pushDataSize=50):
         super().__init__(ip, 19301, socket_timeout, max_reconnect_attempts)
-        self.pushData = Queue(pushDataSize)
         self.thread = threading.Thread(target=self._robot_push)
         self.thread.setDaemon(True)
 
@@ -384,9 +384,9 @@ class So19301(BaseSo):
         # print(recvData)
         if len(recvData) == header[3]:
             # self.log.warning(f"19301 push raw data:{recvData}")
-            if self.pushData.full():
-                self.pushData.get()
-            self.pushData.put(recvData)
+            if TopicQueue.pushData.full():
+                TopicQueue.pushData.get()
+            TopicQueue.pushData.put(recvData)
         else:
             self.log.warning(f"接收到不完整的报文体，继续接收...")
 

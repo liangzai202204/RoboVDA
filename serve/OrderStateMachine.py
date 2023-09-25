@@ -87,6 +87,11 @@ class OrderStateMachine:
             node_f_n = len(nodes_status)
             edge_f_n = len(edges_status)
             action_f_n = len(actions_status)
+
+            # 在 topic state 中更在 lastNode 字段
+            robot_state.lastNodeId = self.orders.orders.lastNode.get("nodeId","")
+            robot_state.lastNodeSequenceId = self.orders.orders.lastNode.get("NodeSequenceId",0)
+
             if node_f_n == 0 and edge_f_n == 0 and self.orders.orders.action_empty():
                 self.log.error("狀態機沒有任務")
                 return robot_state
@@ -180,7 +185,7 @@ class OrderStateMachine:
                 elif task_statu["status"] == RobotOrderStatus.Waiting:
                     self.orders.orders.set_node_and_edge_status(c_edge, Status.WAITING)
                 else:
-                    s =task_statu["status"]
+                    s = task_statu["status"]
                     self.log.error(f"未知狀態：{s}")
 
     def _del_not_released_items(self):
@@ -234,6 +239,7 @@ class OrderStatus(pydantic.BaseModel):
     nodes: dict[str, dict[str, Union[order.Node, Status]]]
     edges: dict[str, dict[str, Union[order.Edge, Status]]]
     actions: dict[str, dict[str, Union[order.Action, Status]]]
+    lastNode:dict[str,Union[str, int,float]]
 
     def get_task_by_id(self,ids: str):
         # get edge or action
@@ -258,6 +264,7 @@ class OrderStatus(pydantic.BaseModel):
         n = self.nodes.get(ids, {})
         n["status"] = status
 
+
     def set_edge_status_by_id(self, ids: str, status: Status):
         e = self.edges.get(ids, {})
         e["status"] = status
@@ -273,6 +280,7 @@ class OrderStatus(pydantic.BaseModel):
     def set_node_and_edge_status(self, task: Union[order.Edge,order.Action], status: Status):
         if isinstance(task,order.Edge):
             self.set_node_status_by_id(task.startNodeId, status)
+            self.set_last_node(task.startNodeId,)
             self.set_node_status_by_id(task.endNodeId, status)
             self.set_edge_status_by_id(task.edgeId, status)
         elif isinstance(task,order.Action):
@@ -280,6 +288,17 @@ class OrderStatus(pydantic.BaseModel):
         else:
             print(f"error when set status,{type(task)}")
 
+    def set_last_node(self, ids:str):
+        try:
+            n = self.nodes.get(ids, {})
+            task = n["node"]
+            if isinstance(task,order.Node):
+                self.lastNode["nodeId"] = task.nodeId
+                self.lastNode["sequenceId"] = task.sequenceId
+        except Exception as e:
+            self.lastNode["nodeId"] = ""
+            self.lastNode["sequenceId"] = 0
+            MyLogger().error(f"set_last_node error:{e}")
 
     def remove_node_by_id(self, ids: str):
         self.nodes.pop(ids)

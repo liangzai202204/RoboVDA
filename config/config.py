@@ -59,7 +59,7 @@ class Config:
             'mqtt_topic_connection': self.config.get('topic', 'connection'),
             "mqtt_topic_instantActions": self.config.get('topic', 'instantActions'),
             "mqtt_topic_factsheet": self.config.get('topic', 'factsheet'),
-            "state_report_frequency": self.config.getint('network', 'state_report_frequency')
+            "state_report_frequency": self.config.getfloat('network', 'state_report_frequency')
         }
         return self.args
 

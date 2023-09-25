@@ -2,9 +2,9 @@ import asyncio
 import threading
 
 from rbklib.rbklibPro import Rbk
-from serve.handle_topic import RobotOrder
+from serve.handleTopic import HandleTopic
 from serve.robot import Robot
-from serve.mqtt_server import RobotServer
+from serve.mqttServer import MqttServer
 from serve.httpServer import HttpServer
 from config.config import Config
 from serve.topicQueue import EventLoop
@@ -13,8 +13,8 @@ from serve.topicQueue import EventLoop
 class RoboVda:
     config_class = Config
     rbk_lib_class = Rbk
-    mqtt_server_class = RobotServer
-    robot_order_class = RobotOrder
+    RobotServer = MqttServer
+    robot_order_class = HandleTopic
     robot_class = Robot
     http_server_class = HttpServer
 
@@ -61,7 +61,7 @@ class RoboVda:
     def creat_robot_order(self):
         return self.robot_order_class(self.robot,
                                       mode=self.config.config.getint("robot","mode"),
-                                      state_report_frequency=self.config.config.getint("network","state_report_frequency"),
+                                      state_report_frequency=self.config.config.getfloat("network","state_report_frequency"),
                                       robot_type=self.config.config.getint("robot","robot_type"))
 
     def creat_mqtt_server(self):
