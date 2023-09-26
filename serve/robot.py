@@ -259,18 +259,20 @@ class Robot:
             else:
                 self.lock_robot()
 
-    def instant_cancel_task(self):
+    def instant_cancel_task(self) -> bool:
         send = True
         while send:
             try:
                 if self.robot_online and self.lock:
                     self.rbk.call_service(ApiReq.ROBOT_TASK_CLEARTARGETLIST_REQ.value)
                     send = False
+
                 else:
                     self.lock_robot()
             except Exception as e:
                 self.logs.error(f"instant_cancel_task error:{e}")
-                send = False
+                return False
+        return True
 
     def instant_init_position(self, task):
         free_go = task
@@ -443,7 +445,7 @@ class RobotModel:
         self.model_dir = os.path.join(os.getcwd(), "robotModel")
         if not os.path.exists(self.model_dir):
             os.makedirs(self.model_dir)
-        self.model_path =  os.path.join(os.path.join(os.getcwd(), "robotModel"),"robot.model")
+        self.model_path = os.path.join(os.path.join(os.getcwd(), "robotModel"), "robot.model")
         self.rbk = rbk
         self.model = None
         self.log = MyLogger()
@@ -477,5 +479,3 @@ class RobotModel:
         self.model = Model(model_req)
         for m in self.model.device_types:
             print(m.name)
-
-

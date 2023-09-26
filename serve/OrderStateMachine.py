@@ -1,5 +1,5 @@
 import threading
-from typing import Union
+from typing import Union, List
 
 import pydantic
 from type.RobotOrderStatus import RobotOrderStatus
@@ -18,9 +18,13 @@ class OrderStateMachine:
         self.init = False
         self.lock = threading.Lock()
         self.log = MyLogger()
+        self.cancel_order = None
 
     def init_order(self, order_data: order.Order):
         with self.lock:
+            # 清楚上次 cancelOrder 残留的信息
+            if self.cancel_order:
+                self.cancel_order = None
             self.current_order = order_data
             self.ready = False
             order_id = order_data.orderId
@@ -78,6 +82,7 @@ class OrderStateMachine:
         :param robot_state: 這是包含事實是的機器人的信息的 state
         :return: state
         """
+
         if not isinstance(robot_state,state.State):
             self.log.error("robot_state:False")
             return robot_state
@@ -90,6 +95,11 @@ class OrderStateMachine:
             actions_status = self.orders.orders.actions
             edges_status = self.orders.orders.edges
             # 每次更新state。都將state的内容清空，然後遍歷添加 state
+            if len(robot_state.nodeStates) == 0:
+                robot_state.newBaseRequest = True
+            else:
+                print(robot_state.nodeStates)
+                robot_state.newBaseRequest = False
             robot_state.nodeStates.clear()
             robot_state.edgeStates.clear()
             robot_state.actionStates.clear()
@@ -101,6 +111,8 @@ class OrderStateMachine:
             # 在 topic state 中更在 lastNode 字段
             robot_state.lastNodeId = self.orders.orders.lastNode.get("nodeId","")
             robot_state.lastNodeSequenceId = self.orders.orders.lastNode.get("sequenceId",0)
+            if self.cancel_order:
+                robot_state.actionStates.append(self.cancel_order)
 
             if node_f_n == 0 and edge_f_n == 0 and self.orders.orders.action_empty():
                 self.log.error("狀態機沒有任務")
@@ -153,6 +165,9 @@ class OrderStateMachine:
 
         with self.lock:
             try:
+                # 清楚上次 cancelOrder 残留的信息
+                if self.cancel_order:
+                    self.cancel_order = None
                 self._del_not_released_items()
                 # 添加新的node和edge
                 new_edges = order_data.edges
@@ -200,6 +215,35 @@ class OrderStateMachine:
                 else:
                     s = task_statu["status"]
                     self.log.error(f"未知狀態：{s}")
+
+    def set_cancel_order_instant_action(self,cancel_order_action:order.Action,status:Status):
+        """对应 topic instantAction：cancelOrder
+        应为 cancelOrder 含有actionID，并且 action 的状态要加入到 topic：state 中，和状态机的逻辑不符（订单状态机需要任务id更新state）
+        所以，会在状态机单独存 cancelOrder的详细信息，在 update_order_status 时判断是否有 cancelOrder，如有则加入到 state中，
+        同时，在调用此函数时，已经下发取消任务给机器人，所以 cancelOrder 的状态是 FINISHED，并且一直保持不变。在新订单来临时，
+        清除 cancelOrder
+        的内容。
+        另外，还要将状态机的 nodeState 和 edgeState delete，将 actionState 的状态都改为 failed
+        """
+        with self.lock:
+            a = cancel_order_action
+            self.cancel_order = state.ActionState(**{
+                    "actionDescription": a.actionDescription,
+                    "actionId": a.actionId,
+                    "actionStatus": status,
+                    "actionType": a.actionType,
+                    "resultDescription": ""
+                })
+            # nodeState 和 edgeState delete
+            self.orders.orders.nodes = {}
+            self.orders.orders.edges = {}
+            self.task_id_list.clear()
+            self.edges_and_actions_id_list.clear()
+            a_s = self.orders.orders.actions
+            for ids,action_s in a_s.items():
+                action_s["status"] = Status.FAILED
+
+
 
     def _del_not_released_items(self):
         if not self.init:
@@ -349,7 +393,7 @@ class OrderStatus(pydantic.BaseModel):
     def action_empty(self) -> bool:
         for ids,a in self.actions.items():
             a_s = a.get("status",None)
-            if a_s != Status.FINISHED:
+            if a_s != Status.FINISHED or a_s != Status.FAILED:
                 return False
         return True
 

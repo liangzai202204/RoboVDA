@@ -102,7 +102,7 @@ class HandleTopic:
             state_sub = await TopicQueue.chanel_state.get()
             self._enqueue(TopicQueue.p_state, state_sub)
 
-    def update_state_by_order(self):
+    def update_state_by_order_state_machine(self):
         if not self.robot.robot_online:
             return
         try:
@@ -110,7 +110,7 @@ class HandleTopic:
                 self.order_state_machine.update_order_status(
                     self.robot.get_task_status(
                         self.order_state_machine.edges_and_actions_id_list))
-                self.order_state_machine.update_state(self.robot.state)
+            self.order_state_machine.update_state(self.robot.state)
         except Exception as e:
             self.logs.error(f"狀態機 error:{e}")
 
@@ -176,7 +176,7 @@ class HandleTopic:
                 ActionPack.logReport(action)
             elif action_type == "cancelOrder":
                 print("cancelOrder 收到指令")
-                self.instant_cancel_task()
+                self.instant_cancel_task(action)
             elif action_type == "factsheetRequest":
                 # todo
                 ActionPack.factsheetRequest(action)
@@ -190,9 +190,14 @@ class HandleTopic:
     def instant_start_pause(self):
         self.robot.instant_start_pause()
 
-    def instant_cancel_task(self):
-        self.robot.instant_cancel_task()
-        self._cls()
+    def instant_cancel_task(self,action:order.Action):
+        self.order = None
+        self.current_order = None
+        if self.robot.instant_cancel_task():
+            self.order_state_machine.set_cancel_order_instant_action(action,Status.FINISHED)
+        else:
+            self.order_state_machine.set_cancel_order_instant_action(action, Status.FAILED)
+
 
     def instant_initPosition(self, task):
         self.robot.instant_init_position(task)
@@ -202,7 +207,6 @@ class HandleTopic:
         self.current_order = None
         self.robot.state.nodeStates = []
         self.robot.state.edgeStates = []
-        self.robot.state.actionStates = []
         # 清除狀態機狀態
         self.order_state_machine.clear()
 
@@ -228,7 +232,7 @@ class HandleTopic:
                 self.logs.error(f"[state]report state error:{e}")
 
     def report_state_current_order(self):
-        self.update_state_by_order()
+        self.update_state_by_order_state_machine()
         self.robot.state.orderId = self.current_order.orderId
         self.robot.state.orderUpdateId = self.current_order.orderUpdateId
         self._enqueue(TopicQueue.chanel_state, self.robot.state)
@@ -254,7 +258,7 @@ class HandleTopic:
             self.logs.warning("report over")
 
     def report_robot_not_online(self):
-        self.update_state_by_order()
+        self.update_state_by_order_state_machine()
         self._enqueue(TopicQueue.chanel_state, self.robot.state)
 
     def _report_order_error(self, sub_order):
@@ -263,7 +267,7 @@ class HandleTopic:
         # todo
 
     def report_error(self, typ: err.ErrorOrder):
-        self._cls()
+        # TODO 上报错误逻辑
         self.logs.error(f"error type : {typ}")
         if typ == err.ErrorOrder.newOrderIdButOrderRunning:
             pass

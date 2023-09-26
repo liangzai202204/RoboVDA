@@ -6,8 +6,8 @@ from typing import Union
 import pydantic
 from paho.mqtt import client as mqtt_client
 from log.log import MyLogger
-from serve.topicQueue import TopicQueue,EventLoop
-from type import state, order, instantActions, connection, visualization
+from serve.topicQueue import TopicQueue, EventLoop
+from type import state, order, instantActions, connection, visualization, factsheet
 
 RobotMessage = Union[state.State, str, bytes, order.Order, instantActions.InstantActions, connection.Connection]
 
@@ -34,7 +34,7 @@ class MqttServer:
         self.mqtt_topic_instantActions = mqtt_topic_instantActions
         self.mqtt_topic_factsheet = mqtt_topic_factsheet
         # connect to MQTT
-        print("-----",mqtt_host, mqtt_port, mqtt_transport)
+        print("-----", mqtt_host, mqtt_port, mqtt_transport)
         self.mqtt_client_s = self._connect_to_mqtt(mqtt_host, mqtt_port, mqtt_transport)
         self._mqtt_messages: asyncio.Queue[RobotMessage] = asyncio.Queue()
 
@@ -171,8 +171,11 @@ class MqttServer:
                 self.logs.info(f"topic {self.mqtt_topic_connection} rec")
                 self._enqueue(connection.Connection(**json.loads(msg.payload)))
             elif msg.topic == self.mqtt_topic_visualization:
-                self.logs.info(f"topic {self.mqtt_topic_connection} rec")
+                self.logs.info(f"topic {self.mqtt_topic_visualization} rec")
                 self._enqueue(visualization.Visualization(**json.loads(msg.payload)))
+            elif msg.topic == self.mqtt_topic_factsheet:
+                self.logs.info(f"topic {self.mqtt_topic_factsheet} rec")
+                self._enqueue(factsheet.Factsheet(**json.loads(msg.payload)))
             else:
                 self.logs.info(f"未知消息{msg.payload}")
         except pydantic.error_wrappers.ValidationError as e:
@@ -189,11 +192,11 @@ class MqttServer:
 
     def _mqtt_handle_order(self, sub_order: order.Order):
         asyncio.run_coroutine_threadsafe(TopicQueue.s_order.put(sub_order), EventLoop.event_loop)
-        self.logs.info(f"MQTT 订单队列大小：{TopicQueue.s_order.qsize()}")
+        self.logs.info(f"MQTT s_order 订单队列大小：{TopicQueue.s_order.qsize()}")
 
     def _mqtt_handle_instantActions(self, instant: instantActions.InstantActions):
-        TopicQueue.s_instantActions.put(instant)
-        self.logs.info(f"MQTT 订单队列大小：{TopicQueue.s_instantActions.qsize()}")
+        asyncio.run_coroutine_threadsafe(TopicQueue.s_instantActions.put(instant), EventLoop.event_loop)
+        self.logs.info(f"MQTT s_instantActions 订单队列大小：{TopicQueue.s_instantActions.qsize()}")
 
     def _mqtt_handle_Connection(self, message):
         self.logs.info(f"_mqtt_handle_Connection ,message len:{message.model_dump().__len__()} ")
@@ -201,3 +204,7 @@ class MqttServer:
     def _mqtt_handle_visualization(self, message):
         self.logs.info(f"[subscribe][{self.mqtt_topic_visualization}]|"
                        f"{len(message.model_dump())}|")
+
+    def _mqtt_handle_fact_sheet(self, factSheet: factsheet.Factsheet):
+        asyncio.run_coroutine_threadsafe(TopicQueue.s_factSheet.put(factSheet), EventLoop.event_loop)
+        self.logs.info(f"MQTT s_factSheet 订单队列大小：{TopicQueue.s_factSheet.qsize()}")

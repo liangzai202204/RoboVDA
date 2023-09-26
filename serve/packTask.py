@@ -9,7 +9,7 @@ from log.log import MyLogger
 
 
 class PackTask:
-    def __init__(self, pack_mode:PackMode, map_point=None,robot_type=1):
+    def __init__(self, pack_mode: PackMode, map_point=None, robot_type=1):
         self.nodes_point = None
         self.map_point = map_point
         self.pack_mode = pack_mode
@@ -23,7 +23,7 @@ class PackTask:
         self.log = MyLogger()
         self.robot_type = robot_type
 
-    def pack(self, new_order: order.Order,map_point):
+    def pack(self, new_order: order.Order, map_point):
         self.clear_pack()
         self.map_point = map_point
         if not self.map_point:
@@ -39,7 +39,7 @@ class PackTask:
             return err.ErrorOrder.nodeAndEdgeNumErr
 
         self.nodes.sort(key=lambda x: x.sequenceId)
-        self.nodes.sort(key=lambda y: y.sequenceId)
+        self.edges.sort(key=lambda y: y.sequenceId)
         # 将 nodes 和 edge 打包入列表中，结构为 [edge,node,edge,node,...,edge,node]
         l_err = self.pack_nodes_edges_list()
         if isinstance(l_err, err.ErrorOrder):
@@ -93,6 +93,9 @@ class PackTask:
 
     def pack_binTask(self):
         self.load_map_point_in_order()
+        if len(self.nodes) == 1:
+            self.pack_node(self.nodes[0])
+            return
         for edge, node in zip(self.nodes_edges_list[::2], self.nodes_edges_list[1::2]):
             node: order.Node
             edge: order.Edge
@@ -121,11 +124,26 @@ class PackTask:
             self.log.error(f"load_map_point_in_order:{e}")
             self.error = err.ErrorOrder.orderNodeGetMapPointErr
 
-    def pack_node(self, node:order.Node):
+    def pack_node(self, node: order.Node, node_single: bool = False):
+        # 只有一个节点 node
+        if node_single:
+            point = self.nodes_point.get(node.nodeId)
+            if not point:
+                self.error = err.ErrorPckTask.mapNotNodePosition
+                return
+            point_task = {
+                "task_id": node.nodeId,
+                "id": point,
+                "source_id": point,
+                "operation": "Wait",
+                "percentage": 1.0,
+                "angle": node.nodePosition.theta
+            }
+            self.task_pack_list.append(point_task)
         if node.actions:
             self.pack_actions(node)
 
-    def pack_edge(self, edge:order.Edge, node:order.Node):
+    def pack_edge(self, edge: order.Edge, node: order.Node):
         edge_start_point = self.nodes_point.get(edge.startNodeId)
         edge_end_point = self.nodes_point.get(edge.endNodeId)
         if not edge_start_point or not edge_end_point:
@@ -139,13 +157,12 @@ class PackTask:
                 "operation": "Wait",
                 "percentage": 1.0
             }
-
             if (not node.nodePosition.theta or node.nodePosition.theta == 0) and edge.actions is None:
                 edge_task["reach_angle"] = 3.141592653589793
             edge_task["angle"] = node.nodePosition.theta
 
             if edge.actions:
-                self.pack_actions(edge,edge_task)
+                self.pack_actions(edge, edge_task)
 
             if edge.released:
                 self.task_pack_list.append(edge_task)
@@ -153,7 +170,7 @@ class PackTask:
             self.log.error(f"maps has no point:{edge.startNodeId},{edge.edgeId}")
             self.error = err.ErrorPckTask.mapNotNodePosition
 
-    def pack_actions(self, NE: Union[order.Node, order.Edge],edge_task=None):
+    def pack_actions(self, NE: Union[order.Node, order.Edge], edge_task=None):
         actions = NE.actions
         for action in actions:
             action_task = ActionPack.pack(action, self.pack_mode)
@@ -161,10 +178,10 @@ class PackTask:
                 self.log.warning(f"action_task error:, {action_task}")
                 self.error = err.ErrorOrder.actionPackEmpty
                 return
-            if isinstance(NE,order.Node):
+            if isinstance(NE, order.Node):
                 if NE.released:
                     self.task_pack_list.append(action_task)
-            if isinstance(NE,order.Edge):
+            if isinstance(NE, order.Edge):
                 if edge_task:
                     edge_task["script_name"] = action_task["script_name"]
                     edge_task["script_args"] = action_task["script_args"]
