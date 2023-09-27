@@ -89,7 +89,6 @@ class OrderStateMachine:
         if not self.init:
             print("not self.init")
             return robot_state
-        print("init")
         with self.lock:
             nodes_status = self.orders.orders.nodes
             actions_status = self.orders.orders.actions
@@ -226,22 +225,23 @@ class OrderStateMachine:
         另外，还要将状态机的 nodeState 和 edgeState delete，将 actionState 的状态都改为 failed
         """
         with self.lock:
-            a = cancel_order_action
-            self.cancel_order = state.ActionState(**{
-                    "actionDescription": a.actionDescription,
-                    "actionId": a.actionId,
-                    "actionStatus": status,
-                    "actionType": a.actionType,
-                    "resultDescription": ""
-                })
-            # nodeState 和 edgeState delete
-            self.orders.orders.nodes = {}
-            self.orders.orders.edges = {}
-            self.task_id_list.clear()
-            self.edges_and_actions_id_list.clear()
-            a_s = self.orders.orders.actions
-            for ids,action_s in a_s.items():
-                action_s["status"] = Status.FAILED
+            if self.init:
+                a = cancel_order_action
+                self.cancel_order = state.ActionState(**{
+                        "actionDescription": a.actionDescription,
+                        "actionId": a.actionId,
+                        "actionStatus": status,
+                        "actionType": a.actionType,
+                        "resultDescription": ""
+                    })
+                # nodeState 和 edgeState delete
+                self.orders.orders.nodes = {}
+                self.orders.orders.edges = {}
+                self.task_id_list.clear()
+                self.edges_and_actions_id_list.clear()
+                a_s = self.orders.orders.actions
+                for ids,action_s in a_s.items():
+                    action_s["status"] = Status.FAILED
 
 
 

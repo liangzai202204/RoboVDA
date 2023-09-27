@@ -156,6 +156,7 @@ class BaseSo:
         while not self.connected:
             try:
                 self.so = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.so.setblocking(False)
                 self.so.settimeout(self.socket_timeout)
 
                 self.so.connect((self.ip, self.port))

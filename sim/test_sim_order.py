@@ -65,7 +65,7 @@ class MyTestCase(unittest.TestCase):
                             "value": "21"
                         }
                     ]
-        data = ("LM87", par)
+        data = ("LM96", par)
         datas.append(data)
         o1 = a.creat_order(datas, released=True, order_count=100,init="LM87",action_type="test")
         client = mqtt.Client()
@@ -199,7 +199,41 @@ class InstantActionsTest(unittest.TestCase):
             json_content = json.load(json_file)
             print(json_content)
         client = mqtt.Client()
-        client.connect("192.168.0.108", 1883, 60)
+        client.connect("192.168.9.11", 1883, 60)
+        client.publish("robot/instantActions", json.dumps(json_content))
+
+    def test_instantActions_startPause(self):
+        import json
+        import os
+        # 假设包 B 的名称为 package_B，JSON 文件名为 data.json
+        path_to_B = os.path.abspath("../VDAExample")
+
+        json_filename = 'startPaues Order InstantAction.json'
+
+        json_file_path = os.path.join(path_to_B, json_filename)
+
+        with open(json_file_path, 'r') as json_file:
+            json_content = json.load(json_file)
+            print(json_content)
+        client = mqtt.Client()
+        client.connect("192.168.9.11", 1883, 60)
+        client.publish("robot/instantActions", json.dumps(json_content))
+
+    def test_instantActions_stopPause(self):
+        import json
+        import os
+        # 假设包 B 的名称为 package_B，JSON 文件名为 data.json
+        path_to_B = os.path.abspath("../VDAExample")
+
+        json_filename = 'stopPaues Order InstantAction.json'
+
+        json_file_path = os.path.join(path_to_B, json_filename)
+
+        with open(json_file_path, 'r') as json_file:
+            json_content = json.load(json_file)
+            print(json_content)
+        client = mqtt.Client()
+        client.connect("192.168.9.11", 1883, 60)
         client.publish("robot/instantActions", json.dumps(json_content))
 
     def test_OOO(self):
@@ -238,8 +272,34 @@ class InstantActionsTest(unittest.TestCase):
         print(t)
 
     def test_a(self):
-        print(182323 - 67996)
-        print((182323 - 67996) / 1000)
+        import asyncio
+        import socket
+
+        async def handle_client(reader, writer):
+            # 处理客户端连接的逻辑
+            while True:
+                data = await reader.read(1024)
+                if not data:
+                    break
+                print(f"Received data from client: {data.decode()}")
+                writer.write(data)
+                await writer.drain()
+
+            writer.close()
+
+        async def start_server(host, port):
+            server = await asyncio.start_server(handle_client, host, port)
+            print(f"Server started on {host}:{port}")
+
+            async with server:
+                await server.serve_forever()
+
+        async def main():
+            host = 'localhost'
+            port = 1234
+            await start_server(host, port)
+
+        asyncio.run(main())
 
 
 if __name__ == '__main__':

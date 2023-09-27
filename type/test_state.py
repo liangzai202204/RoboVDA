@@ -53,7 +53,14 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual(a_s, b_s)
         self.assertNotEqual(a_s, c_s)
 
+    def test_Task(self):
+        import socket
 
+        so = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        so.bind(("", 32323))
+        while True:
+            msg, (ip, port) = so.recvfrom(1024)
+            print(f"IP:{ip}, PORT:{port}, MSG:{msg.decode('utf-8')}")
 
 
 if __name__ == '__main__':

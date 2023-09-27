@@ -119,7 +119,8 @@ class Robot:
         self.state.serialNumber = self.robot_push_msg.vehicle_id
         self.state.version = self.robot_version
         self.state.loads = [] if not self.robot_push_msg.goods_region.point else self.update_goods()
-        self.state.driving = True if self.robot_push_msg.task_status == 2 else False
+        self.state.driving = False if self.robot_push_msg.is_stop else True
+        self.state.paused = True if self.robot_push_msg.task_status == 3 else False
         self.state.waitingForInteractionZoneRelease = False  # TODO
         self.state.velocity = state.Velocity(vx=self.robot_push_msg.vx,
                                              vy=self.robot_push_msg.vy,
@@ -238,26 +239,35 @@ class Robot:
     def instant_stop_pause(self):
         send = True
         while send:
-            if self.robot_online and self.lock:
-                _, res = self.robot.rbk.robot_task_pause_req()
-                res_json = json.loads(res)
-                if "ret_code" in res_json:
-                    if res_json["res_json"] == 0:
-                        send = False
-            else:
-                self.lock_robot()
+            try:
+                if self.robot_online and self.lock:
+                    res = self.rbk.call_service(ApiReq.ROBOT_TASK_RESUME_REQ.value)
+                    res_json = json.loads(res)
+                    print(res_json)
+
+                    if "ret_code" in res_json:
+                        if res_json["ret_code"] == 0:
+                            send = False
+                else:
+                    self.lock_robot()
+            except Exception as e:
+                self.logs.error(f"[robot]instant_stop_pause error:{e}")
 
     def instant_start_pause(self):
         send = True
         while send:
-            if self.robot_online and self.lock:
-                _, res = self.robot.rbk.robot_task_resume_req()
-                res_json = json.loads(res)
-                if "ret_code" in res_json:
-                    if res_json["res_json"] == 0:
-                        send = False
-            else:
-                self.lock_robot()
+            try:
+                if self.robot_online and self.lock:
+                    res = self.rbk.call_service(ApiReq.ROBOT_TASK_PAUSE_REQ.value)
+                    res_json = json.loads(res)
+                    print(res_json)
+                    if "ret_code" in res_json:
+                        if res_json["ret_code"] == 0:
+                            send = False
+                else:
+                    self.lock_robot()
+            except Exception as e:
+                self.logs.error(f"[robot]instant_start_pause error:{e}")
 
     def instant_cancel_task(self) -> bool:
         send = True

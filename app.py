@@ -38,12 +38,7 @@ class RoboVda:
 
     def run(self):
         self.rbk_connect_t.start()
-
-        # self.loop.call_soon_threadsafe(self.loop.create_task, self.robot.run())
-        # self.robot_run_t.start()
-
         self.mqtt_server.mqtt_client_s.loop_start()
-        self.robot_order.thread_start()
         self.http_server_t.start()
         coroutines = [self.robot.run(),self.robot_order.run(), self.mqtt_server.run()]
         EventLoop.event_loop.run_until_complete(asyncio.gather(*coroutines))

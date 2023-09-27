@@ -54,9 +54,10 @@ class MqttServer:
         while True:
             message = await self._mqtt_messages.get()
             if isinstance(message, state.State):
-                self.logs.info(f"[subscribe]"
-                               f"[{self.mqtt_topic_state}]|"
-                               f"{len(message.model_dump())}|{message.model_dump().__len__()}")
+                # self.logs.info(f"[subscribe]"
+                #                f"[{self.mqtt_topic_state}]|"
+                #                f"{len(message.model_dump())}|{message.model_dump().__len__()}")
+                pass
             elif isinstance(message, order.Order):
                 self.logs.info(f"[subscribe][{self.mqtt_topic_order}]|"
                                f"{len(message.model_dump())}|{message.model_dump()}")
@@ -157,10 +158,11 @@ class MqttServer:
 
     def _mqtt_on_message(self, client, userdata, msg):
         try:
-            self.logs.info(f"[MQTT] recv:{msg}")
+            # self.logs.info(f"[MQTT] recv:{msg}")
             if msg.topic == self.mqtt_topic_state:
-                self.logs.info(f"topic {self.mqtt_topic_state} rec")
-                self._enqueue(state.State(**json.loads(msg.payload)))
+                # self.logs.info(f"topic {self.mqtt_topic_state} rec")
+                # self._enqueue(state.State(**json.loads(msg.payload)))
+                pass
             elif msg.topic == self.mqtt_topic_order:
                 self.logs.info(f"topic {self.mqtt_topic_order} rec")
                 self._enqueue(order.Order(**json.loads(msg.payload)))
