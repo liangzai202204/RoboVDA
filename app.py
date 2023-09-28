@@ -19,7 +19,6 @@ class RoboVda:
     http_server_class = HttpServer
 
     def __init__(self):
-
         self.config = self.get_configs()
         self.rbk = self.creat_rbk()
         self.robot = self.creat_robot()
@@ -40,8 +39,9 @@ class RoboVda:
         self.rbk_connect_t.start()
         self.mqtt_server.mqtt_client_s.loop_start()
         self.http_server_t.start()
-        coroutines = [self.robot.run(),self.robot_order.run(), self.mqtt_server.run()]
+        coroutines = [self.robot.run(), self.robot_order.run(), self.mqtt_server.run()]
         EventLoop.event_loop.run_until_complete(asyncio.gather(*coroutines))
+
     def _run_loop(self):
         asyncio.set_event_loop(None)
         loop_robot = asyncio.new_event_loop()
@@ -53,7 +53,7 @@ class RoboVda:
         创建一个rbk tcp api 类，用于唯一负责与机器人的通讯
         :return:
         """
-        return self.rbk_lib_class(self.config.config.get("robot","robot_ip"))
+        return self.rbk_lib_class(self.config.config.get("robot", "robot_ip"))
 
     def get_configs(self):
         """
@@ -67,9 +67,10 @@ class RoboVda:
 
     def creat_robot_order(self):
         return self.robot_order_class(self.robot,
-                                      mode=self.config.config.getint("robot","mode"),
-                                      state_report_frequency=self.config.config.getfloat("network","state_report_frequency"),
-                                      robot_type=self.config.config.getint("robot","robot_type"))
+                                      mode=self.config.config.getint("robot", "mode"),
+                                      state_report_frequency=self.config.config.getfloat("network",
+                                                                                         "state_report_frequency"),
+                                      robot_type=self.config.config.getint("robot", "robot_type"))
 
     def creat_mqtt_server(self):
         return self.MqttServer_class(**self.config.config_mqtt())
@@ -81,7 +82,6 @@ class RoboVda:
             robot_order=self.robot_order,
             robot=self.robot
         )
-
 
 
 if __name__ == '__main__':
