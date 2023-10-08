@@ -88,10 +88,23 @@ class ActionPack(pydantic.BaseModel):
                 freeGo["theta"] = a_p.value
         if not (freeGo.get("x") and freeGo.get("y") and freeGo.get("theta")):
             return {}
+        args = {
+            "x": freeGo.get("x"),
+            "y": freeGo.get("y"),
+            "theta": freeGo.get("theta"),
+            "reachAngle": 0.05,
+            "reachDist": 0.05,
+            "coordinate": "world",
+            "maxSpeed": 1,
+            "maxRot": 1
+        }
         task = {
-            "task_id": action.actionId,
+            "task_id":action.actionId,
             "id": "SELF_POSITION",
-            "freeGo": freeGo
+            "operation": "Script",
+            "script_args": args,
+            "script_name": "syspy/goPath.py",
+            "source_id": "SELF_POSITION"
         }
         return task
 
@@ -227,6 +240,7 @@ class ActionPack(pydantic.BaseModel):
         except Exception as e:
             print("_pack_action error:", e)
             return {}
+
     @classmethod
     def _pack_fork_action(cls, action: order.Action, mode: PackMode, script_stage) -> dict:
         end_height = 0

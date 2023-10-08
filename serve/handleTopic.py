@@ -40,6 +40,8 @@ class HandleTopic:
         self.robot_type = robot_type
         self.order = None
         self.current_order = None
+        # 用於保存協議層面的 error，錯誤產生的時候存放，在新的訂單來臨時清空。區別於在 robot.py 的 update errors（來自於機器人的錯誤）
+        self.state_error = []
         self.current_order_state: state.State = state.State.create_state()
         self.connection: connection.Connection = connection.Connection.create()
         self.visualization: visualization.Visualization = visualization.Visualization.create()
@@ -67,7 +69,6 @@ class HandleTopic:
                              self.handle_instantActions(),
                              self.handle_connection(),
                              self.handle_visualization(),
-
                              self.handle_state_report()
                              )
 
@@ -159,7 +160,6 @@ class HandleTopic:
                 # todo
                 ActionPack.stopCharging(action)
             elif action_type == "initPosition":
-
                 self.instant_initPosition(ActionPack.initPosition(action))
             elif action_type == "stateRequest":
                 # todo
@@ -186,12 +186,43 @@ class HandleTopic:
         self.logs.info(f'instant_start_pause ok!')
 
     def instant_cancel_task(self, action: order.Action):
-        self.order = None
-        self.current_order = None
-        if self.robot.instant_cancel_task():
-            self.order_state_machine.set_cancel_order_instant_action(action, Status.FINISHED)
-        else:
-            self.order_state_machine.set_cancel_order_instant_action(action, Status.FAILED)
+        """取消任务逻辑
+        1、有任务直接取消
+            已经执行的 action 状态保持不变，未执行的将状态改为 FAILED。
+            同时将 cancel_order action 的 状态添加到 actionState中。
+        2、没有任务，需要上报错误
+            上报错误是将错误信息添加到 state.errors 中，
+            {
+                "errorType": "noOrderToCancel",
+                "errorLevel": "WARNING",
+                "errorReferences": "这里是 actionId",
+                "errorDescription": ""
+            }
+            在新的订单来临时，清楚错误
+        :param action:
+        :return:
+        """
+        try:
+            if self.order_state_machine.cancel_order or not self.order_state_machine.task_id_list:
+                self.state_error.append(state.Error(**{
+                    "errorType": "noOrderToCancel",
+                    "errorLevel": "WARNING",
+                    "errorReferences": [state.ErrorReference(**{
+                        "referenceKey":"actionId",
+                        "referenceValue":action.actionId
+                    })],
+                    "errorDescription": ""
+                }))
+                self.logs.error(f"[instantAction]noOrderToCancel:{self.state_error}")
+                return
+            self.order = None
+            self.current_order = None
+            if self.robot.instant_cancel_task():
+                self.order_state_machine.set_cancel_order_instant_action(action, Status.FINISHED)
+            else:
+                self.order_state_machine.set_cancel_order_instant_action(action, Status.FAILED)
+        except Exception as e:
+            self.logs.error(f"set_cancel_order_instant_action error:{e}")
 
     def instant_initPosition(self, task):
         self.robot.instant_init_position(task)
@@ -233,23 +264,22 @@ class HandleTopic:
                     f"{TopicQueue.pushData.qsize()}|"
                 )
 
-                if not self.robot.robot_online or not self.current_order:
-                    await self.report_robot_not_online()
-                elif self.current_order is not None:
-                    await self.report_state_current_order()
-                else:
-                    self.logs.warning("report over")
+                await self.report_state_by_current_order()
             except Exception as e:
                 self.logs.error(f"[state]report state error:{e}")
 
-    async def report_state_current_order(self):
+    async def report_state_by_current_order(self):
         self.update_state_by_order_state_machine()
-        self.robot.state.orderId = self.current_order.orderId
-        self.robot.state.orderUpdateId = self.current_order.orderUpdateId
-        await self._enqueue(TopicQueue.chanel_state, self.robot.state)
-
-    async def report_robot_not_online(self):
-        self.update_state_by_order_state_machine()
+        if self.current_order:
+            self.robot.state.orderId = self.current_order.orderId
+            self.robot.state.orderUpdateId = self.current_order.orderUpdateId
+        self.robot.state.errors.clear()
+        if self.state_error:
+            # 如有error 則添加到 state 中
+            for s_e in self.state_error:
+                self.robot.state.errors.append(s_e)
+        if self.robot.robot_online:
+            self.robot.state.errors.extend(self.robot.update_errors())
         await self._enqueue(TopicQueue.chanel_state, self.robot.state)
 
     def _report_order_error(self, sub_order):
@@ -268,6 +298,8 @@ class HandleTopic:
     def _run_order(self, task: order.Order):
         self.logs.info("[order] rec and start")
         with self.lock_order:
+            # 有新的 order , 清空 state error
+            self.state_error.clear()
             if self.order_state_machine.ready:
                 # 初始化，直接创建订单
                 self.logs.info(f"[order] init,creat order")

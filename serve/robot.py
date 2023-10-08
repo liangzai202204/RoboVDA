@@ -127,7 +127,7 @@ class Robot:
                                              omega=self.robot_push_msg.w)
         # 更新 error seer
 
-        self.state.errors = self.update_errors()
+        # self.state.errors = self.update_errors()
 
     def update_goods(self):
         goods = self.robot_push_msg.goods_region
@@ -286,7 +286,7 @@ class Robot:
 
     def instant_init_position(self, task):
         free_go = task
-        res_data = self.rbk.call_service(ApiReq.ROBOT_TASK_GO_TARGET_REQ.value, free_go)
+        res_data = self.rbk.call_service(ApiReq.ROBOT_TASK_GOTARGETLIST_REQ.value, free_go)
         res_data_json = json.loads(res_data)
         self.logs.info(f"下发任务内容：{free_go}, rbk 返回结果：{res_data_json}")
         if res_data_json["ret_code"] == 0:

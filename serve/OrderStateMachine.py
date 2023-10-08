@@ -241,7 +241,8 @@ class OrderStateMachine:
                 self.edges_and_actions_id_list.clear()
                 a_s = self.orders.orders.actions
                 for ids,action_s in a_s.items():
-                    action_s["status"] = Status.FAILED
+                    if action_s.get("status",None) and action_s["status"] != Status.FINISHED:
+                        action_s["status"] = Status.FAILED
 
 
 

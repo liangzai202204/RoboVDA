@@ -199,7 +199,7 @@ class InstantActionsTest(unittest.TestCase):
             json_content = json.load(json_file)
             print(json_content)
         client = mqtt.Client()
-        client.connect("192.168.9.11", 1883, 60)
+        client.connect(get_mqtt_ip(), 1883, 60)
         client.publish("robot/instantActions", json.dumps(json_content))
 
     def test_instantActions_startPause(self):
@@ -216,7 +216,7 @@ class InstantActionsTest(unittest.TestCase):
             json_content = json.load(json_file)
             print(json_content)
         client = mqtt.Client()
-        client.connect("192.168.9.11", 1883, 60)
+        client.connect(get_mqtt_ip(), 1883, 60)
         client.publish("robot/instantActions", json.dumps(json_content))
 
     def test_instantActions_stopPause(self):
