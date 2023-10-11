@@ -71,7 +71,6 @@ class ActionPack(pydantic.BaseModel):
     def stopCharging(action: order.Action) -> dict:
         a = dict()
         print(action)
-
         return a
 
     @staticmethod
