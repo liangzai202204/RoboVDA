@@ -2,7 +2,9 @@ from type import order
 import pydantic
 from type.mode import PackMode
 
-
+instant_action_type = ['startPause','stopPause','startCharging',
+                       'stopCharging','initPosition','stateRequest'
+                       'logReport','factsheetRequest','cancelOrder']
 class ActionType:
     PICK = "pick"
     PICK_FORK = "pick"

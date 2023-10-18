@@ -96,7 +96,7 @@ class ActionStatus(str, Enum):
 
 class ActionState(BaseModel):
     actionId: str
-    actionStatus: ActionStatus
+    actionStatus: Optional[ActionStatus] = ActionStatus.INITIALIZING
     actionType: Optional[str] = ""
     actionDescription: Optional[str] = ""
     resultDescription: Optional[str] = ""
