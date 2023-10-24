@@ -19,6 +19,8 @@ class OrderStateMachine:
         self.lock = threading.Lock()
         self.log = MyLogger()
         self.cancel_order = None
+        self.instant_action_stop_pause = None
+        self.instant_action_start_pause = None
 
     def init_order(self, order_data: order.Order):
         with self.lock:
@@ -112,7 +114,14 @@ class OrderStateMachine:
             robot_state.lastNodeSequenceId = self.orders.orders.lastNode.get("sequenceId",0)
             if self.cancel_order:
                 robot_state.actionStates.append(self.cancel_order)
-
+            if self.instant_action_start_pause:
+                robot_state.actionStates.append(self.instant_action_start_pause)
+                if self.instant_action_stop_pause:
+                    self.instant_action_stop_pause = None
+            if self.instant_action_stop_pause:
+                robot_state.actionStates.append(self.instant_action_start_pause)
+                if self.instant_action_start_pause:
+                    self.instant_action_start_pause = None
             if node_f_n == 0 and edge_f_n == 0 and self.orders.orders.action_empty():
                 self.log.error("狀態機沒有任務")
                 return robot_state
@@ -167,6 +176,11 @@ class OrderStateMachine:
                 # 清楚上次 cancelOrder 残留的信息
                 if self.cancel_order:
                     self.cancel_order = None
+                if self.instant_action_start_pause:
+                    self.instant_action_start_pause = None
+                if self.instant_action_stop_pause:
+                    self.instant_action_stop_pause = None
+
                 self._del_not_released_items()
                 # 添加新的node和edge
                 new_edges = order_data.edges
@@ -290,6 +304,34 @@ class OrderStateMachine:
         self.edges_and_actions_id_list = []
         self.ready = True
         self.init = False
+
+    def set_start_pause_instant_action(self, start_pause:order.Action,status:Status):
+        with self.lock:
+            if self.init:
+                a = start_pause
+                self.instant_action_start_pause = state.ActionState(**{
+                        "actionDescription": a.actionDescription,
+                        "actionId": a.actionId,
+                        "actionStatus": status,
+                        "actionType": a.actionType,
+                        "resultDescription": ""
+                    })
+                if self.instant_action_stop_pause:
+                    self.instant_action_stop_pause = None
+
+    def set_stop_pause_instant_action(self,stop_pause:order.Action,status:Status):
+        with self.lock:
+            if self.init:
+                a = stop_pause
+                self.instant_action_stop_pause = state.ActionState(**{
+                        "actionDescription": a.actionDescription,
+                        "actionId": a.actionId,
+                        "actionStatus": status,
+                        "actionType": a.actionType,
+                        "resultDescription": ""
+                    })
+                if self.instant_action_start_pause:
+                    self.instant_action_start_pause = None
 
 
 class OrderStatus(pydantic.BaseModel):

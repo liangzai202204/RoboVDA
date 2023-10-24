@@ -177,13 +177,25 @@ class HandleTopic:
                 # todo 上报数据
                 self.logs.error(f"不支持动作类型：{action_type}")
 
-    def instant_stop_pause(self):
-        self.robot.instant_stop_pause()
-        self.logs.info(f'instant_stop_pause ok!')
+    def instant_stop_pause(self,action: order.Action):
+        try:
+            self.robot.instant_stop_pause()
+            self.logs.info(f'instant_stop_pause ok!')
+            self.order_state_machine.set_stop_pause_instant_action(action, Status.FINISHED)
+        except Exception as e:
+            self.logs.error(f"set_stop_pause_instant_action error:{e}")
+            self.order_state_machine.set_stop_pause_instant_action(action, Status.FAILED)
 
-    def instant_start_pause(self):
-        self.robot.instant_start_pause()
-        self.logs.info(f'instant_start_pause ok!')
+    def instant_start_pause(self,action: order.Action):
+        try:
+            self.robot.instant_start_pause()
+            self.logs.info(f'instant_start_pause ok!')
+            self.order_state_machine.set_start_pause_instant_action(action, Status.FINISHED)
+        except Exception as e:
+            self.logs.error(f"set_start_pause_instant_action error:{e}")
+            self.order_state_machine.set_start_pause_instant_action(action, Status.FAILED)
+
+
 
     def instant_cancel_task(self, action: order.Action):
         """取消任务逻辑
@@ -383,7 +395,7 @@ class HandleTopic:
         elif not res:
             self.report_error(err.ErrorOrder.sendOrderToRobotErr)
 
-    @classmethod
+    @classmethodm
     def is_match_node_start_end(cls, new_node: List[order.Node], old_node: List[order.Node]) -> bool:
         """"
         校对 new base 和 old base 的 node 是否一致

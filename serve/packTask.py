@@ -60,6 +60,9 @@ class PackTask:
         :return:list
         """
         try:
+            if len(self.nodes) == 1:
+                self.nodes_edges_list.append(self.nodes[0])
+                return True
             nodes = copy.deepcopy(self.nodes)
             edges = copy.deepcopy(self.edges)
             while nodes and edges:
@@ -105,6 +108,9 @@ class PackTask:
     def pack_params(self):
         try:
             self.load_map_point_in_order()
+            if len(self.nodes) == 1:
+                self.pack_node(self.nodes[0])
+                return
             for edge, node in zip(self.nodes_edges_list[::2], self.nodes_edges_list[1::2]):
                 node: order.Node
                 edge: order.Edge
