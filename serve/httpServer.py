@@ -60,11 +60,26 @@ class HttpServer:
         return jsonify(data)
 
     def _get_order_status(self):
-        OrderStatus = self.robot_order.order_state_machine.orders.orders.model_dump()
-        if OrderStatus:
-            return jsonify(OrderStatus)
-        else:
-            return jsonify({"code": 201, "msg": "没有订单"})
+        nodes_s, edges_s, actions_s, instantActions_s = self.robot_order.order_state_machine.get_order_status()
+        nodes = {}
+        edges = {}
+        actions = {}
+        instantAction = {}
+        for i_n, n in nodes_s.items():
+            nodes[i_n] = n.model_dump()
+        for i_e, e in edges_s.items():
+            edges[i_e] = e.model_dump()
+        for i_a, a in actions_s.items():
+            actions[i_a] = a.model_dump()
+        for i_i, i in instantActions_s.items():
+            instantAction[i_i] = i.model_dump()
+
+        return jsonify({
+            "nodes_s": nodes,
+            "edges_s": edges,
+            "actions_s": actions,
+            "instantActions_s": instantAction
+        })
 
     def _get_state(self):
         state = self.robot_order.robot.state.model_dump()
@@ -76,7 +91,7 @@ class HttpServer:
             "pack_nodes_edges_list": self.robot_order.pack_task.pack_nodes_edges_list(),
             "pack_mode": self.robot_order.pack_task.pack_mode,
             "nodes_point": self.robot_order.pack_task.nodes_point,
-            "map_point":self.robot_order.pack_task.map_point if self.robot_order.pack_task.map_point else ""
+            "map_point": self.robot_order.pack_task.map_point if self.robot_order.pack_task.map_point else ""
         }
         return jsonify(pack_task)
 

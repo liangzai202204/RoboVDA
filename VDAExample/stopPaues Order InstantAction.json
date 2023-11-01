@@ -2,7 +2,7 @@
     "instantActions": [
         {
             "actionType": "stopPause",
-            "actionId": "01d47574-29aa-4dd7-bea2-5efcceea5f2d",
+            "actionId": "01d47574-29aa-4dd7-bea2-5efcceea5f22",
             "actionDescription": "Manual reset",
             "blockingType": "HARD",
             "actionParameters": []

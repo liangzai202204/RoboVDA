@@ -1,4 +1,5 @@
 import copy
+import threading
 from typing import List, Union
 
 from action_type.action_type import ActionPack
@@ -22,44 +23,53 @@ class PackTask:
         self.error = None
         self.log = MyLogger()
         self.robot_type = robot_type
+        self.lock = threading.Lock()
 
-    def pack(self, new_order: order.Order, map_point):
-        self.clear_pack()
-        self.map_point = map_point
-        if not self.map_point:
-            self.log.error(f"init map error,map_point is empty!!!")
-            return err.ErrorPckTask.mapNotNodePosition
-        self.order = new_order
-        self.nodes = copy.deepcopy(new_order.nodes)
-        self.edges = copy.deepcopy(new_order.edges)
-        # 检查 order 内容 并排序 nodes 和 edges
-        if not self.nodes or not self.edges:
-            return err.ErrorOrder.nodeOrEdgeEmpty
-        if (len(self.nodes) - 1) != len(self.edges):
-            return err.ErrorOrder.nodeAndEdgeNumErr
+    def pack(self, new_order: order.Order,map_point = None):
+        with self.lock:
+            if map_point:
+                self.map_point = map_point
+            self.clear_pack()
+            self.order = new_order
+            self.nodes = copy.deepcopy(new_order.nodes)
+            self.edges = copy.deepcopy(new_order.edges)
+            # 检查 order 内容 并排序 nodes 和 edges
+            if not self.nodes and not self.edges:
+                return err.ErrorOrder.nodeOrEdgeEmpty
+            if (len(self.nodes) - 1) != len(self.edges):
+                return err.ErrorOrder.nodeAndEdgeNumErr
+            self.nodes.sort(key=lambda x: x.sequenceId)
+            self.edges.sort(key=lambda y: y.sequenceId)
+            # 将 nodes 和 edge 打包入列表中，结构为 [edge,node,edge,node,...,edge,node]
+            l_err = self.pack_nodes_edges_list()
+            print("1")
+            try:
+                if isinstance(l_err, err.ErrorOrder):
+                    return l_err
+                if self.pack_mode == PackMode.vda5050:
+                    self.pack_vda5050()
+                elif self.pack_mode == PackMode.binTask:
+                    self.pack_binTask()
+                elif self.pack_mode == PackMode.params:
+                    self.pack_params()
+                if self.error:
+                    return self.error
+                print("20")
+                return self.task_pack_list
+            except Exception as e:
+                self.log.error(f"[pack]pack error ;{e}")
 
-        self.nodes.sort(key=lambda x: x.sequenceId)
-        self.edges.sort(key=lambda y: y.sequenceId)
-        # 将 nodes 和 edge 打包入列表中，结构为 [edge,node,edge,node,...,edge,node]
-        l_err = self.pack_nodes_edges_list()
-        if isinstance(l_err, err.ErrorOrder):
-            return l_err
-        if self.pack_mode == PackMode.vda5050:
-            self.pack_vda5050()
-        elif self.pack_mode == PackMode.binTask:
-            self.pack_binTask()
-        elif self.pack_mode == PackMode.params:
-            self.pack_params()
-        if self.error:
-            return self.error
-        return self.task_pack_list
-
-    def pack_nodes_edges_list(self):
+    def pack_nodes_edges_list1(self):
         """
         将 node 和 edge 的任务打包在一起
         :return:list
         """
         try:
+            if self.nodes.__len__() == 1 and self.edges.__len__() == 0:
+                self.nodes_edges_list.append(self.nodes[0])
+
+                self.log.info(f"[pack]only one node,{self.nodes_edges_list}")
+                return
             nodes = copy.deepcopy(self.nodes)
             edges = copy.deepcopy(self.edges)
             while nodes and edges:
@@ -78,7 +88,49 @@ class PackTask:
             self.nodes_edges_list = self.nodes_edges_list[1:]
             return True
         except Exception as e:
-            self.log.error(f"pack_nodes_edges_list error:{e}")
+            self.log.error(f"[pack]pack_nodes_edges_list error:{e}")
+
+    def pack_nodes_edges_list(self):
+        """
+        将 node 和 edge 的任务打包在一起
+        :return: True 或错误代码
+        """
+        try:
+            if len(self.nodes) == 1 and len(self.edges) == 0:
+                self.nodes_edges_list = [self.nodes[0]]
+                self.log.info(f"[pack]only one node,{self.nodes_edges_list}")
+                return
+
+            nodes = copy.copy(self.nodes)
+            edges = copy.copy(self.edges)
+
+            for node, edge in zip(nodes, edges):
+                self.nodes_edges_list.extend([node, edge])
+
+                if not edges:
+                    break
+                elif edge.startNodeId != node.nodeId:
+                    return err.ErrorOrder.startNodeIdNotNodeId
+
+                next_node_index = nodes.index(node) + 1
+                if next_node_index >= len(nodes):
+                    break
+
+                next_node = nodes[next_node_index]
+                if str(edge.endNodeId) != str(next_node.nodeId):
+                    return err.ErrorOrder.endNodeIdNotNodeId
+
+            if nodes:
+                self.nodes_edges_list.append(nodes[-1])
+
+            self.nodes_edges_list = self.nodes_edges_list[1:]
+            print("nodes",len(nodes),nodes)
+            print("edges",len(edges),edges)
+            print("nodes_edges_list",len(self.nodes_edges_list),self.nodes_edges_list)
+            return True
+
+        except Exception as e:
+            self.log.error(f"[pack]pack_nodes_edges_list error:{e}")
 
     def do_pack(self):
         if self.pack_mode != PackMode.vda5050:
@@ -89,7 +141,12 @@ class PackTask:
             self.pack_params()
 
     def pack_vda5050(self):
-        pass
+        for edge, node in zip(self.nodes_edges_list[::2], self.nodes_edges_list[1::2]):
+            node: order.Node
+            edge: order.Edge
+
+            self.pack_edge(edge, node)
+            self.pack_node(node)
 
     def pack_binTask(self):
         self.load_map_point_in_order()
@@ -104,11 +161,13 @@ class PackTask:
 
     def pack_params(self):
         try:
+            print("2")
             self.load_map_point_in_order()
+            print("3")
             for edge, node in zip(self.nodes_edges_list[::2], self.nodes_edges_list[1::2]):
                 node: order.Node
                 edge: order.Edge
-
+                print("4")
                 self.pack_edge(edge, node)
                 self.pack_node(node)
         except Exception as e:
@@ -116,6 +175,10 @@ class PackTask:
 
     def load_map_point_in_order(self):
         try:
+            # 加载地图中的点
+            if not self.map_point:
+                self.log.error(f"init map error,map_point is empty!!!")
+                return err.ErrorPckTask.mapNotNodePosition
             self.nodes_point = {
                 node.nodeId: self.map_point.get((node.nodePosition.x, node.nodePosition.y))
                 for node in self.nodes

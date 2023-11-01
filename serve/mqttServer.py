@@ -39,12 +39,14 @@ class MqttServer:
         self._mqtt_messages: asyncio.Queue[RobotMessage] = asyncio.Queue()
 
     async def run(self):
-        await asyncio.gather(
+        results = await asyncio.gather(
             self._handle_mqtt_subscribe_messages(),
             self._handle_mqtt_publish_messages(),
             self._handle_mqtt_publish_messages_connection(),
             self._handle_mqtt_publish_messages_visualization()
         )
+        # 所有协程执行完毕后的回调函数
+        self.logs.info(f"All coroutines have finished executing!{results}")
 
     async def _handle_mqtt_subscribe_messages(self):
         """
@@ -83,8 +85,8 @@ class MqttServer:
         while True:
             message = await self.get_state()
             self.mqtt_client_s.publish(self.mqtt_topic_state, json.dumps(message.model_dump()))
-            self.logs.info(f"[publish][{self.mqtt_topic_state}]|"
-                           f"{len(json.dumps(message.model_dump()))}")
+            # self.logs.info(f"[publish][{self.mqtt_topic_state}]|"
+            #                f"{len(json.dumps(message.model_dump()))}")
 
     async def _handle_mqtt_publish_messages_connection(self):
         """
@@ -183,7 +185,9 @@ class MqttServer:
         except pydantic.error_wrappers.ValidationError as e:
             # 在这里处理ValidationError异常
             # 可以打印出错误消息或执行其他逻辑
-            self.logs.error(f"Validation Error:{e}")
+            self.logs.error(f"[MQTT]Validation Error:{e}")
+        except Exception as e:
+            self.logs.error(f"[MQTT]recv Exception Error:{e}")
 
     def _mqtt_on_disconnect(self, client, userdata, rc):
         self.connected = False

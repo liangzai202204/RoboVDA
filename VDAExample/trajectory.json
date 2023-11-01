@@ -1,0 +1,59 @@
+{
+        "NURBS": {
+            "trajectory": {
+                "type": "NURBS",
+                "degree": 1,
+                "knotVector": [0, 0, 1, 1],
+                "controlPoints": [
+                    {
+                        "x": 0.0,
+                        "y": 0.0,
+                        "weight": 1
+                    },
+                    {
+                        "x": 12.5,
+                        "y": 1.5,
+                        "weight": 1
+                    }
+                ]
+            }
+        },
+        "Straight": {
+            "trajectory": {
+                "type": "Straight",
+                "controlPoints": [
+                    {
+                        "x": 12.5,
+                        "y": 1.5
+                    },
+                    {
+                        "x": 12.5,
+                        "y": 1.5
+                    }
+                ]
+            }
+        },
+        "CubicBeizer": {
+            "trajectory": {
+                "type": "CubicBeizer",
+                "controlPoints": [
+                    {
+                        "x": 20,
+                        "y": 1.5
+                    },
+                    {
+                        "x": 20,
+                        "y": 1.5
+                    },
+                    {
+                        "x": 40,
+                        "y": 2.5
+                    },
+                    {
+                        "x": 40,
+                        "y": 2.5
+                    }
+                ]
+            }
+        }
+    }

@@ -51,7 +51,7 @@ class Robot:
 
                     self.model.get_model()
                     self.init = True
-                self.logs.info(f'[robot]online status:{self.rbk.online_status}')
+                # self.logs.info(f'[robot]online status:{self.rbk.online_status}')
 
     @property
     def robot_online(self) -> bool:
@@ -72,7 +72,7 @@ class Robot:
         try:
             push_data = await TopicQueue.pushData.get()
             new_push_ata = RobotPush(**json.loads(push_data))
-            self.logs.info(f"[robot][19301] push raw data ok.|{new_push_ata.model_dump().__len__()}")
+            # self.logs.info(f"[robot][19301] push raw data ok.|{new_push_ata.model_dump().__len__()}")
             if push_data:
                 self.robot_push_msg = new_push_ata
                 # state
@@ -83,10 +83,10 @@ class Robot:
                 # 當前地圖
                 self.update_map()
                 # 依次爲：在綫、控制權、定位、置信度、任務狀態、目標點
-                self.logs.info(
-                    f'[robot]robot status:{self.robot_online}|{self.lock}|{self.robot_push_msg.reloc_status}|'
-                    f'{self.robot_push_msg.confidence}|{self.robot_push_msg.task_status}|'
-                    f'{self.robot_push_msg.target_id}')
+                # self.logs.info(
+                #     f'[robot]robot status:{self.robot_online}|{self.lock}|{self.robot_push_msg.reloc_status}|'
+                #     f'{self.robot_push_msg.confidence}|{self.robot_push_msg.task_status}|'
+                #     f'{self.robot_push_msg.target_id}')
                 # 定位信息
         except queue.Empty:
             # 如果队列为空，则跳过本次循环，继续等待下一个数据
@@ -236,12 +236,13 @@ class Robot:
         except Exception as e:
             self.logs.info(f"试图抢占控制权并下发任务失败，可能是没有链接到机器人,{e}")
 
-    def instant_stop_pause(self):
+    def _send_robot_service_request(self, service_name: str) -> bool:
+        """发送机器人服务请求"""
         send = True
         while send:
             try:
                 if self.robot_online and self.lock:
-                    res = self.rbk.call_service(ApiReq.ROBOT_TASK_RESUME_REQ.value)
+                    res = self.rbk.call_service(service_name)
                     res_json = json.loads(res)
                     print(res_json)
 
@@ -251,49 +252,25 @@ class Robot:
                 else:
                     self.lock_robot()
             except Exception as e:
-                self.logs.error(f"[robot]instant_stop_pause error:{e}")
-
-    def instant_start_pause(self):
-        send = True
-        while send:
-            try:
-                if self.robot_online and self.lock:
-                    res = self.rbk.call_service(ApiReq.ROBOT_TASK_PAUSE_REQ.value)
-                    res_json = json.loads(res)
-                    print(res_json)
-                    if "ret_code" in res_json:
-                        if res_json["ret_code"] == 0:
-                            send = False
-                else:
-                    self.lock_robot()
-            except Exception as e:
-                self.logs.error(f"[robot]instant_start_pause error:{e}")
-
-    def instant_cancel_task(self) -> bool:
-        send = True
-        while send:
-            try:
-                if self.robot_online and self.lock:
-                    self.rbk.call_service(ApiReq.ROBOT_TASK_CLEARTARGETLIST_REQ.value)
-                    send = False
-
-                else:
-                    self.lock_robot()
-            except Exception as e:
-                self.logs.error(f"instant_cancel_task error:{e}")
+                self.logs.error(f"[robot]service request error:{e}")
                 return False
         return True
 
+    def instant_stop_pause(self):
+        """暂停机器人任务"""
+        return self._send_robot_service_request(ApiReq.ROBOT_TASK_RESUME_REQ.value)
+
+    def instant_start_pause(self):
+        """恢复机器人任务"""
+        return self._send_robot_service_request(ApiReq.ROBOT_TASK_PAUSE_REQ.value)
+
+    def instant_cancel_task(self) -> bool:
+        """取消机器人任务"""
+        return self._send_robot_service_request(ApiReq.ROBOT_TASK_CLEARTARGETLIST_REQ.value)
+
     def instant_init_position(self, task):
-        free_go = task
-        res_data = self.rbk.call_service(ApiReq.ROBOT_TASK_GOTARGETLIST_REQ.value, free_go)
-        res_data_json = json.loads(res_data)
-        self.logs.info(f"下发任务内容：{free_go}, rbk 返回结果：{res_data_json}")
-        if res_data_json["ret_code"] == 0:
-            self.logs.info(f"下发任务成功：{free_go}")
-            flag = False
-        else:
-            self.logs.info(f"下发任务失败：{free_go}")
+        self.send_order(task)
+        return True
 
 
 class RobotMapManager:
@@ -467,7 +444,7 @@ class RobotModel:
                 self.log.error(f"req error")
                 return {}
             self.log.info(f"model_req len :{len(model_req)}")
-            print(self.model_path)
+            # print(self.model_path)
             # 将模型文件写入硬盘
             with open(self.model_path, 'wb') as file:
                 # 可选：写入内容到文件
@@ -487,5 +464,5 @@ class RobotModel:
         model_req = self._get_model()
 
         self.model = Model(model_req)
-        for m in self.model.device_types:
-            print(m.name)
+        # for m in self.model.device_types:
+        #     print(m.name)

@@ -65,7 +65,6 @@ class EdgeState(BaseModel):
     edgeId: str
     sequenceId: int
     released: bool = True
-
     edgeDescription: Optional[str]
     trajectory: Optional[Trajectory]
 

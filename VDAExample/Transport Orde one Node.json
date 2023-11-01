@@ -1,0 +1,29 @@
+{
+    "orderId": "75982a12-7b9a-48a3-a8f7-efa1ee1cc465",
+    "orderUpdateId": 0,
+    "zoneSetId": "",
+    "nodes": [
+        {
+            "nodeId": "7a434ec3-91c8-4334-89f8-31d30942fbb7",
+            "sequenceId": 0,
+            "nodeDescription": "Device initial position",
+            "released": true,
+            "nodePosition": {
+                "x": -18.077,
+                "y": -2.104,
+                "theta": -0.026340157,
+                "allowedDeviationXY": 0.5,
+                "allowedDeviationTheta": 0.5,
+                "mapId": "01632ba1-5e0f-41b3-9d1c-b701fa168c3f",
+                "mapDescription": "Id: 01632ba1-5e0f-41b3-9d1c-b701fa168c3f"
+            },
+            "actions": []
+        }
+    ],
+    "edges": [],
+    "headerId": 0,
+    "timeStamp": "11/15/2022 11:59:09",
+    "version": "v1",
+    "manufacturer": "",
+    "serialNumber": ""
+}

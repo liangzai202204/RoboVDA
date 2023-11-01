@@ -65,7 +65,7 @@ class MyTestCase(unittest.TestCase):
                             "value": "21"
                         }
                     ]
-        data = ("LM96", par)
+        data = ("LM87", par)
         datas.append(data)
         o1 = a.creat_order(datas, released=True, order_count=100,init="LM87",action_type="test")
         client = mqtt.Client()
@@ -233,7 +233,7 @@ class InstantActionsTest(unittest.TestCase):
             json_content = json.load(json_file)
             print(json_content)
         client = mqtt.Client()
-        client.connect("192.168.9.11", 1883, 60)
+        client.connect(get_mqtt_ip(), 1883, 60)
         client.publish("robot/instantActions", json.dumps(json_content))
 
     def test_OOO(self):

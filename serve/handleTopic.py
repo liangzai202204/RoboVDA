@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import json
 import threading
 from serve.OrderStateMachine import OrderStateMachine
 from serve.topicQueue import TopicQueue
@@ -86,7 +87,7 @@ class HandleTopic:
             订单统一入口
         """
         while True:
-            self.logs.info("handle_instantActions ........")
+            self.logs.info("waiting handle_instantActions ........")
             instantAction = await TopicQueue.s_instantActions.get()
             self._handle_instantActions(instantAction)
 
@@ -99,14 +100,35 @@ class HandleTopic:
             await self._enqueue(TopicQueue.p_state, state_sub)
 
     def update_state_by_order_state_machine(self):
-        if not self.robot.robot_online:
-            return
         try:
-            if self.order_state_machine.edges_and_actions_id_list:
-                self.order_state_machine.update_order_status(
-                    self.robot.get_task_status(
-                        self.order_state_machine.edges_and_actions_id_list))
-            self.order_state_machine.update_state(self.robot.state)
+            self.order_state_machine.update_order_status(self.robot.robot_push_msg.task_status_package,
+                                                         self.robot.robot_push_msg.task_status)
+            nodes_s, edges_s, actions_s, instantActions_s = self.order_state_machine.get_order_status()
+            nodeState = []
+            edgeState = []
+            actionState = []
+            instantActionState = []
+            # 更新 state 的 nodeState
+            for ids_n, n_s in nodes_s.items():
+                nodeState.append(n_s)
+                nodeState.sort(key=lambda x: x.sequenceId)
+            # 更新 state 的 edgeState
+            for ids_e, e_s in edges_s.items():
+                edgeState.append(e_s)
+                edgeState.sort(key=lambda x: x.sequenceId)
+            # 更新 state 的 actionState
+            for ids_a, a_s in actions_s.items():
+                actionState.append(a_s)
+            # 更新 state 的 actionState
+            for ids_i, i_s in instantActions_s.items():
+                instantActionState.append(i_s)
+            self.robot.state.nodeStates.clear()
+            self.robot.state.nodeStates.extend(nodeState)
+            self.robot.state.edgeStates.clear()
+            self.robot.state.edgeStates.extend(edgeState)
+            self.robot.state.actionStates.clear()
+            self.robot.state.actionStates.extend(actionState)
+            self.robot.state.actionStates.extend(instantActionState)
         except Exception as e:
             self.logs.error(f"狀態機 error:{e}")
 
@@ -143,47 +165,52 @@ class HandleTopic:
             online = True
         return online
 
+    def instant_action1(self, action: order.Action, service_name: str):
+        """机器人立即执行动作"""
+        if self.robot._send_robot_service_request(service_name):
+            self.order_state_machine.add_instant_action(action)
+            self.logs.info(f'[instant_action]{service_name} ok!')
+        else:
+            self.order_state_machine.add_instant_action(action, Status.FAILED)
+
     def _handle_instantActions(self, instant: instantActions.InstantActions):
         self.logs.info("handle_instantActions")
         actions = instant.instantActions
+
+        # 定义每种动作类型对应的处理函数
+        action_handlers = {
+            "startPause": lambda a: self.instant_start_pause(a),
+            "stopPause": lambda a: self.instant_stop_pause(a),
+            "startCharging": ActionPack.startCharging,
+            "stopCharging": ActionPack.stopCharging,
+            "initPosition": lambda a: self.instant_initPosition(a),
+            "stateRequest": ActionPack.stateRequest,
+            "logReport": ActionPack.logReport,
+            "cancelOrder": lambda a: self.instant_cancel_task(a),
+            "factsheetRequest": ActionPack.factsheetRequest,
+        }
+
         for action in actions:
-            # action_id = action.actionId
             action_type = action.actionType
-            if action_type == "startPause":
-                self.instant_start_pause()
-            elif action_type == "stopPause":
-                self.instant_stop_pause()
-            elif action_type == "startCharging":
-                # todo
-                ActionPack.startCharging(action)
-            elif action_type == "stopCharging":
-                # todo
-                ActionPack.stopCharging(action)
-            elif action_type == "initPosition":
-                self.instant_initPosition(ActionPack.initPosition(action))
-            elif action_type == "stateRequest":
-                # todo
-                ActionPack.stateRequest(action)
-            elif action_type == "logReport":
-                # todo
-                ActionPack.logReport(action)
-            elif action_type == "cancelOrder":
-                print("cancelOrder 收到指令")
-                self.instant_cancel_task(action)
-            elif action_type == "factsheetRequest":
-                # todo
-                ActionPack.factsheetRequest(action)
+            handler = action_handlers.get(action_type)
+            if handler:
+                handler(action)
             else:
-                # todo 上报数据
-                self.logs.error(f"不支持动作类型：{action_type}")
+                raise ValueError(f"不支持动作类型：{action_type}")
 
-    def instant_stop_pause(self):
-        self.robot.instant_stop_pause()
-        self.logs.info(f'instant_stop_pause ok!')
+    def instant_stop_pause(self, action: order.Action):
+        if self.robot.instant_stop_pause():
+            self.order_state_machine.add_instant_action(action)
+            self.logs.info(f'[instant_action]instant_start_pause ok!')
+        else:
+            self.order_state_machine.add_instant_action(action, Status.FAILED)
 
-    def instant_start_pause(self):
-        self.robot.instant_start_pause()
-        self.logs.info(f'instant_start_pause ok!')
+    def instant_start_pause(self, action: order.Action):
+        if self.robot.instant_start_pause():
+            self.order_state_machine.add_instant_action(action)
+            self.logs.info(f'[instant_action]instant_start_pause ok!')
+        else:
+            self.order_state_machine.add_instant_action(action, Status.FAILED)
 
     def instant_cancel_task(self, action: order.Action):
         """取消任务逻辑
@@ -203,13 +230,13 @@ class HandleTopic:
         :return:
         """
         try:
-            if self.order_state_machine.cancel_order or not self.order_state_machine.task_id_list:
+            if self.order_state_machine.order_empty():
                 self.state_error.append(state.Error(**{
                     "errorType": "noOrderToCancel",
                     "errorLevel": "WARNING",
                     "errorReferences": [state.ErrorReference(**{
-                        "referenceKey":"actionId",
-                        "referenceValue":action.actionId
+                        "referenceKey": "actionId",
+                        "referenceValue": action.actionId
                     })],
                     "errorDescription": ""
                 }))
@@ -218,14 +245,19 @@ class HandleTopic:
             self.order = None
             self.current_order = None
             if self.robot.instant_cancel_task():
-                self.order_state_machine.set_cancel_order_instant_action(action, Status.FINISHED)
+                self.order_state_machine.add_instant_action(action)
             else:
-                self.order_state_machine.set_cancel_order_instant_action(action, Status.FAILED)
+                self.order_state_machine.add_instant_action(action, Status.FAILED)
         except Exception as e:
             self.logs.error(f"set_cancel_order_instant_action error:{e}")
 
-    def instant_initPosition(self, task):
-        self.robot.instant_init_position(task)
+    def instant_initPosition(self, action):
+        task = ActionPack.initPosition(action)
+        if self.robot.instant_init_position(task):
+            self.order_state_machine.add_instant_action(action)
+            self.logs.info(f'[instant_action]instant_start_pause ok!')
+        else:
+            self.order_state_machine.add_instant_action(action, Status.FAILED)
 
     def _cls(self):
         self.order = None
@@ -233,7 +265,7 @@ class HandleTopic:
         self.robot.state.nodeStates = []
         self.robot.state.edgeStates = []
         # 清除狀態機狀態
-        self.order_state_machine.clear()
+        self.order_state_machine.reset()
 
     async def handle_state_report(self):
         """
@@ -253,105 +285,136 @@ class HandleTopic:
         while True:
             try:
                 await asyncio.sleep(self.state_report_frequency)
-                self.logs.info(
-                    f"TopicQueue status:|"
-                    f"{TopicQueue.chanel_state.qsize()}|"
-                    f"{TopicQueue.p_state.qsize()}|"
-                    f"{TopicQueue.p_connection.qsize()}|"
-                    f"{TopicQueue.p_visualization.qsize()}|"
-                    f"{TopicQueue.s_order.qsize()}|"
-                    f"{TopicQueue.s_instantActions.qsize()}|"
-                    f"{TopicQueue.pushData.qsize()}|"
-                )
-
+                # self.logs.info(
+                #     f"TopicQueue status:|"
+                #     f"{TopicQueue.chanel_state.qsize()}|"
+                #     f"{TopicQueue.p_state.qsize()}|"
+                #     f"{TopicQueue.p_connection.qsize()}|"
+                #     f"{TopicQueue.p_visualization.qsize()}|"
+                #     f"{TopicQueue.s_order.qsize()}|"
+                #     f"{TopicQueue.s_instantActions.qsize()}|"
+                #     f"{TopicQueue.pushData.qsize()}|"
+                # )
                 await self.report_state_by_current_order()
             except Exception as e:
                 self.logs.error(f"[state]report state error:{e}")
 
     async def report_state_by_current_order(self):
-        self.update_state_by_order_state_machine()
-        if self.current_order:
-            self.robot.state.orderId = self.current_order.orderId
-            self.robot.state.orderUpdateId = self.current_order.orderUpdateId
-        self.robot.state.errors.clear()
-        if self.state_error:
-            # 如有error 則添加到 state 中
-            for s_e in self.state_error:
-                self.robot.state.errors.append(s_e)
-        if self.robot.robot_online:
-            self.robot.state.errors.extend(self.robot.update_errors())
-        await self._enqueue(TopicQueue.chanel_state, self.robot.state)
+        try:
+            if self.current_order:
+                self.robot.state.orderId = self.current_order.orderId
+                self.robot.state.orderUpdateId = self.current_order.orderUpdateId
+            # 更新错误，一种是机器人本身的错误，一种是本程序的错误
+            self.robot.state.errors.clear()
+            if self.state_error:
+                # 如有error 則添加到 state 中
+                for s_e in self.state_error:
+                    self.robot.state.errors.append(s_e)
+            if self.robot.robot_online:
+                # 机器人错误
+                self.robot.state.errors.extend(self.robot.update_errors())
+            self.update_state_by_order_state_machine()
+            await self._enqueue(TopicQueue.chanel_state, self.robot.state)
+        except Exception as e:
+            self.logs.error(f" update report_state_by_current_order error:{e}")
 
     def _report_order_error(self, sub_order):
         self.logs.info("todo" + sub_order.orderId)
         print("更新订单的id太小，需要上报错误")
         # todo
 
-    def report_error(self, typ: err.ErrorOrder):
-        # TODO 上报错误逻辑
+    def add_error(self, error_type: str, reference_key: str, reference_value: str, error_description: str):
+        """添加错误信息到state_error列表中"""
+        self.state_error.append(state.Error(
+            errorType=error_type,
+            errorLevel="WARNING",
+            errorReferences=[state.ErrorReference(
+                referenceKey=reference_key,
+                referenceValue=reference_value
+            )],
+            errorDescription=error_description
+        ))
+
+    def report_error(self, sub_order: order.Order, typ: err.ErrorOrder):
+        """上报错误逻辑"""
         self.logs.error(f"error type : {typ}")
-        if typ == err.ErrorOrder.newOrderIdButOrderRunning:
-            pass
-        elif typ == err.ErrorOrder.nodeAndEdgeNumErr:
-            pass
+
+        error_handlers = {
+            err.ErrorOrder.newOrderIdButOrderRunning:
+                lambda s_order: self.add_error("Order", "OrderId", s_order.orderId,
+                                               "new OrderId But OrderRunning"),
+            err.ErrorOrder.nodeAndEdgeNumErr: lambda: None,
+            err.ErrorOrder.orderUpdateIdLowerErr:
+                lambda s_order: self.add_error("Order", "orderUpdateId", s_order.orderUpdateId,
+                                               "order UpdateId Lower Err"),
+            err.ErrorOrder.creatOrderFailed:
+                lambda: self.add_error("Order", "orderId", sub_order.orderId,
+                                       "creat Order Failed")
+        }
+
+        error_handler = error_handlers.get(typ)
+        if error_handler:
+            error_handler(sub_order)
+        self.logs.info(f"report_error ok!!!")
 
     def _run_order(self, task: order.Order):
         self.logs.info("[order] rec and start")
         with self.lock_order:
-            # 有新的 order , 清空 state error
-            self.state_error.clear()
-            if self.order_state_machine.ready:
-                # 初始化，直接创建订单
-                self.logs.info(f"[order] init,creat order")
-                self.current_order = order.Order.create_order(task)
-                # 狀態機
-                self.order_state_machine.init_order(self.current_order)
-                self.execute_order()
-                return
-            # 判断机器人当前的订单Id和新的订单Id是否一致
-            self.logs.info(f"[order] try creat order")
-            if self.current_order.orderId != task.orderId:
-                # 订单不一致，开始创建新订单逻辑
-                if self.order_state_machine.orders.orders.status != Status.FINISHED:
-                    self.report_error(err.ErrorOrder.newOrderIdButOrderRunning)
-                else:
-                    # 创建新的订单
-                    self._try_create_order(task)
-                return
-            # 订单一致，开始订单更新逻辑
-            # orderUpdateId 比较
-            if self.current_order.orderUpdateId <= task.orderUpdateId:
-                if self.current_order.orderUpdateId == task.orderUpdateId:
-                    # 订单orderUpdateId已存在，丢弃信息
-                    self.logs.info(f"orderUpdateId已存在，丢弃信息")
+            try:
+                # 有新的 order , 清空 state error
+                self.state_error.clear()
+                if not self.order_state_machine.order:
+                    self.order_state_machine.reset()
+                if self.order_state_machine.order_empty():
+                    # 初始化，直接创建订单
+                    self.logs.info(f"[order] init,creat order")
+                    self.current_order = order.Order.create_order(task)
+                    self.execute_order(True)
                     return
-                if self.order_state_machine.orders.orders.status != Status.FINISHED:
-                    """
-                        机器人正在从1到10，在4的时候，order说，可以去115了，这个时候，需要更新订单 4-15
-                    """
-                    # 更新订单
-                    # ------------------------------------------
-                    #          重要节点
-                    # ------------------------------------------
-                    self._try_update_order(task)
+                # 判断机器人当前的订单Id和新的订单Id是否一致
+                self.logs.info(f"[order] try creat order")
+                if self.order_state_machine.order.orderId != task.orderId:
+                    # 订单不一致，开始创建新订单逻辑
+                    if not self.order_state_machine.order_task_empty():
+                        self.report_error(task, err.ErrorOrder.newOrderIdButOrderRunning)
+                    else:
+                        # 创建新的订单
+                        self._try_create_order(task)
+                    return
+                # 订单一致，开始订单更新逻辑
+                # orderUpdateId 比较
+                elif self.order_state_machine.order.orderUpdateId <= task.orderUpdateId:
+                    if self.order_state_machine.order.orderUpdateId == task.orderUpdateId:
+                        # 订单orderUpdateId已存在，丢弃信息
+                        self.logs.info(f"orderUpdateId已存在，丢弃信息")
+                        return
+                    if self.order_state_machine.order_empty():
+                        """ 还有任务时，追加 order
+                            机器人正在从1到10，在4的时候，order说，可以去115了，这个时候，需要更新订单 4-15
+                        """
+                        # 更新订单
+                        # ------------------------------------------
+                        #          重要节点
+                        # ------------------------------------------
+                        self._try_update_order(task)
+                    else:
+                        """ 没有任务，追加 order
+                            机器人正在从1到10，已经在10了，在等order，然后order说，可以去15了，这个时候，需要更新订单 10-15
+                        """
+                        # 创建新的订单
+                        self._try_update_order(task)
+                    return
+                # orderUpdateId 错误，上报错误，拒绝订单
                 else:
-                    """
-                        机器人正在从1到10，已经在10了，在等order，然后order说，可以去15了，这个时候，需要更新订单 10-15
-                    """
-                    # 创建新的订单
-                    self._try_update_order(task)
-                return
-            # orderUpdateId 错误，上报错误，拒绝订单
-            self.report_error(err.ErrorOrder.orderUpdateIdLowerErr)
+                    self.report_error(task, err.ErrorOrder.orderUpdateIdLowerErr)
+            except Exception as e:
+                self.logs.error(f"creat order failed:{e}")
+                self.report_error(task, err.ErrorOrder.creatOrderFailed)
 
     def _try_create_order(self, sub_order):
         print("收到新的orderId，并且当前没有任务，尝试创建新的订单。。。")
         self.order = order.Order.create_order(sub_order)
-
         self.current_order = self.order
-        self.order_state_machine.init_order(self.current_order)
-        # self.logs.info(self.order.nodes)
-        # self.logs.info(self.order.nodes)
         self.execute_order()
 
     def _try_update_order(self, sub_order):
@@ -362,26 +425,27 @@ class HandleTopic:
         """
         if self.is_match_node_start_end(sub_order.nodes, self.current_order.nodes):
             # self.current_order = sub_order
-            self.current_order.orderUpdateId = sub_order.orderUpdateId
             self.update_order(sub_order)
             return
         print("node and edge errors")
         self._report_order_error(sub_order)
 
     def update_order(self, sub_order: order.Order):
+        self.current_order.orderUpdateId = sub_order.orderUpdateId
         update_order = order.Order.create_order(sub_order)
         # 狀態機
-        self.order_state_machine.update_order(update_order)
         self.pack_send(update_order)
+        self.order_state_machine.add_order(update_order)
 
     def pack_send(self, new_order: order.Order):
-        res = self.pack_task.pack(new_order, self.robot.map_manager.map_point_index)
+        res = self.pack_task.pack(new_order,self.robot.map_manager.map_point_index)
+        self.logs.info(f"[pack]res:{res}")
         if isinstance(res, err.ErrorOrder):
-            self.report_error(res)
+            self.report_error(new_order, res)
         elif isinstance(res, list) and res:
             self.robot.send_order(res)
         elif not res:
-            self.report_error(err.ErrorOrder.sendOrderToRobotErr)
+            self.report_error(new_order, err.ErrorOrder.sendOrderToRobotErr)
 
     @classmethod
     def is_match_node_start_end(cls, new_node: List[order.Node], old_node: List[order.Node]) -> bool:
@@ -427,7 +491,7 @@ class HandleTopic:
             await q.get()
         await q.put(obj)
 
-    def execute_order(self):
+    def execute_order(self, is_new_order: bool = False):
         """
             打包任务，发给机器人,只是将 node 和 edge 处理打包成 3066 的任务格式，发给机器人
         :return:None
@@ -435,6 +499,8 @@ class HandleTopic:
 
         try:
             self.pack_send(self.current_order)
+            # 狀態機
+            self.order_state_machine.add_order(self.current_order, is_new_order)
         except Exception as e:
             self.logs.info(f"试图打包任务，发给机器人 失败:{e}")
             self.report_error(err.ErrorOrder.sendOrderToRobotErr)
