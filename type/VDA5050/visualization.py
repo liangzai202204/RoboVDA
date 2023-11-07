@@ -1,5 +1,5 @@
 import pydantic
-from type import state
+from type.VDA5050 import state
 
 
 class Visualization(pydantic.BaseModel):

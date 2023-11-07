@@ -1,12 +1,11 @@
 import asyncio
 import unittest
-import uuid
 import json
 import uuid
 import paho.mqtt.client as mqtt
 from serve.handleTopic import HandleTopic
 from type.RobotOrderStatus import RobotOrderStatus
-from type import order
+from type.VDA5050 import order
 from log.log import MyLogger
 
 

@@ -45,12 +45,13 @@ class KnotVectorItem(BaseModel):
 class ControlPoint(BaseModel):
     x: float
     y: float
-    weight: Optional[float]
+    weight: Optional[float] = 1.0
 
 
 class Trajectory(BaseModel):
-    degree: int
-    knotVector: List[KnotVectorItem]
+    type :Optional[str] = ""
+    degree: Optional[int] = 1
+    knotVector: Optional[List[KnotVectorItem]] = []
     controlPoints: List[ControlPoint]
 
     @staticmethod

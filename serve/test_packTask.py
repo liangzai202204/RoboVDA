@@ -1,7 +1,7 @@
 import unittest
 import packTask as packTask
 from type.mode import PackMode
-from type import order
+from type.VDA5050 import order
 
 
 class MyTestCase(unittest.TestCase):
@@ -22,9 +22,11 @@ class MyTestCase(unittest.TestCase):
         with open(json_file_path, 'r') as json_file:
             json_content = json.load(json_file)
             print(json_content)
-            o.pack(order.Order(**json_content))
-            print(o.nodes)
-            print(o.edges)
+            task,uuids = o.pack(order.Order(**json_content))
+            print(f"打包结果：{json.dumps(task)}",uuids)
+
+
+
 
     def test_pask_one_node(self):
         o = packTask.PackTask(PackMode.params)
@@ -40,9 +42,9 @@ class MyTestCase(unittest.TestCase):
         with open(json_file_path, 'r') as json_file:
             json_content = json.load(json_file)
             print(json_content)
-            o.pack(order.Order(**json_content))
-            print(o.nodes)
-            print(o.edges)
+            task = o.pack(order.Order(**json_content))
+            print(f"打包结果：{json.dumps(task)}")
+
 
 
 if __name__ == '__main__':

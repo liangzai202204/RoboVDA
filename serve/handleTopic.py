@@ -1,12 +1,10 @@
 import asyncio
 import datetime
-import json
 import threading
 from serve.OrderStateMachine import OrderStateMachine
 from serve.topicQueue import TopicQueue
-from type import state, order, instantActions, connection, visualization, RobotOrderStatus
-from typing import List, Union
-import time
+from type.VDA5050 import visualization, order, connection, state, instantActions
+from typing import List
 from serve.robot import Robot as Robot
 from action_type.action_type import ActionPack
 from error_type import error_type as err
@@ -55,7 +53,7 @@ class HandleTopic:
         self.mode = mode  # 定义动作模式 False为参数，True为binTask
         # 訂單狀態機
         self.order_state_machine = OrderStateMachine()
-        self.pack_task = PackTask(mode, self.robot.map_manager.map_point_index, robot_type)
+        self.pack_task = PackTask()
 
     def __del__(self):
         self._cls()
@@ -130,7 +128,7 @@ class HandleTopic:
             self.robot.state.actionStates.extend(actionState)
             self.robot.state.actionStates.extend(instantActionState)
         except Exception as e:
-            self.logs.error(f"狀態機 error:{e}")
+            self.logs.error(f"[state][update]:{e}")
 
     async def handle_connection(self):
         while True:
@@ -434,18 +432,18 @@ class HandleTopic:
         self.current_order.orderUpdateId = sub_order.orderUpdateId
         update_order = order.Order.create_order(sub_order)
         # 狀態機
-        self.pack_send(update_order)
-        self.order_state_machine.add_order(update_order)
+        uuid_task = self.pack_send(update_order)
+        if uuid_task:
+            self.order_state_machine.add_order(update_order,uuid_task)
+        else:
+            self.logs.error(f"[pack][send]actionId empty:{uuid_task}")
 
     def pack_send(self, new_order: order.Order):
-        res = self.pack_task.pack(new_order,self.robot.map_manager.map_point_index)
-        self.logs.info(f"[pack]res:{res}")
-        if isinstance(res, err.ErrorOrder):
-            self.report_error(new_order, res)
-        elif isinstance(res, list) and res:
-            self.robot.send_order(res)
-        elif not res:
-            self.report_error(new_order, err.ErrorOrder.sendOrderToRobotErr)
+        task_list,uuid_task = self.pack_task.pack(new_order)
+        self.logs.info(f"[pack]res:{task_list}，{uuid_task}")
+        if task_list:
+            self.robot.send_order(task_list)
+        return uuid_task
 
     @classmethod
     def is_match_node_start_end(cls, new_node: List[order.Node], old_node: List[order.Node]) -> bool:

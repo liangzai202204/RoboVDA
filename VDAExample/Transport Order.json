@@ -161,7 +161,19 @@
             "direction": null,
             "rotationAllowed": false,
             "maxRotationSpeed": null,
-            "trajectory": null,
+                        "trajectory": {
+                "type": "Straight",
+                "controlPoints": [
+                    {
+                        "x": 12.5,
+                        "y": 1.5
+                    },
+                    {
+                        "x": 12.5,
+                        "y": 1.5
+                    }
+                ]
+            },
             "length": null,
             "actions": []
         },
@@ -179,7 +191,19 @@
             "direction": null,
             "rotationAllowed": false,
             "maxRotationSpeed": null,
-            "trajectory": null,
+            "trajectory": {
+                "type": "Straight",
+                "controlPoints": [
+                    {
+                        "x": 12.5,
+                        "y": 1.5
+                    },
+                    {
+                        "x": 12.5,
+                        "y": 1.5
+                    }
+                ]
+            },
             "length": null,
             "actions": []
         },
@@ -197,7 +221,19 @@
             "direction": null,
             "rotationAllowed": false,
             "maxRotationSpeed": null,
-            "trajectory": null,
+                        "trajectory": {
+                "type": "Straight",
+                "controlPoints": [
+                    {
+                        "x": 12.5,
+                        "y": 1.5
+                    },
+                    {
+                        "x": 12.5,
+                        "y": 1.5
+                    }
+                ]
+            },
             "length": null,
             "actions": [
                 {
@@ -223,7 +259,19 @@
             "direction": null,
             "rotationAllowed": false,
             "maxRotationSpeed": null,
-            "trajectory": null,
+                        "trajectory": {
+                "type": "Straight",
+                "controlPoints": [
+                    {
+                        "x": 12.5,
+                        "y": 1.5
+                    },
+                    {
+                        "x": 12.5,
+                        "y": 1.5
+                    }
+                ]
+            },
             "length": null,
             "actions": []
         },
@@ -241,7 +289,19 @@
             "direction": null,
             "rotationAllowed": false,
             "maxRotationSpeed": null,
-            "trajectory": null,
+                        "trajectory": {
+                "type": "Straight",
+                "controlPoints": [
+                    {
+                        "x": 12.5,
+                        "y": 1.5
+                    },
+                    {
+                        "x": 12.5,
+                        "y": 1.5
+                    }
+                ]
+            },
             "length": null,
             "actions": []
         },
@@ -259,7 +319,19 @@
             "direction": null,
             "rotationAllowed": false,
             "maxRotationSpeed": null,
-            "trajectory": null,
+                        "trajectory": {
+                "type": "Straight",
+                "controlPoints": [
+                    {
+                        "x": 12.5,
+                        "y": 1.5
+                    },
+                    {
+                        "x": 12.5,
+                        "y": 1.5
+                    }
+                ]
+            },
             "length": null,
             "actions": []
         }

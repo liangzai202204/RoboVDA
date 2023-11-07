@@ -7,9 +7,8 @@ import datetime
 
 import rbklib.rbklibPro
 from serve.topicQueue import TopicQueue
-from type import state
+from type.VDA5050 import state
 from typing import List
-import time
 from type.pushMsgType import RobotPush
 from type.ApiReq import ApiReq
 from log.log import MyLogger

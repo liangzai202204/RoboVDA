@@ -3,11 +3,9 @@ import copy
 import datetime
 import json
 import uuid
-import os
-import random
 
 from rbklib.rbklib import Rbklib
-from type import state, order
+from type.VDA5050 import order, state
 
 import networkx as nx
 

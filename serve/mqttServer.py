@@ -7,7 +7,7 @@ import pydantic
 from paho.mqtt import client as mqtt_client
 from log.log import MyLogger
 from serve.topicQueue import TopicQueue, EventLoop
-from type import state, order, instantActions, connection, visualization, factsheet
+from type.VDA5050 import visualization, order, connection, state, instantActions, factsheet
 
 RobotMessage = Union[state.State, str, bytes, order.Order, instantActions.InstantActions, connection.Connection]
 
@@ -182,10 +182,10 @@ class MqttServer:
                 self._enqueue(factsheet.Factsheet(**json.loads(msg.payload)))
             else:
                 self.logs.info(f"未知消息{msg.payload}")
-        except pydantic.error_wrappers.ValidationError as e:
-            # 在这里处理ValidationError异常
-            # 可以打印出错误消息或执行其他逻辑
-            self.logs.error(f"[MQTT]Validation Error:{e}")
+        # except pydantic.error_wrappers.ValidationError as e:
+        #     # 在这里处理ValidationError异常
+        #     # 可以打印出错误消息或执行其他逻辑
+        #     self.logs.error(f"[MQTT]Validation Error:{e}")
         except Exception as e:
             self.logs.error(f"[MQTT]recv Exception Error:{e}")
 

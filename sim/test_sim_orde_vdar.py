@@ -25,26 +25,26 @@ def get_order_topic():
     order = config.get('topic', 'order')
     return order
 
-
 class MyTestCase(unittest.TestCase):
+    def test_something(self):
+        self.assertEqual(True, False)  # add assertion here
 
-
-    def test_straight(self):
+    def test_creat_order_99(self):
         import json
-        import os
-        # 假设包 B 的名称为 package_B，JSON 文件名为 data.json
-        path_to_B = os.path.abspath("../VDAExample")
-        json_filename = 'Transport Order 3066 straight.json'
-
-        json_file_path = os.path.join(path_to_B, json_filename)
-
-        with open(json_file_path, 'r') as json_file:
-            json_content = json.load(json_file)
-            print(json_content)
+        import sim_order as s
+        a = s.SimOrder(ip="192.168.198.174")
+        datas = []
+        data = ("LM99", [])
+        datas.append(data)
+        o1 = a.creat_order(datas, released=True, order_count=100,init="LM87")
         client = mqtt.Client()
         client.connect(get_mqtt_ip(), 1883, 60)
-        client.publish(get_order_topic(), json.dumps(json_content))
-        print("ok")
+
+        for o in o1:
+            client.publish("robot/order", json.dumps(o.model_dump()))
+            print("---", json.dumps(o.model_dump()))
+            time.sleep(2)
+        print(len(o1))
 
     def test_creat_order_87(self):
         import json
@@ -185,23 +185,6 @@ class MyTestCase(unittest.TestCase):
 
 
 class InstantActionsTest(unittest.TestCase):
-
-    def test_straight(self):
-        import json
-        import os
-        # 假设包 B 的名称为 package_B，JSON 文件名为 data.json
-        path_to_B = os.path.abspath("../VDAExample")
-        json_filename = 'Cancel Order InstantAction.json'
-
-        json_file_path = os.path.join(path_to_B, json_filename)
-
-        with open(json_file_path, 'r') as json_file:
-            json_content = json.load(json_file)
-            print(json_content)
-        client = mqtt.Client()
-        client.connect(get_mqtt_ip(), 1883, 60)
-        client.publish("robot/order", json.dumps(json_content))
-
     def test_instantActions_cancelOrder(self):
         import json
         import os
