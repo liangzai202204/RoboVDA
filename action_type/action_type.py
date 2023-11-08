@@ -55,7 +55,7 @@ class ActionPack(pydantic.BaseModel):
             print(f"action pack error:{e}")
 
     @classmethod
-    def pack_edge(cls, edge: order.Edge, start_node: order.NodePosition, end_node: order.NodePosition, ):
+    def pack_edge(cls, edge: order.Edge, start_node: order.NodePosition, end_node: order.NodePosition,uuid_task:str):
         action_task = {}
         if edge.trajectory:
             action_task["trajectory"] = edge.trajectory.model_dump()
@@ -72,7 +72,7 @@ class ActionPack(pydantic.BaseModel):
                     action_task["script_args"] = [a.model_dump() for a in e_a.actionParameters]
             action_task["id"] = edge.endNodeId
             action_task["source_id"] = edge.startNodeId
-            action_task["task_id"] = edge.edgeId
+            action_task["task_id"] = uuid_task
             action_task["sourcePos"] = start_node.model_dump()
             action_task["targetPos"] = end_node.model_dump()
 

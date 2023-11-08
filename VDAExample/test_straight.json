@@ -1,0 +1,83 @@
+{
+    "orderId":"75982a12-7b9a-48a3-a8f7-efa1-ee1cc465",
+    "orderUpdateId":0,
+    "zoneSetId":"",
+    "nodes":[
+        {
+            "nodeId":"node-1-1",
+            "sequenceId":0,
+            "nodeDescription":"Device initial position",
+            "released":true,
+            "nodePosition":{
+                "x":-14,
+                "y":12,
+                "theta":-0.026340157,
+                "allowedDeviationXY":0.5,
+                "allowedDeviationTheta":0.5,
+                "mapId":"01632ba1-5e0f-41b3-9d1c-b701fa168c3f",
+                "mapDescription":"Id: 01632ba1-5e0f-41b3-9d1c-b701fa168c3f"
+            },
+            "actions":[
+
+            ]
+        },
+        {
+            "nodeId":"node-1-2",
+            "sequenceId":0,
+            "nodeDescription":"Device initial position",
+            "released":true,
+            "nodePosition":{
+                "x":-19,
+                "y":12,
+                "theta":-0.026340157,
+                "allowedDeviationXY":0.5,
+                "allowedDeviationTheta":0.5,
+                "mapId":"01632ba1-5e0f-41b3-9d1c-b701fa168c3f",
+                "mapDescription":"Id: 01632ba1-5e0f-41b3-9d1c-b701fa168c3f"
+            },
+            "actions":[
+
+            ]
+        }
+    ],
+    "edges":[
+        {
+            "edgeId":"edge-1-1",
+            "sequenceId":9,
+            "edgeDescription":"Edge connecting ce2ec3af-49bf-40d3-8193-b69c22305c08 to 7bfa5205-b3ba-44b5-8fdb-18619e0c94f6",
+            "released":true,
+            "startNodeId":"node-1-1",
+            "endNodeId":"node-1-2",
+            "maxSpeed":null,
+            "maxHeight":null,
+            "minHeight":null,
+            "orientation":null,
+            "direction":null,
+            "rotationAllowed":false,
+            "maxRotationSpeed":null,
+            "trajectory":{
+                "type":"Straight",
+                "degree":1,
+                "controlPoints":[
+                    {
+                        "x":-14,
+                        "y":12
+                    },
+                    {
+                        "x":-19,
+                        "y":12
+                    }
+                ]
+            },
+            "length":null,
+            "actions":[
+
+            ]
+        }
+    ],
+    "headerId":0,
+    "timeStamp":"11/15/2022 11:59:09",
+    "version":"v1",
+    "manufacturer":"",
+    "serialNumber":""
+}

@@ -191,7 +191,7 @@ class InstantActionsTest(unittest.TestCase):
         import os
         # 假设包 B 的名称为 package_B，JSON 文件名为 data.json
         path_to_B = os.path.abspath("../VDAExample")
-        json_filename = 'Cancel Order InstantAction.json'
+        json_filename = 'test_straight.json'
 
         json_file_path = os.path.join(path_to_B, json_filename)
 
@@ -200,6 +200,7 @@ class InstantActionsTest(unittest.TestCase):
             print(json_content)
         client = mqtt.Client()
         client.connect(get_mqtt_ip(), 1883, 60)
+        print(json.dumps(json_content))
         client.publish("robot/order", json.dumps(json_content))
 
     def test_instantActions_cancelOrder(self):
@@ -216,6 +217,7 @@ class InstantActionsTest(unittest.TestCase):
             print(json_content)
         client = mqtt.Client()
         client.connect(get_mqtt_ip(), 1883, 60)
+        print(json.dumps(json_content))
         client.publish("robot/instantActions", json.dumps(json_content))
 
     def test_instantActions_startPause(self):

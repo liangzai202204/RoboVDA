@@ -73,9 +73,10 @@ class PackTask:
                                 if a.actionId not in self.uuid_task:
                                     self.uuid_task[a.actionId] = str(uuid.uuid4())
                                     self.task_pack_list.append(a_task)
-                    edge_task = ActionPack.pack_edge(edge, startNode.nodePosition, endNode.nodePosition)
+                    edge_uuid = str(uuid.uuid4())
+                    edge_task = ActionPack.pack_edge(edge, startNode.nodePosition, endNode.nodePosition,edge_uuid)
                     if edge_task:
-                        self.uuid_task[edge.edgeId] = str(uuid.uuid4())
+                        self.uuid_task[edge.edgeId] = edge_uuid
                         self.task_pack_list.append(edge_task)
                     if endNode.actions and endNode.released:
                         for a in endNode.actions:

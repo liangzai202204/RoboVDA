@@ -240,10 +240,12 @@ class HandleTopic:
                 }))
                 self.logs.error(f"[instantAction]noOrderToCancel:{self.state_error}")
                 return
-            self.order = None
-            self.current_order = None
+
             if self.robot.instant_cancel_task():
+                self.order_state_machine.set_cancel_status()
                 self.order_state_machine.add_instant_action(action)
+                self.order = None
+                self.current_order = None
             else:
                 self.order_state_machine.add_instant_action(action, Status.FAILED)
         except Exception as e:
@@ -496,9 +498,9 @@ class HandleTopic:
         """
 
         try:
-            self.pack_send(self.current_order)
+            uuid_task = self.pack_send(self.current_order)
             # 狀態機
-            self.order_state_machine.add_order(self.current_order, is_new_order)
+            self.order_state_machine.add_order(self.current_order,uuid_task)
         except Exception as e:
             self.logs.info(f"试图打包任务，发给机器人 失败:{e}")
             self.report_error(err.ErrorOrder.sendOrderToRobotErr)
