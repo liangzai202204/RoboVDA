@@ -318,10 +318,6 @@ class HandleTopic:
         except Exception as e:
             self.logs.error(f" update report_state_by_current_order error:{e}")
 
-    def _report_order_error(self, sub_order):
-        self.logs.info("todo" + sub_order.orderId)
-        print("更新订单的id太小，需要上报错误")
-        # todo
 
     def add_error(self, error_type: str, reference_key: str, reference_value: str, error_description: str):
         """添加错误信息到state_error列表中"""
@@ -427,8 +423,7 @@ class HandleTopic:
             # self.current_order = sub_order
             self.update_order(sub_order)
             return
-        print("node and edge errors")
-        self._report_order_error(sub_order)
+        self.report_error(sub_order, err.ErrorOrder.creatOrderFailed)
 
     def update_order(self, sub_order: order.Order):
         self.current_order.orderUpdateId = sub_order.orderUpdateId
@@ -503,7 +498,7 @@ class HandleTopic:
             self.order_state_machine.add_order(self.current_order,uuid_task)
         except Exception as e:
             self.logs.info(f"试图打包任务，发给机器人 失败:{e}")
-            self.report_error(err.ErrorOrder.sendOrderToRobotErr)
+            self.report_error(err.ErrorOrder.sendOrderToRobotErr,err.ErrorOrder.sendOrderToRobotErr)
 
     @property
     def state_header_id(self):

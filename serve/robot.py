@@ -13,6 +13,7 @@ from type.pushMsgType import RobotPush
 from type.ApiReq import ApiReq
 from log.log import MyLogger
 from parse_protobuf.Model import Model
+from parse_protobuf.Map2D import Map2D
 
 
 class Robot:
@@ -23,6 +24,7 @@ class Robot:
         self.ApiReq_queue: asyncio.Queue[ApiReq] = asyncio.Queue()
         self.map_manager = RobotMapManager(rbk)
         self.model = RobotModel(rbk)
+        self.map = Map2D(rbk)
         self.logs = MyLogger()
         self.robot_push_msg = RobotPush
         self.init = False
@@ -463,5 +465,47 @@ class RobotModel:
         model_req = self._get_model()
 
         self.model = Model(model_req)
+        # for m in self.model.device_types:
+        #     print(m.name)
+
+
+
+class RobotMap:
+    def __init__(self, rbk):
+        self.map_dir = os.path.join(os.getcwd(), "robotMap")
+        if not os.path.exists(self.map_dir):
+            os.makedirs(self.map_dir)
+        self.model_path = os.path.join(os.path.join(os.getcwd(), "robotMap"), "robot.smap")
+        self.rbk = rbk
+        self.map = None
+        self.log = MyLogger()
+
+    def _get_map(self):
+        try:
+            model_req = self.rbk.call_service(ApiReq.ROBOT_STATUS_MODEL_REQ.value)
+            if not model_req:
+                self.log.error(f"[map]req error")
+                return {}
+            self.log.info(f"[map]map_req len :{len(model_req)}")
+            # print(self.model_path)
+            # 将模型文件写入硬盘
+            with open(self.model_path, 'wb') as file:
+                # 可选：写入内容到文件
+                file.write(model_req)
+                self.log.info(f"[robot] load model OK!")
+            # 解析模型文件
+            return json.loads(model_req)
+        except OSError as o:
+            self.log.error(f"_get model:{o}")
+            return {}
+        except Exception as e:
+            self.log.error(f"_get model:{e}")
+        return None
+
+    def get_map(self):
+        self.log.info(f"----------------------get_map----------------------------")
+        map_req = self._get_map()
+
+        self.map = Map2D(map_req)
         # for m in self.model.device_types:
         #     print(m.name)

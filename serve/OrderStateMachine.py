@@ -130,7 +130,6 @@ class OrderStateMachine:
     def del_node(self, ids: str):
         if ids in self.nodes:
             self.nodes.pop(ids)
-            print(self.nodes.__len__())
             self.log.info(f"del_node :{ids}")
 
     def del_edge(self, ids: str):
