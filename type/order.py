@@ -74,6 +74,7 @@ class Edge(pydantic.BaseModel):
     maxSpeed: Optional[float] = 0.
     maxHeight: Optional[float] = 0.
     orientation: Optional[float] = 0.
+    hold_dir: Optional[float] = 0.
     direction: Optional[str] = ""
     rotationAllowed: Optional[bool] = False
     maxRotationSpeed: Optional[float] = 0.
