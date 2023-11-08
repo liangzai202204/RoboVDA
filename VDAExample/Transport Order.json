@@ -52,9 +52,9 @@
             },
             "actions": [
                 {
-                    "actionType": "dock",
+                    "actionType": "pick",
                     "actionId": "20cd999e-6159-4d58-8a40-4d8fc08f3e1f",
-                    "actionDescription": "Dock",
+                    "actionDescription": "pick",
                     "blockingType": "HARD",
                     "actionParameters": [
                         {
@@ -93,7 +93,7 @@
             "nodeId": "ce2ec3af-49bf-40d3-8193-b69c22305c08",
             "sequenceId": 8,
             "nodeDescription": "Exitvector for PointOfInterest 5f9df07e-7ff8-4708-9cfd-52d8d0bde726 Dolly",
-            "released": false,
+            "released": true,
             "nodePosition": {
                 "x": -27.09,
                 "y": 5.214,
@@ -109,7 +109,7 @@
             "nodeId": "ebc9efb8-60f4-41d6-918e-cb45fe6f10ed",
             "sequenceId": 10,
             "nodeDescription": "Entry node for PointOfInterest 035c53a9-577c-4806-af6a-ee0ecbfbed5e Dolly",
-            "released": false,
+            "released": true,
             "nodePosition": {
                 "x": -29.702,
                 "y": 5.167,
@@ -125,7 +125,7 @@
             "nodeId": "59c0567c-53a3-4218-b8e5-b1b2b23af765",
             "sequenceId": 12,
             "nodeDescription": "Point of interest ID: 035c53a9-577c-4806-af6a-ee0ecbfbed5e, Type: Dolly",
-            "released": false,
+            "released": true,
             "nodePosition": {
                 "x": -32.329,
                 "y": 5.119,

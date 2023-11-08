@@ -28,18 +28,18 @@ class ActionPack(pydantic.BaseModel):
     """
 
     @classmethod
-    def pack(cls, action: order.Action):
+    def pack_action(cls, action: order.Action,script_name):
         try:
             action_task = {}
             action_mapping = {
-                ActionType.PICK: lambda a: ActionPack.pick(a),
-                ActionType.DROP: lambda a: ActionPack.drop(a, script_stage=1),
-                ActionType.FORK_LIFT: lambda a: ActionPack.forklift(a, script_stage=1),
-                ActionType.TEST: lambda a: ActionPack.test(a, script_stage=1),
-                ActionType.FORK_LOAD: lambda a: ActionPack.fork_load(a, script_stage=1),
-                ActionType.FORK_UNLOAD: lambda a: ActionPack.fork_unload(a, script_stage=1),
-                ActionType.Angle: lambda a: ActionPack.angle_action(a, script_stage=1),
-                ActionType.Ready: lambda a: ActionPack.ready(a, script_stage=1),
+                ActionType.PICK: lambda a: ActionPack.pick(a,script_name),
+                ActionType.DROP: lambda a: ActionPack.drop(a, script_name),
+                ActionType.FORK_LIFT: lambda a: ActionPack.forklift(a, script_name),
+                ActionType.TEST: lambda a: ActionPack.test(a, script_name),
+                ActionType.FORK_LOAD: lambda a: ActionPack.fork_load(a, script_name),
+                ActionType.FORK_UNLOAD: lambda a: ActionPack.fork_unload(a, script_name),
+                ActionType.Angle: lambda a: ActionPack.angle_action(a, script_name),
+                ActionType.Ready: lambda a: ActionPack.ready(a, script_name),
                 # ActionType.PICK_FORK: lambda a: ActionPack.pick_fork(a, script_stage=1),
                 # ActionType.DROP_FORK: lambda a: ActionPack.drop_fork(a, script_stage=1),
             }
@@ -55,7 +55,8 @@ class ActionPack(pydantic.BaseModel):
             print(f"action pack error:{e}")
 
     @classmethod
-    def pack_edge(cls, edge: order.Edge, start_node: order.NodePosition, end_node: order.NodePosition,uuid_task:str):
+    def pack_edge(cls, edge: order.Edge, start_node: order.NodePosition,
+                  end_node: order.NodePosition,uuid_task:str,script_name:str):
         action_task = {}
         if edge.trajectory:
             action_task["trajectory"] = edge.trajectory.model_dump()
@@ -68,7 +69,7 @@ class ActionPack(pydantic.BaseModel):
                     elif e_a.blockingType == order.ActionBlockingType.SOFT:
                         action_task["script_stage"] = 1
                     action_task["operation"] = "Script"
-                    action_task["script_name"] = "ForkByModbusTcpCtr.py"
+                    action_task["script_name"] = script_name
                     action_task["script_args"] = [a.model_dump() for a in e_a.actionParameters]
             action_task["id"] = edge.endNodeId
             action_task["source_id"] = edge.startNodeId
@@ -156,102 +157,97 @@ class ActionPack(pydantic.BaseModel):
         return a
 
     @classmethod
-    def pick(cls, action: order.Action, script_stage=2) -> dict:
-        action_task = cls._pack_action(action, script_stage)
+    def pick(cls, action: order.Action, script_name) -> dict:
+        action_task = cls._pack_action(action, script_name)
         print("pick:", action_task)
         return action_task
 
     @classmethod
-    def drop(cls, action: order.Action, script_stage=2) -> dict:
-        action_task = cls._pack_action(action, script_stage)
+    def drop(cls, action: order.Action, script_name) -> dict:
+        action_task = cls._pack_action(action, script_name)
         print("drop:", action_task)
         return action_task
 
     @classmethod
-    def drop_fork(cls, action: order.Action, script_stage=2) -> dict:
-        action_task = cls._pack_fork_action(action, script_stage)
-        action_task.pop("script_stage")
+    def drop_fork(cls, action: order.Action, script_name) -> dict:
+        action_task = cls._pack_fork_action(action, script_name)
         print("drop_fork:", action_task)
         return action_task
 
     @classmethod
-    def pick_fork(cls, action: order.Action, script_stage=2) -> dict:
-        action_task = cls._pack_fork_action(action, script_stage)
-        action_task.pop("script_stage")
+    def pick_fork(cls, action: order.Action, script_name) -> dict:
+        action_task = cls._pack_fork_action(action, script_name)
         print("pick_fork:", action_task)
         return action_task
 
     @classmethod
-    def forklift(cls, action: order.Action, script_stage=2) -> dict:
-        action_task = cls._pack_action(action, script_stage)
+    def forklift(cls, action: order.Action, script_name) -> dict:
+        action_task = cls._pack_action(action, script_name)
         print("forklift:", action_task)
         return action_task
 
     @classmethod
-    def test(cls, action: order.Action, script_stage=2) -> dict:
+    def test(cls, action: order.Action, script_name) -> dict:
         action_task = {
             "task_id": action.actionId,
             "id": "SELF_POSITION",
             "source_id": "SELF_POSITION",
             "operation": "Wait",
-            "script_stage": script_stage
+            "script_stage": script_name
         }
         print("test:", action_task)
         return action_task
 
     @classmethod
-    def fork_load(cls, action: order.Action, script_stage=2) -> dict:
+    def fork_load(cls, action: order.Action, script_name) -> dict:
         action_task = {
             "task_id": action.actionId,
             "id": "SELF_POSITION",
             "source_id": "SELF_POSITION",
             "operation": action.actionType,
-            "script_stage": script_stage
+            "script_stage": script_name
         }
         print("fork_load:", action_task)
         return action_task
 
     @classmethod
-    def fork_unload(cls, action: order.Action, script_stage=2) -> dict:
+    def fork_unload(cls, action: order.Action, script_name) -> dict:
         action_task = {
             "task_id": action.actionId,
             "id": "SELF_POSITION",
             "source_id": "SELF_POSITION",
             "operation": action.actionType,
-            "script_stage": script_stage
+            "script_stage": script_name
         }
         print("fork_load:", action_task)
 
         return action_task
 
     @classmethod
-    def angle_action(cls, action: order.Action, script_stage=2) -> dict:
-        action_task = cls._pack_action(action, script_stage)
-        action_task.pop("script_stage")
+    def angle_action(cls, action: order.Action, script_name) -> dict:
+        action_task = cls._pack_action(action, script_name)
         print("angle:", action_task)
         return action_task
 
     @classmethod
-    def ready(cls, action: order.Action, script_stage=2) -> dict:
-        action_task = cls._pack_action(action, script_stage)
+    def ready(cls, action: order.Action, script_name) -> dict:
+        action_task = cls._pack_action(action, script_name)
         print("ready:", action_task)
         return action_task
 
     @classmethod
-    def _pack_action(cls, action: order.Action, script_stage) -> dict:
+    def _pack_action(cls, action: order.Action,script_name) -> dict:
         try:
             action_task = {
                 "task_id": action.actionId,
                 "id": "SELF_POSITION",
                 "source_id": "SELF_POSITION",
-                "script_name": "ForkByModbusTcpCtr.py",
+                "script_name": script_name,
                 "script_args": {
                     "action_parameters": [a.model_dump() for a in action.actionParameters],
                     "operation": action.actionType,
-                    "blocking_type": "node"
                 },
                 "operation": "Script",
-                "script_stage": script_stage
             }
             return action_task
         except Exception as e:
@@ -259,7 +255,7 @@ class ActionPack(pydantic.BaseModel):
             return {}
 
     @classmethod
-    def _pack_fork_action(cls, action: order.Action, script_stage) -> dict:
+    def _pack_fork_action(cls, action: order.Action, script_name) -> dict:
         end_height = 0
         try:
             for a_p in action.actionParameters:

@@ -9,7 +9,7 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual(True, False)  # add assertion here
 
     def test_pask(self):
-        o = packTask.PackTask(PackMode.params)
+        o = packTask.PackTask('script.py')
         import json
         import os
         # 假设包 B 的名称为 package_B，JSON 文件名为 data.json
@@ -23,7 +23,7 @@ class MyTestCase(unittest.TestCase):
             json_content = json.load(json_file)
             print(json_content)
             task,uuids = o.pack(order.Order(**json_content))
-            print(f"打包结果：{json.dumps(task)}",uuids)
+            print(f"打包结果：{len(task)},{json.dumps(task)}",uuids)
 
 
 

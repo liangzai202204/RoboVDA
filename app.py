@@ -70,7 +70,8 @@ class RoboVda:
                                       mode=self.config.config.getint("robot", "mode"),
                                       state_report_frequency=self.config.config.getfloat("network",
                                                                                          "state_report_frequency"),
-                                      robot_type=self.config.config.getint("robot", "robot_type"))
+                                      robot_type=self.config.config.getint("robot", "robot_type"),
+                                      script_name=self.config.config.get("script", "script_name"))
 
     def creat_mqtt_server(self):
         return self.MqttServer_class(**self.config.config_mqtt())

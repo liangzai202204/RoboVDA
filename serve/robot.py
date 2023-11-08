@@ -24,7 +24,7 @@ class Robot:
         self.ApiReq_queue: asyncio.Queue[ApiReq] = asyncio.Queue()
         self.map_manager = RobotMapManager(rbk)
         self.model = RobotModel(rbk)
-        self.map = Map2D(rbk)
+        self.map = RobotMap(rbk)
         self.logs = MyLogger()
         self.robot_push_msg = RobotPush
         self.init = False

@@ -30,7 +30,7 @@ def lock_decorator(func):
 
 class HandleTopic:
 
-    def __init__(self, robot: Robot, mode, loop=None, state_report_frequency=1, robot_type=1):
+    def __init__(self, robot: Robot, mode, loop=None, state_report_frequency=1, robot_type=1,script_name="script.py"):
         self.state_report_frequency = state_report_frequency
         self.init = False
         self._event_loop = asyncio.get_event_loop() if loop is None else loop
@@ -53,7 +53,7 @@ class HandleTopic:
         self.mode = mode  # 定义动作模式 False为参数，True为binTask
         # 訂單狀態機
         self.order_state_machine = OrderStateMachine()
-        self.pack_task = PackTask()
+        self.pack_task = PackTask(script_name)
 
     def __del__(self):
         self._cls()

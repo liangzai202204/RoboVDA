@@ -49,6 +49,8 @@ class Config:
                 self.config.set('web', 'web_port', '5000')
                 self.config.add_section('network')
                 self.config.set('network', 'state_report_frequency', '1')
+                self.config.add_section('script')
+                self.config.set('script', 'script_name', 'script.py')
                 with open(os.path.join(self.file_path, 'config.ini'), 'w') as configfile:
                     self.config.write(configfile)
                 os.chmod(os.path.join(self.file_path, 'config.ini'),
@@ -75,7 +77,8 @@ class Config:
             'mqtt_topic_connection': self.config.get('topic', 'connection'),
             "mqtt_topic_instantActions": self.config.get('topic', 'instantActions'),
             "mqtt_topic_factsheet": self.config.get('topic', 'factsheet'),
-            "state_report_frequency": self.config.getfloat('network', 'state_report_frequency')
+            "state_report_frequency": self.config.getfloat('network', 'state_report_frequency'),
+            "script_name": self.config.get('script', 'script_name')
         }
         return self.args
 
@@ -92,6 +95,11 @@ class Config:
             "mqtt_topic_factsheet": self.config.get('topic', 'factsheet'),
         }
         return self.args_mqtt
+
+    def config_script(self):
+        return {
+            "script_name":self.config.get('script', 'script_name')
+        }
 
 
 if __name__ == '__main__':
