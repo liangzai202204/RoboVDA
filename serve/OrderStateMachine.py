@@ -228,6 +228,8 @@ class OrderStateMachine:
                 else:
                     s = task_statu["status"]
                     self.log.error(f"未知狀態：{s}")
+                if len(self.orders.orders.nodes) == 1 and self.orders.orders.action_empty():
+                    self.orders.orders.set_node_status(Status.FINISHED)
 
     def set_cancel_order_instant_action(self,cancel_order_action:order.Action,status:Status):
         """对应 topic instantAction：cancelOrder
@@ -364,6 +366,10 @@ class OrderStatus(pydantic.BaseModel):
     def set_node_status_by_id(self, ids: str, status: Status):
         n = self.nodes.get(ids, {})
         n["status"] = status
+
+    def set_node_status(self,status: Status):
+        for node_id,node_key in self.nodes.items():
+            self.set_node_status_by_id(node_id,status)
 
 
     def set_edge_status_by_id(self, ids: str, status: Status):
