@@ -22,7 +22,6 @@ class Robot:
         self.rbk = rbk
         self.task_status: asyncio.Queue[dict] = asyncio.Queue()
         self.ApiReq_queue: asyncio.Queue[ApiReq] = asyncio.Queue()
-        self.map_manager = RobotMapManager(rbk)
         self.model = RobotModel(rbk)
         self.map = RobotMap(rbk)
         self.logs = MyLogger()
@@ -47,9 +46,8 @@ class Robot:
                 if self.init:
                     await self.update()
                 else:
-                    self.map_manager.get_all_map()
+                    self.map.get_map()
                     self.lock_robot()
-
                     self.model.get_model()
                     self.init = True
                 # self.logs.info(f'[robot]online status:{self.rbk.online_status}')
@@ -182,11 +180,12 @@ class Robot:
                 self.lock = False
 
     def update_map(self):
-        if self.robot_push_msg.current_map != self.map_manager.current_map or \
-                self.robot_push_msg.current_map_md5 != self.map_manager.current_map_md5:
-            self.logs.info(f"[map]current_map:{self.robot_push_msg.current_map}||{self.map_manager.current_map}"
-                           f"current_map_md5:{self.robot_push_msg.current_map_md5}||{self.map_manager.current_map_md5}")
-            self.map_manager.get_current_map(self.robot_push_msg.current_map, self.robot_push_msg.current_map_md5)
+        if not self.map.current_map_md5:
+            self.map.current_map_md5 = self.robot_push_msg.current_map_md5
+        if self.robot_push_msg.current_map != self.map.current_map or self.map.current_map_md5 != self.robot_push_msg.current_map_md5:
+            self.logs.info(f"[map]current_map:{self.robot_push_msg.current_map}||{self.map.current_map}"
+                           f"current_map_md5:{self.robot_push_msg.current_map_md5}||")
+            self.map.get_map(self.robot_push_msg.current_map)
 
     def lock_robot(self):
         if self.robot_online:
@@ -469,9 +468,9 @@ class RobotModel:
         #     print(m.name)
 
 
-
 class RobotMap:
     def __init__(self, rbk):
+        self.advanced_point_list = []
         self.map_dir = os.path.join(os.getcwd(), "robotMap")
         if not os.path.exists(self.map_dir):
             os.makedirs(self.map_dir)
@@ -479,22 +478,26 @@ class RobotMap:
         self.rbk = rbk
         self.map = None
         self.log = MyLogger()
+        self.current_map = ""
+        self.current_map_md5 = None
 
-    def _get_map(self):
+    def _get_map(self, name):
         try:
-            model_req = self.rbk.call_service(ApiReq.ROBOT_STATUS_MODEL_REQ.value)
-            if not model_req:
-                self.log.error(f"[map]req error")
+
+            data = self.rbk.call_service(ApiReq.ROBOT_CONFIG_DOWNLOADMAP_REQ.value, {"map_name": name})
+            data_json = json.loads(data)
+            if "ret_code" in data_json:
+                self.log.error(f"[map]req error,{data_json}")
                 return {}
-            self.log.info(f"[map]map_req len :{len(model_req)}")
+            self.log.info(f"[map]map_req len :{len(data)}")
             # print(self.model_path)
             # 将模型文件写入硬盘
             with open(self.model_path, 'wb') as file:
                 # 可选：写入内容到文件
-                file.write(model_req)
-                self.log.info(f"[robot] load model OK!")
+                file.write(data)
+                self.log.info(f"[map] _get_map OK!")
             # 解析模型文件
-            return json.loads(model_req)
+            return data_json
         except OSError as o:
             self.log.error(f"_get model:{o}")
             return {}
@@ -502,10 +505,29 @@ class RobotMap:
             self.log.error(f"_get model:{e}")
         return None
 
-    def get_map(self):
+    def get_map(self,name=None):
+        if name:
+            self.current_map = name
         self.log.info(f"----------------------get_map----------------------------")
-        map_req = self._get_map()
+        if self._get_current_map():
+            map_req = self._get_map(self.current_map)
+            if map_req:
+                self.map = Map2D(map_req)
+                self.advanced_point_list = [point.class_name for point in self.map.advanced_point_list]
 
-        self.map = Map2D(map_req)
-        # for m in self.model.device_types:
-        #     print(m.name)
+    def _get_current_map(self):
+        try:
+            data = self.rbk.call_service(ApiReq.ROBOT_STATUS_MAP_REQ.value)
+            data_json = json.loads(data)
+            if data_json.get("ret_code",None):
+                self.log.error("[map]req ROBOT_STATUS_MAP_REQ error")
+                return ""
+            self.log.info(f"[map]map_req{data_json}")
+            self.current_map = data_json.get("current_map", "")
+            return self.current_map
+        except OSError as o:
+            self.log.error(f"[map]_get_current_map:{o}")
+            return ""
+        except Exception as e:
+            self.log.error(f"[map]_get_current_map error:{e}")
+            return ""

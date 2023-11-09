@@ -34,14 +34,30 @@ class MqttServer:
         self.mqtt_topic_instantActions = mqtt_topic_instantActions
         self.mqtt_topic_factsheet = mqtt_topic_factsheet
         # connect to MQTT
-        print("-----", mqtt_host, mqtt_port, mqtt_transport)
+        print("mqtt", mqtt_host, mqtt_port, mqtt_transport)
         self.mqtt_client_s = self._connect_to_mqtt(mqtt_host, mqtt_port, mqtt_transport)
         self._mqtt_messages: asyncio.Queue[RobotMessage] = asyncio.Queue()
+        self.msg_topics = {
+            self.mqtt_topic_state: state.State,
+            self.mqtt_topic_order: order.Order,
+            self.mqtt_topic_instantActions: instantActions.InstantActions,
+            self.mqtt_topic_connection: connection.Connection,
+            self.mqtt_topic_visualization: visualization.Visualization,
+            self.mqtt_topic_factsheet: factsheet.Factsheet
+        }
+        self.handlers = {
+            state.State: self._mqtt_handle_state,
+            order.Order: self._mqtt_handle_order,
+            instantActions.InstantActions: self._mqtt_handle_instantActions,
+            connection.Connection: self._mqtt_handle_Connection,
+            visualization.Visualization: self._mqtt_handle_visualization,
+            factsheet.Factsheet: self._mqtt_handle_fact_sheet
+        }
 
     async def run(self):
         results = await asyncio.gather(
             self._handle_mqtt_subscribe_messages(),
-            self._handle_mqtt_publish_messages(),
+            self._handle_mqtt_publish_messages_sate(),
             self._handle_mqtt_publish_messages_connection(),
             self._handle_mqtt_publish_messages_visualization()
         )
@@ -55,29 +71,12 @@ class MqttServer:
         """
         while True:
             message = await self._mqtt_messages.get()
-            if isinstance(message, state.State):
-                # self.logs.info(f"[subscribe]"
-                #                f"[{self.mqtt_topic_state}]|"
-                #                f"{len(message.model_dump())}|{message.model_dump().__len__()}")
-                pass
-            elif isinstance(message, order.Order):
-                self.logs.info(f"[subscribe][{self.mqtt_topic_order}]|"
-                               f"{len(message.model_dump())}|{message.model_dump()}")
-                self._mqtt_handle_order(message)
-            elif isinstance(message, instantActions.InstantActions):
-                self.logs.info(f"[subscribe][{self.mqtt_topic_instantActions}]|"
-                               f"{len(message.model_dump())}|{message.model_dump()}")
-                self._mqtt_handle_instantActions(message)
-            elif isinstance(message, connection.Connection):
-                self.logs.info(f"[subscribe][{self.mqtt_topic_connection}]|"
-                               f"{len(message.model_dump())}|{message.model_dump()}")
-                self._mqtt_handle_Connection(message)
-            elif isinstance(message, visualization.Visualization):
-                self._mqtt_handle_visualization(message)
+            if handler := self.handlers.get(type(message)):
+                handler(message)
             else:
                 self.logs.info(f"[subscribe][unknown]|{len(message.model_dump())}|{message.model_dump()}")
 
-    async def _handle_mqtt_publish_messages(self):
+    async def _handle_mqtt_publish_messages_sate(self):
         """
         发布 机器人状态
         :return:
@@ -96,8 +95,8 @@ class MqttServer:
         while True:
             message = await self.get_connection()
             self.mqtt_client_s.publish(self.mqtt_topic_connection, json.dumps(message.model_dump()))
-            self.logs.info(f"[publish][{self.mqtt_topic_connection}]|"
-                           f"{len(json.dumps(message.model_dump()))}|{json.dumps(message.model_dump())}")
+            # self.logs.info(f"[publish][{self.mqtt_topic_connection}]|"
+            #                f"{len(json.dumps(message.model_dump()))}|{json.dumps(message.model_dump())}")
 
     async def _handle_mqtt_publish_messages_visualization(self):
         """
@@ -107,8 +106,8 @@ class MqttServer:
         while True:
             message = await self.get_visualization()
             self.mqtt_client_s.publish(self.mqtt_topic_visualization, json.dumps(message.model_dump()))
-            self.logs.info(f"[publish][{self.mqtt_topic_visualization}]|"
-                           f"{len(json.dumps(message.model_dump()))}|")
+            # self.logs.info(f"[publish][{self.mqtt_topic_visualization}]|"
+            #                f"{len(json.dumps(message.model_dump()))}|")
 
     async def get_state(self) -> state.State:
         return await TopicQueue.p_state.get()
@@ -160,32 +159,14 @@ class MqttServer:
 
     def _mqtt_on_message(self, client, userdata, msg):
         try:
-            # self.logs.info(f"[MQTT] recv:{msg}")
-            if msg.topic == self.mqtt_topic_state:
-                # self.logs.info(f"topic {self.mqtt_topic_state} rec")
-                # self._enqueue(state.State(**json.loads(msg.payload)))
-                pass
-            elif msg.topic == self.mqtt_topic_order:
-                self.logs.info(f"topic {self.mqtt_topic_order} rec")
-                self._enqueue(order.Order(**json.loads(msg.payload)))
-            elif msg.topic == self.mqtt_topic_instantActions:
-                self.logs.info(f"topic {self.mqtt_topic_instantActions} rec")
-                self._enqueue(instantActions.InstantActions(**json.loads(msg.payload)))
-            elif msg.topic == self.mqtt_topic_connection:
-                self.logs.info(f"topic {self.mqtt_topic_connection} rec")
-                self._enqueue(connection.Connection(**json.loads(msg.payload)))
-            elif msg.topic == self.mqtt_topic_visualization:
-                self.logs.info(f"topic {self.mqtt_topic_visualization} rec")
-                self._enqueue(visualization.Visualization(**json.loads(msg.payload)))
-            elif msg.topic == self.mqtt_topic_factsheet:
-                self.logs.info(f"topic {self.mqtt_topic_factsheet} rec")
-                self._enqueue(factsheet.Factsheet(**json.loads(msg.payload)))
+
+            if topic_class := self.msg_topics.get(msg.topic):
+                if msg.topic == self.mqtt_topic_order or self.mqtt_topic_instantActions == msg.topic:
+                    self.logs.info(f"[mqtt]topic {msg.topic} rec")
+                    self.logs.info(f"[mqtt]topic {msg.topic}||{msg.payload}")
+                self._enqueue(topic_class(**json.loads(msg.payload)))
             else:
-                self.logs.info(f"未知消息{msg.payload}")
-        # except pydantic.error_wrappers.ValidationError as e:
-        #     # 在这里处理ValidationError异常
-        #     # 可以打印出错误消息或执行其他逻辑
-        #     self.logs.error(f"[MQTT]Validation Error:{e}")
+                self.logs.info(f"[mqtt]未知消息{msg.payload}")
         except Exception as e:
             self.logs.error(f"[MQTT]recv Exception Error:{e}")
 
@@ -196,6 +177,9 @@ class MqttServer:
     def _enqueue(self, obj):
         asyncio.run_coroutine_threadsafe(self._mqtt_messages.put(obj), EventLoop.event_loop)
 
+    def _mqtt_handle_state(self,message):
+        pass
+
     def _mqtt_handle_order(self, sub_order: order.Order):
         asyncio.run_coroutine_threadsafe(TopicQueue.s_order.put(sub_order), EventLoop.event_loop)
         self.logs.info(f"MQTT s_order 订单队列大小：{TopicQueue.s_order.qsize()}")
@@ -205,11 +189,13 @@ class MqttServer:
         self.logs.info(f"MQTT s_instantActions 订单队列大小：{TopicQueue.s_instantActions.qsize()}")
 
     def _mqtt_handle_Connection(self, message):
-        self.logs.info(f"_mqtt_handle_Connection ,message len:{message.model_dump().__len__()} ")
+        # self.logs.info(f"_mqtt_handle_Connection ,message len:{message.model_dump().__len__()} ")
+        pass
 
     def _mqtt_handle_visualization(self, message):
-        self.logs.info(f"[subscribe][{self.mqtt_topic_visualization}]|"
-                       f"{len(message.model_dump())}|")
+        # self.logs.info(f"[subscribe][{self.mqtt_topic_visualization}]|"
+        #                f"{len(message.model_dump())}|")
+        pass
 
     def _mqtt_handle_fact_sheet(self, factSheet: factsheet.Factsheet):
         asyncio.run_coroutine_threadsafe(TopicQueue.s_factSheet.put(factSheet), EventLoop.event_loop)

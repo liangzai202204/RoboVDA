@@ -54,6 +54,8 @@ class HandleTopic:
         # 訂單狀態機
         self.order_state_machine = OrderStateMachine()
         self.pack_task = PackTask(script_name)
+        self.handle_actions = self._handle_actions()
+
 
     def __del__(self):
         self._cls()
@@ -68,8 +70,7 @@ class HandleTopic:
                              self.handle_instantActions(),
                              self.handle_connection(),
                              self.handle_visualization(),
-                             self.handle_state_report()
-                             )
+                             self.handle_state_report())
 
     async def handle_order(self):
         """
@@ -163,34 +164,13 @@ class HandleTopic:
             online = True
         return online
 
-    def instant_action1(self, action: order.Action, service_name: str):
-        """机器人立即执行动作"""
-        if self.robot._send_robot_service_request(service_name):
-            self.order_state_machine.add_instant_action(action)
-            self.logs.info(f'[instant_action]{service_name} ok!')
-        else:
-            self.order_state_machine.add_instant_action(action, Status.FAILED)
 
     def _handle_instantActions(self, instant: instantActions.InstantActions):
         self.logs.info("handle_instantActions")
         actions = instant.instantActions
-
-        # 定义每种动作类型对应的处理函数
-        action_handlers = {
-            "startPause": lambda a: self.instant_start_pause(a),
-            "stopPause": lambda a: self.instant_stop_pause(a),
-            "startCharging": ActionPack.startCharging,
-            "stopCharging": ActionPack.stopCharging,
-            "initPosition": lambda a: self.instant_initPosition(a),
-            "stateRequest": ActionPack.stateRequest,
-            "logReport": ActionPack.logReport,
-            "cancelOrder": lambda a: self.instant_cancel_task(a),
-            "factsheetRequest": ActionPack.factsheetRequest,
-        }
-
         for action in actions:
             action_type = action.actionType
-            handler = action_handlers.get(action_type)
+            handler = self.handle_actions.get(action_type)
             if handler:
                 handler(action)
             else:
@@ -317,7 +297,6 @@ class HandleTopic:
             await self._enqueue(TopicQueue.chanel_state, self.robot.state)
         except Exception as e:
             self.logs.error(f" update report_state_by_current_order error:{e}")
-
 
     def add_error(self, error_type: str, reference_key: str, reference_value: str, error_description: str):
         """添加错误信息到state_error列表中"""
@@ -520,3 +499,17 @@ class HandleTopic:
     def visualization_header_id(self):
         self.robot_visualization_header_id += 1
         return self.robot_visualization_header_id
+
+    def _handle_actions(self):
+        # 定义每种动作类型对应的处理函数
+        return {
+            "startPause": lambda a: self.instant_start_pause(a),
+            "stopPause": lambda a: self.instant_stop_pause(a),
+            "startCharging": ActionPack.startCharging,
+            "stopCharging": ActionPack.stopCharging,
+            "initPosition": lambda a: self.instant_initPosition(a),
+            "stateRequest": ActionPack.stateRequest,
+            "logReport": ActionPack.logReport,
+            "cancelOrder": lambda a: self.instant_cancel_task(a),
+            "factsheetRequest": ActionPack.factsheetRequest,
+        }
