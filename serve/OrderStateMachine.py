@@ -131,6 +131,8 @@ class OrderStateMachine:
                     robot_state.nodeStates.append(state.NodeState(**node_s["node"].model_dump()))
                 else:
                     node_f_n -= 1
+
+
             for _, edge_s in edges_status.items():
                 e_s = edge_s.get("status",None)
                 if e_s != Status.FINISHED:
@@ -149,6 +151,8 @@ class OrderStateMachine:
                 }))
                 if a_s == Status.FINISHED:
                     action_f_n -= 1
+            if len(nodes_status)==1:
+                node_f_n=0
             if node_f_n == 0 and edge_f_n == 0 and action_f_n == 0:
 
                 self.orders.orders.status = Status.FINISHED
