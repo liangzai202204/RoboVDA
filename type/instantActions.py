@@ -29,4 +29,4 @@ class InstantActions(pydantic.BaseModel):
     version: str = "2.0.0"
     manufacturer: str = ""
     serialNumber: str = ""
-    instantActions: List[Action] = []
+    actions: List[Action] = []

@@ -145,14 +145,14 @@ class HandleTopic:
 
     def _handle_instantActions(self, instant: instantActions.InstantActions):
         self.logs.info("handle_instantActions")
-        actions = instant.instantActions
+        actions = instant.actions
         for action in actions:
             # action_id = action.actionId
             action_type = action.actionType
             if action_type == "startPause":
-                self.instant_start_pause()
+                self.instant_start_pause(action)
             elif action_type == "stopPause":
-                self.instant_stop_pause()
+                self.instant_stop_pause(action)
             elif action_type == "startCharging":
                 # todo
                 ActionPack.startCharging(action)
@@ -225,6 +225,7 @@ class HandleTopic:
                     })],
                     "errorDescription": ""
                 }))
+                self.order_state_machine.set_cancel_order_instant_action(action, Status.FAILED)
                 self.logs.error(f"[instantAction]noOrderToCancel:{self.state_error}")
                 return
             self.order = None

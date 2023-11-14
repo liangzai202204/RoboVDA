@@ -117,11 +117,11 @@ class OrderStateMachine:
             if self.instant_action_start_pause:
                 robot_state.actionStates.append(self.instant_action_start_pause)
                 if self.instant_action_stop_pause:
-                    self.instant_action_stop_pause = None
+                    self.instant_action_start_pause = None
             if self.instant_action_stop_pause:
                 robot_state.actionStates.append(self.instant_action_start_pause)
                 if self.instant_action_start_pause:
-                    self.instant_action_start_pause = None
+                    self.instant_action_stop_pause = None
             if node_f_n == 0 and edge_f_n == 0 and self.orders.orders.action_empty():
                 self.log.error("狀態機沒有任務")
                 return robot_state
@@ -151,7 +151,7 @@ class OrderStateMachine:
                 }))
                 if a_s == Status.FINISHED:
                     action_f_n -= 1
-            if len(nodes_status)==1:
+            if len(nodes_status) == 1:
                 node_f_n=0
             if node_f_n == 0 and edge_f_n == 0 and action_f_n == 0:
 
