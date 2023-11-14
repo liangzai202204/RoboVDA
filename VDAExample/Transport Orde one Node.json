@@ -18,7 +18,7 @@
                 "mapDescription": "Id: 01632ba1-5e0f-41b3-9d1c-b701fa168c3f"
             },
             "actions": [
-                                {
+                {
                     "actionType": "pick",
                     "actionId": "d6b832a2-630e-4587-9845-ed073ca6d78d",
                     "actionDescription": "Enable Gap",

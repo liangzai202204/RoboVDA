@@ -49,17 +49,10 @@ class ControlPoint(BaseModel):
 
 
 class Trajectory(BaseModel):
-    type :Optional[str] = ""
+    type: Optional[str] = ""
     degree: Optional[int] = 1
     knotVector: Optional[List[KnotVectorItem]] = []
-    controlPoints: List[ControlPoint]
-
-    @staticmethod
-    def creat() -> "Trajectory":
-        return Trajectory(degree=1.0,
-                          knotVector=[],
-                          controlPoints=[]
-                          )
+    controlPoints: Optional[List[ControlPoint]] = []
 
 
 class EdgeState(BaseModel):
@@ -75,7 +68,7 @@ class EdgeState(BaseModel):
                          sequenceId=0,
                          release=True,
                          edgeDescription="",
-                         trajectory=Trajectory.creat())
+                         trajectory={})
 
 
 class ActionStatus(str, Enum):

@@ -22,7 +22,7 @@ class MyTestCase(unittest.TestCase):
         with open(json_file_path, 'r') as json_file:
             json_content = json.load(json_file)
             print(json_content)
-            task,uuids = o.pack(order.Order(**json_content))
+            task,uuids = o.pack(order.Order(**json_content),0)
             print(f"打包结果：{len(task)},{json.dumps(task)}",uuids)
 
 

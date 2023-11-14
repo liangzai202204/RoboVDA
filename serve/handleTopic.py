@@ -415,7 +415,7 @@ class HandleTopic:
             self.logs.error(f"[pack][send]actionId empty:{uuid_task}")
 
     def pack_send(self, new_order: order.Order):
-        task_list,uuid_task = self.pack_task.pack(new_order)
+        task_list,uuid_task = self.pack_task.pack(new_order,self.robot.robot_type)
         self.logs.info(f"[pack]res:{task_list}，{uuid_task}")
         if task_list:
             self.robot.send_order(task_list)

@@ -12,6 +12,7 @@ from log.log import MyLogger
 
 class PackTask:
     def __init__(self,script_name):
+        self.robot_type = 0
         self.nodes_point = None
         self.order = None
         self.nodes: List[order.Node] = []
@@ -24,9 +25,10 @@ class PackTask:
         self.uuid_task = {}
         self.script_name = script_name
 
-    def pack(self, new_order: order.Order) -> (list, dict):
+    def pack(self, new_order: order.Order,robot_type) -> (list, dict):
         with self.lock:
             try:
+                self.robot_type = robot_type
                 self.clear_pack()
                 if not self.order:
                     self.order = new_order
@@ -57,7 +59,9 @@ class PackTask:
                 if self.nodes[0].actions:
                     if self.nodes[0].released:
                         for a in self.nodes[0].actions:
-                            a_task = ActionPack.pack_action(a,self.script_name)
+                            action_uuid = str(uuid.uuid4())
+
+                            a_task = ActionPack.pack_action(a,self.robot_type,action_uuid)
                             if a_task:
                                 self.uuid_task[a.actionId] = str(uuid.uuid4())
                                 self.task_pack_list.append(a_task)
@@ -70,21 +74,23 @@ class PackTask:
                     if startNode.actions:
                         for a in startNode.actions:
                             if a.actionId not in self.uuid_task:
-                                a_task = ActionPack.pack_action(a,self.script_name)
+                                action_uuid = str(uuid.uuid4())
+                                a_task = ActionPack.pack_action(a,self.robot_type,action_uuid)
                                 if a_task:
                                     if a.actionId not in self.uuid_task:
                                         self.uuid_task[a.actionId] = str(uuid.uuid4())
                                         self.task_pack_list.append(a_task)
                     edge_uuid = str(uuid.uuid4())
                     edge_task = ActionPack.pack_edge(edge, startNode.nodePosition,
-                                                     endNode.nodePosition,edge_uuid,self.script_name)
+                                                     endNode.nodePosition,edge_uuid,self.robot_type)
                     if edge_task:
                         self.uuid_task[edge.edgeId] = edge_uuid
                         self.task_pack_list.append(edge_task)
                     if endNode.actions and endNode.released:
                         for a2 in endNode.actions:
                             if a2.actionId not in self.uuid_task:
-                                a_task = ActionPack.pack_action(a2,self.script_name)
+                                action_uuid = str(uuid.uuid4())
+                                a_task = ActionPack.pack_action(a2,self.robot_type,action_uuid)
                                 if a_task:
                                     self.uuid_task[a2.actionId] = str(uuid.uuid4())
                                     self.task_pack_list.append(a_task)

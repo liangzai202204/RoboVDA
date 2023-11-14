@@ -19,6 +19,7 @@ class ActionType:
     TEST = "test"
     Angle = "angle"
     Ready = "ready"
+    Script = "Script"
 
 
 class ActionPack(pydantic.BaseModel):
@@ -26,37 +27,138 @@ class ActionPack(pydantic.BaseModel):
     script_stage = 1
 
     """
+    @classmethod
+    def pack_action_script(cls, action: order.Action,action_uuid):
+        action_task = {}
+        operation = None
+        script_name = None
+        for ap in action.actionParameters:
+            if ap.key == "operation":
+                operation = ap.value
+            if ap.key == "script_name":
+                script_name = ap.value
+        action_task["operation"] = operation if operation else ActionType.Script
+        action_task["script_name"] = script_name if script_name else "script.py"
+        action_task["script_args"] = [a.model_dump() for a in action.actionParameters]
+        action_task["id"] = "SELF_POSITION"
+        action_task["source_id"] = "SELF_POSITION"
+        action_task["task_id"] = action_uuid
+        return action_task
 
     @classmethod
-    def pack_action(cls, action: order.Action,script_name):
+    def pack_action_fork(cls, action: order.Action,action_uuid):
+        action_task = {}
+        operation = None
+        for ap in action.actionParameters:
+            if ap.key == "operation":
+                operation = ap.value
+            elif ap.key == "script_name":
+                action_task["script_name"] = ap.value
+            elif ap.key == "recfile":
+                action_task["recfile"] = ap.value
+            elif ap.key == "start_height":
+                action_task["start_height"] = ap.value
+
+            elif ap.key == "rec_height":
+                action_task["rec_height"] = ap.value
+
+            elif ap.key == "end_height":
+                action_task["end_height"] = ap.value
+
+            elif ap.key == "recognize":
+                action_task["recognize"] = ap.value
+        if operation == ActionType.Script or action.actionType == ActionType.Script:
+            return ActionPack.pack_action_script(action,action_uuid)
+        if not operation:
+            if action.actionType == ActionType.PICK:
+                operation = "ForkLoad"
+            elif action.actionType == ActionType.DROP:
+                operation = "ForkUnload"
+            else:
+                print(f"[ActionPack] action.actionType or operation error:{action.actionType}")
+                return {}
+        action_task["operation"] = operation
+        action_task["id"] = "SELF_POSITION"
+        action_task["source_id"] = "SELF_POSITION"
+        action_task["task_id"] = action_uuid
+        return action_task
+
+    @classmethod
+    def pack_action_jack(cls, action: order.Action,action_uuid):
+        action_task = {}
+        # operation = None
+        # for ap in action.actionParameters:
+        #     if ap.key == "operation":
+        #         operation = ap.value
+        #     elif ap.key == "script_name":
+        #         action_task["script_name"] = ap.value
+        #     elif ap.key == "recfile":
+        #         action_task["recfile"] = ap.value
+        #     elif ap.key == "start_height":
+        #         action_task["start_height"] = ap.value
+        #
+        #     elif ap.key == "rec_height":
+        #         action_task["rec_height"] = ap.value
+        #
+        #     elif ap.key == "end_height":
+        #         action_task["end_height"] = ap.value
+        #
+        #     elif ap.key == "recognize":
+        #         action_task["recognize"] = ap.value
+        # if operation == ActionType.Script or action.actionType == ActionType.Script:
+        #     return ActionPack.pack_action_script(action,action_uuid)
+        # if not operation:
+        #     if action.actionType == ActionType.PICK:
+        #         operation = "ForkLoad"
+        #     elif action.actionType == ActionType.DROP:
+        #         operation = "ForkUnload"
+        #     else:
+        #         print(f"[ActionPack] action.actionType or operation error:{action.actionType}")
+        #         return {}
+        # action_task["operation"] = operation
+        # action_task["id"] = "SELF_POSITION"
+        # action_task["source_id"] = "SELF_POSITION"
+        # action_task["task_id"] = action_uuid
+        return action_task
+
+    @classmethod
+    def pack_action(cls, action: order.Action,robot_type,action_uuid):
         try:
             action_task = {}
-            action_mapping = {
-                ActionType.PICK: lambda a: ActionPack.pick(a,script_name),
-                ActionType.DROP: lambda a: ActionPack.drop(a, script_name),
-                ActionType.FORK_LIFT: lambda a: ActionPack.forklift(a, script_name),
-                ActionType.TEST: lambda a: ActionPack.test(a, script_name),
-                ActionType.FORK_LOAD: lambda a: ActionPack.fork_load(a, script_name),
-                ActionType.FORK_UNLOAD: lambda a: ActionPack.fork_unload(a, script_name),
-                ActionType.Angle: lambda a: ActionPack.angle_action(a, script_name),
-                ActionType.Ready: lambda a: ActionPack.ready(a, script_name),
-                # ActionType.PICK_FORK: lambda a: ActionPack.pick_fork(a, script_stage=1),
-                # ActionType.DROP_FORK: lambda a: ActionPack.drop_fork(a, script_stage=1),
-            }
-
-            action_type = action.actionType
-            if action_type in action_mapping:
-                print(action_type)
-                action_task = action_mapping[action_type](action)
+            if robot_type == 1:
+                return ActionPack.pack_action_fork(action,action_uuid)
+            elif robot_type == 2:
+                return ActionPack.pack_action_jack(action,action_uuid)
+            elif robot_type == 0:
+                return ActionPack.pack_action_script(action,action_uuid)
             else:
-                print("不支持动作类型：", action_type, action.actionParameters)
+                print(f"[ActionPack]不支持类型:{robot_type}")
             return action_task
+            # action_mapping = {
+            #     ActionType.PICK: lambda a: ActionPack.pick(a,script_name),
+            #     ActionType.DROP: lambda a: ActionPack.drop(a, script_name),
+            #     ActionType.FORK_LIFT: lambda a: ActionPack.forklift(a, script_name),
+            #     ActionType.TEST: lambda a: ActionPack.test(a, script_name),
+            #     ActionType.FORK_LOAD: lambda a: ActionPack.fork_load(a, script_name),
+            #     ActionType.FORK_UNLOAD: lambda a: ActionPack.fork_unload(a, script_name),
+            #     ActionType.Angle: lambda a: ActionPack.angle_action(a, script_name),
+            #     ActionType.Ready: lambda a: ActionPack.ready(a, script_name),
+            #     # ActionType.PICK_FORK: lambda a: ActionPack.pick_fork(a, script_stage=1),
+            #     # ActionType.DROP_FORK: lambda a: ActionPack.drop_fork(a, script_stage=1),
+            # }
+            #
+            # action_type = action.actionType
+            # if action_type in action_mapping:
+            #     print(action_type)
+            #     action_task = action_mapping[action_type](action)
+            # else:
+            #     print("不支持动作类型：", action_type, action.actionParameters)
         except Exception as e:
             print(f"action pack error:{e}")
 
     @classmethod
     def pack_edge(cls, edge: order.Edge, start_node: order.NodePosition,
-                  end_node: order.NodePosition,uuid_task:str,script_name:str):
+                  end_node: order.NodePosition,uuid_task:str,robot_type:int):
         action_task = {}
         if edge.trajectory:
             action_task["trajectory"] = edge.trajectory.model_dump()
@@ -69,7 +171,11 @@ class ActionPack(pydantic.BaseModel):
                     elif e_a.blockingType == order.ActionBlockingType.SOFT:
                         action_task["script_stage"] = 1
                     action_task["operation"] = "Script"
-                    action_task["script_name"] = script_name
+                    script_name = None
+                    for ap in e_a.actionParameters:
+                        if ap.key == "script_name":
+                            script_name = ap.value
+                    action_task["script_name"] = script_name if script_name else "script.py"
                     action_task["script_args"] = [a.model_dump() for a in e_a.actionParameters]
             action_task["id"] = edge.endNodeId
             action_task["source_id"] = edge.startNodeId

@@ -20,6 +20,7 @@ class Robot:
 
     def __init__(self, rbk: rbklib.rbklibPro.Rbk):
         self.rbk = rbk
+        self.robot_type = 0  # 车子的类型，0：没有类型，1：fork，2：jack，3：hook，等。这个参数用于任务打包
         self.task_status: asyncio.Queue[dict] = asyncio.Queue()
         self.ApiReq_queue: asyncio.Queue[ApiReq] = asyncio.Queue()
         self.model = RobotModel(rbk)
@@ -39,6 +40,7 @@ class Robot:
         self.lock = False
         self.robot_version = "3.4.5"
         self.messages = queue.Queue()
+
 
     async def run(self):
         while True:
@@ -464,8 +466,13 @@ class RobotModel:
         model_req = self._get_model()
 
         self.model = Model(model_req)
-        # for m in self.model.device_types:
-        #     print(m.name)
+        for m in self.model.device_types:
+            print(m.name)
+            if m.name == "chassis":
+                for d in m.devices:
+                    for dp in d.device_params:
+                        if dp.key == "mode":
+                            print("mode",dp.combo_param.child_key)
 
 
 class RobotMap:
@@ -505,7 +512,7 @@ class RobotMap:
             self.log.error(f"_get model:{e}")
         return None
 
-    def get_map(self,name=None):
+    def get_map(self, name=None):
         if name:
             self.current_map = name
         self.log.info(f"----------------------get_map----------------------------")
@@ -519,7 +526,7 @@ class RobotMap:
         try:
             data = self.rbk.call_service(ApiReq.ROBOT_STATUS_MAP_REQ.value)
             data_json = json.loads(data)
-            if data_json.get("ret_code",None):
+            if data_json.get("ret_code", None):
                 self.log.error("[map]req ROBOT_STATUS_MAP_REQ error")
                 return ""
             self.log.info(f"[map]map_req{data_json}")

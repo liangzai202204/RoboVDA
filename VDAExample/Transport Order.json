@@ -58,8 +58,63 @@
                     "blockingType": "HARD",
                     "actionParameters": [
                         {
-                            "key": "type",
-                            "value": "dolly"
+                            "key": "recfile",
+                            "value": "pallet/p0001.pallet"
+                        },
+                        {
+                            "key": "start_height",
+                            "value": 0.4
+                        },
+                        {
+                            "key": "rec_height",
+                            "value": 1.0
+                        },
+                        {
+                            "key": "end_height",
+                            "value": 1.0
+                        },
+                        {
+                            "key": "recognize",
+                            "value": true
+                        }
+                    ]
+                },
+                {
+                    "actionType": "script",
+                    "actionId": "20cd999e-6159-4d58-8a40-4d8fc08f3e1f",
+                    "actionDescription": "script",
+                    "blockingType": "HARD",
+                    "actionParameters": [
+                        {
+                            "key": "ip",
+                            "value": "127.0.0.1"
+                        },
+                        {
+                            "key": "read",
+                            "value": [
+                                {
+                                    "id": "Te",
+                                    "type": "read",
+                                    "address": 5,
+                                    "functionCode": 3,
+                                    "value": 5
+                                }]
+                        },
+                        {
+                            "key": "port",
+                            "value": 505
+                        },
+                        {
+                            "key": "slave_id",
+                            "value": 1
+                        },
+                        {
+                            "key": "mode",
+                            "value": "robot"
+                        },
+                                                {
+                            "key": "priority",
+                            "value": "read"
                         }
                     ]
                 }

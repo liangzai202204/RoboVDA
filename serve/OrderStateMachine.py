@@ -139,8 +139,8 @@ class OrderStateMachine:
             self.del_node(edge.endNodeId)
             self.edges.pop(ids)
             self.log.warning(f"del_edge :{ids}")
-        else:
-            self.log.error(f"del_edge but not exist id {ids}")
+        # else:
+        #     self.log.error(f"del_edge but not exist id {ids}")
 
     def del_action(self, ids: str):
         self.actions.pop(ids)
@@ -253,6 +253,12 @@ class OrderStateMachine:
                 # 更新 edge 和 node
                 need_del_edge_id = []
                 try:
+                    # 检查 node 或者 edge 为空的情况
+                    if actions_empty and len(self.edges) == 0:
+                        if self.nodes and len(self.edges) == 0:
+                            self.nodes.clear()
+                        if self.edges and len(self.nodes) == 0:
+                            self.edges.clear()
                     for e_id,u_id in self.uuid_task.items():
                         get_edge = self.edges.get(e_id,None)
 

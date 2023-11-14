@@ -14,7 +14,7 @@ class Header:
 
 class ActionParameter(pydantic.BaseModel):
     key: str
-    value: Union[str,float,int]
+    value: Union[str,float,int,dict,list]
 
 
 class ActionBlockingType(str, enum.Enum):
