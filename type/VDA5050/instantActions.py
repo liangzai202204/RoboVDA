@@ -1,12 +1,12 @@
 import enum
-from typing import List
+from typing import List, Union
 
 import pydantic
 
 
 class ActionParameter(pydantic.BaseModel):
     key: str
-    value: str
+    value: Union[str, int, float, dict, list]
 
 
 class ActionBlockingType(str, enum.Enum):
@@ -29,4 +29,4 @@ class InstantActions(pydantic.BaseModel):
     version: str = "2.0.0"
     manufacturer: str = ""
     serialNumber: str = ""
-    instantActions: List[Action] = []
+    actions: List[Action] = []

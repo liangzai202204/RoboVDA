@@ -30,7 +30,7 @@ def lock_decorator(func):
 
 class HandleTopic:
 
-    def __init__(self, robot: Robot, mode, loop=None, state_report_frequency=1, robot_type=1,script_name="script.py"):
+    def __init__(self, robot: Robot, mode, loop=None, state_report_frequency=1, robot_type=1, script_name="script.py"):
         self.state_report_frequency = state_report_frequency
         self.init = False
         self._event_loop = asyncio.get_event_loop() if loop is None else loop
@@ -55,7 +55,6 @@ class HandleTopic:
         self.order_state_machine = OrderStateMachine()
         self.pack_task = PackTask(script_name)
         self.handle_actions = self._handle_actions()
-
 
     def __del__(self):
         self._cls()
@@ -164,13 +163,14 @@ class HandleTopic:
             online = True
         return online
 
-
     def _handle_instantActions(self, instant: instantActions.InstantActions):
         self.logs.info("handle_instantActions")
-        actions = instant.instantActions
+        actions = instant.actions
+        print(actions)
         for action in actions:
             action_type = action.actionType
             handler = self.handle_actions.get(action_type)
+            print(handler)
             if handler:
                 handler(action)
             else:
@@ -186,6 +186,15 @@ class HandleTopic:
     def instant_start_pause(self, action: order.Action):
         if self.robot.instant_start_pause():
             self.order_state_machine.add_instant_action(action)
+            self.logs.info(f'[instant_action]instant_start_pause ok!')
+        else:
+            self.order_state_machine.add_instant_action(action, Status.FAILED)
+
+    def instant_script(self, action: order.Action):
+        task = ActionPack.pack_action(action, 0)
+        if self.robot.instant_init_position([task]):
+            self.order_state_machine.add_instant_action(action)
+            self.pack_task.task_pack_list.append(task)
             self.logs.info(f'[instant_action]instant_start_pause ok!')
         else:
             self.order_state_machine.add_instant_action(action, Status.FAILED)
@@ -219,6 +228,7 @@ class HandleTopic:
                     "errorDescription": ""
                 }))
                 self.logs.error(f"[instantAction]noOrderToCancel:{self.state_error}")
+                self.order_state_machine.add_instant_action(action, Status.FAILED)
                 return
 
             if self.robot.instant_cancel_task():
@@ -342,12 +352,12 @@ class HandleTopic:
                     self.order_state_machine.reset()
                 if self.order_state_machine.order_empty():
                     # 初始化，直接创建订单
-                    self.logs.info(f"[order] init,creat order")
+                    self.logs.info(f"[order] init,create order")
                     self.current_order = order.Order.create_order(task)
                     self.execute_order(True)
                     return
                 # 判断机器人当前的订单Id和新的订单Id是否一致
-                self.logs.info(f"[order] try creat order")
+                self.logs.info(f"[order] try create order")
                 if self.order_state_machine.order.orderId != task.orderId:
                     # 订单不一致，开始创建新订单逻辑
                     if not self.order_state_machine.order_task_empty():
@@ -410,12 +420,12 @@ class HandleTopic:
         # 狀態機
         uuid_task = self.pack_send(update_order)
         if uuid_task:
-            self.order_state_machine.add_order(update_order,uuid_task)
+            self.order_state_machine.add_order(update_order, uuid_task)
         else:
             self.logs.error(f"[pack][send]actionId empty:{uuid_task}")
 
     def pack_send(self, new_order: order.Order):
-        task_list,uuid_task = self.pack_task.pack(new_order,self.robot.robot_type)
+        task_list, uuid_task = self.pack_task.pack(new_order, self.robot.robot_type)
         self.logs.info(f"[pack]res:{task_list}，{uuid_task}")
         if task_list:
             self.robot.send_order(task_list)
@@ -474,10 +484,10 @@ class HandleTopic:
         try:
             uuid_task = self.pack_send(self.current_order)
             # 狀態機
-            self.order_state_machine.add_order(self.current_order,uuid_task)
+            self.order_state_machine.add_order(self.current_order, uuid_task)
         except Exception as e:
             self.logs.info(f"试图打包任务，发给机器人 失败:{e}")
-            self.report_error(err.ErrorOrder.sendOrderToRobotErr,err.ErrorOrder.sendOrderToRobotErr)
+            self.report_error(err.ErrorOrder.sendOrderToRobotErr, err.ErrorOrder.sendOrderToRobotErr)
 
     @property
     def state_header_id(self):
@@ -510,6 +520,8 @@ class HandleTopic:
             "initPosition": lambda a: self.instant_initPosition(a),
             "stateRequest": ActionPack.stateRequest,
             "logReport": ActionPack.logReport,
+            "Script": lambda a: self.instant_script(a),
             "cancelOrder": lambda a: self.instant_cancel_task(a),
             "factsheetRequest": ActionPack.factsheetRequest,
+
         }

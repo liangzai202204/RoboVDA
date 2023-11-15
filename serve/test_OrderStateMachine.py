@@ -160,7 +160,7 @@ class MyTestCase(unittest.TestCase):
                 json_content = json.load(json_file)
                 print(json_content)
             instant_action = instantActions.InstantActions(**json_content)
-            for ins in instant_action.instantActions:
+            for ins in instant_action.actions:
                 o.add_instant_action(ins)
             print(o.nodes)
             print(o.edges)
@@ -249,7 +249,7 @@ class MyTestCase(unittest.TestCase):
                 json_content = json.load(json_file)
                 print(json_content)
             instant_action = instantActions.InstantActions(**json_content)
-            for ins in instant_action.instantActions:
+            for ins in instant_action.actions:
                 o.add_instant_action(ins)
 
             o.update_order_status(s, 3)

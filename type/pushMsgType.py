@@ -216,7 +216,7 @@ class RobotPush(BaseModel):
     rot_z: float = 0.
     rssi: int = 0
     running_status: int = 0
-    similarity: int = 0
+    similarity: Union[int,float] = 0
     slam_status: int = 0
     slowed: bool = False
     soft_emc: bool = False

@@ -203,7 +203,7 @@ class OrderStateMachine:
     def update_order_status(self, task_pack_status: pushMsgType.TaskStatusPackage, taskStatus: int):
         with self.lock:
             try:
-                if not self.uuid_task:
+                if not self.uuid_task and not self.instant_actions:
                     # self.log.info(f"task empty!!!")
                     return
                 actions_empty = self.actions_empty
@@ -213,7 +213,7 @@ class OrderStateMachine:
                     return
                 self.task_pack_status = task_pack_status
                 self.taskStatus = taskStatus
-                self.log.info(f"taskStatus:{self.taskStatus},task_pack_status:{self.task_pack_status}")
+                # self.log.info(f"taskStatus:{self.taskStatus},task_pack_status:{self.task_pack_status}")
                 # 判断是否需要更新
                 # 先判断 instant_actions 动作状态
                 # 更新 instant action
@@ -227,7 +227,6 @@ class OrderStateMachine:
                         6 = CANCELED
                 """
                 if self.instant_actions:
-                    print(self.instant_actions)
                     for instant_action_id, instant_action in self.instant_actions.items():
                         if instant_action.actionType == 'cancelOrder':
                             if taskStatus == 6:
@@ -245,6 +244,11 @@ class OrderStateMachine:
                             else:
                                 instant_action.actionStatus = Status.FAILED
                         elif instant_action.actionType == 'initPosition':
+                            task_statu = next((task for task in task_pack_status.task_status_list if
+                                               task.task_id == instant_action_id), None)
+                            if task_statu:
+                                self.update_instant_actions_status(instant_action_id, task_statu.status)
+                        elif instant_action.actionType == 'Script':
                             task_statu = next((task for task in task_pack_status.task_status_list if
                                                task.task_id == instant_action_id), None)
                             if task_statu:
@@ -270,7 +274,7 @@ class OrderStateMachine:
                             if get_edge.actions:
                                 action_in_edge = get_edge.actions[0]  # 只允许一个动作
                             for task_statu in task_pack_status.task_status_list:
-                                self.log.info(f"edgeId:{e_id},edgeTaskId:{u_id},task_statu.task_id:{task_statu.task_id}")
+                                # self.log.info(f"edgeId:{e_id},edgeTaskId:{u_id},task_statu.task_id:{task_statu.task_id}")
                                 if task_statu.task_id == u_id:
                                     if task_statu.status == RobotOrderStatus.Completed.value:
                                         if action_in_edge:
@@ -287,11 +291,11 @@ class OrderStateMachine:
                                     elif task_statu.status == RobotOrderStatus.Suspended.value and action_in_edge:
                                         self.set_action_status(action_in_edge.actionId, Status.PAUSED)
                                     elif task_statu.status == RobotOrderStatus.NotFound.value and action_in_edge:
-                                        self.set_action_status(action_in_edge.actionId.value, Status.FAILED)
-                                    elif task_statu.status == RobotOrderStatus.Waiting and action_in_edge:
-                                        self.set_action_status(action_in_edge.actionId.value, Status.WAITING)
-                                    else:
-                                        self.log.warning(f"更新状态机 action 的状态时，找不到状态：{task_statu.status}")
+                                        self.set_action_status(action_in_edge.actionId, Status.FAILED)
+                                    elif task_statu.status == RobotOrderStatus.Waiting.value and action_in_edge:
+                                        self.set_action_status(action_in_edge.actionId, Status.WAITING)
+                                    # else:
+                                    #     self.log.warning(f"更新状态机 action 的状态时，找不到状态：{task_statu.status}")
 
                         if not actions_empty:
                             a = self.actions.get(e_id)
@@ -315,7 +319,7 @@ class OrderStateMachine:
                                     self.set_action_status(a.actionId, Status.WAITING)
                                 else:
                                     self.log.warning(f"更新状态机 action 的状态时，找不到状态：{task_statu.status}")
-                    self.log.info(f"need_del_edge_id:{need_del_edge_id}")
+                    # self.log.info(f"need_del_edge_id:{need_del_edge_id}")
                 except Exception as e:
 
                     self.log.error(f"[OrderStateMachine]uuid_task.items{e}")

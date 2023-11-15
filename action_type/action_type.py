@@ -27,8 +27,9 @@ class ActionPack(pydantic.BaseModel):
     script_stage = 1
 
     """
+
     @classmethod
-    def pack_action_script(cls, action: order.Action,action_uuid):
+    def pack_action_script(cls, action: order.Action, action_uuid):
         action_task = {}
         operation = None
         script_name = None
@@ -39,14 +40,14 @@ class ActionPack(pydantic.BaseModel):
                 script_name = ap.value
         action_task["operation"] = operation if operation else ActionType.Script
         action_task["script_name"] = script_name if script_name else "script.py"
-        action_task["script_args"] = [a.model_dump() for a in action.actionParameters]
+        action_task["script_args"] = {"action_parameters": [a.model_dump() for a in action.actionParameters]}
         action_task["id"] = "SELF_POSITION"
         action_task["source_id"] = "SELF_POSITION"
         action_task["task_id"] = action_uuid
         return action_task
 
     @classmethod
-    def pack_action_fork(cls, action: order.Action,action_uuid):
+    def pack_action_fork(cls, action: order.Action, action_uuid):
         action_task = {}
         operation = None
         for ap in action.actionParameters:
@@ -68,7 +69,7 @@ class ActionPack(pydantic.BaseModel):
             elif ap.key == "recognize":
                 action_task["recognize"] = ap.value
         if operation == ActionType.Script or action.actionType == ActionType.Script:
-            return ActionPack.pack_action_script(action,action_uuid)
+            return ActionPack.pack_action_script(action, action_uuid)
         if not operation:
             if action.actionType == ActionType.PICK:
                 operation = "ForkLoad"
@@ -84,7 +85,7 @@ class ActionPack(pydantic.BaseModel):
         return action_task
 
     @classmethod
-    def pack_action_jack(cls, action: order.Action,action_uuid):
+    def pack_action_jack(cls, action: order.Action, action_uuid):
         action_task = {}
         # operation = None
         # for ap in action.actionParameters:
@@ -122,17 +123,20 @@ class ActionPack(pydantic.BaseModel):
         return action_task
 
     @classmethod
-    def pack_action(cls, action: order.Action,robot_type,action_uuid):
+    def pack_action(cls, action: order.Action, robot_type, action_uuid=None):
         try:
+            if not action_uuid:
+                action_uuid = action.actionId
             action_task = {}
             if robot_type == 1:
-                return ActionPack.pack_action_fork(action,action_uuid)
+                return ActionPack.pack_action_fork(action, action_uuid)
             elif robot_type == 2:
-                return ActionPack.pack_action_jack(action,action_uuid)
+                return ActionPack.pack_action_jack(action, action_uuid)
             elif robot_type == 0:
-                return ActionPack.pack_action_script(action,action_uuid)
+                return ActionPack.pack_action_script(action, action_uuid)
             else:
                 print(f"[ActionPack]不支持类型:{robot_type}")
+            print(f"[pack][{action.actionType}]:{action_task}")
             return action_task
             # action_mapping = {
             #     ActionType.PICK: lambda a: ActionPack.pick(a,script_name),
@@ -158,7 +162,7 @@ class ActionPack(pydantic.BaseModel):
 
     @classmethod
     def pack_edge(cls, edge: order.Edge, start_node: order.NodePosition,
-                  end_node: order.NodePosition,uuid_task:str,robot_type:int):
+                  end_node: order.NodePosition, uuid_task: str, robot_type: int):
         action_task = {}
         if edge.trajectory:
             action_task["trajectory"] = edge.trajectory.model_dump()
@@ -176,7 +180,8 @@ class ActionPack(pydantic.BaseModel):
                         if ap.key == "script_name":
                             script_name = ap.value
                     action_task["script_name"] = script_name if script_name else "script.py"
-                    action_task["script_args"] = [a.model_dump() for a in e_a.actionParameters]
+                    action_task["script_args"] = {
+                        "action_parameters": [a.model_dump() for a in e_a.actionParameters]}
             action_task["id"] = edge.endNodeId
             action_task["source_id"] = edge.startNodeId
             action_task["task_id"] = uuid_task
@@ -342,7 +347,7 @@ class ActionPack(pydantic.BaseModel):
         return action_task
 
     @classmethod
-    def _pack_action(cls, action: order.Action,script_name) -> dict:
+    def _pack_action(cls, action: order.Action, script_name) -> dict:
         try:
             action_task = {
                 "task_id": action.actionId,

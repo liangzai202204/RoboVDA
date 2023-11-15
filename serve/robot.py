@@ -66,6 +66,7 @@ class Robot:
         return False
 
     async def update(self):
+        push_data = None
         """
         将机器人的数据，更新到 self.state 中
         :return:
@@ -93,7 +94,7 @@ class Robot:
             # 如果队列为空，则跳过本次循环，继续等待下一个数据
             self.logs.error(f"19301 push data is Empty,pass")
         except Exception as e:
-            self.logs.error(f"json.loads(push_data)：{e}")
+            self.logs.error(f"json.loads(push_data)：{e},{push_data}")
 
     def update_state(self):
         self.state.headerId += 1
@@ -188,6 +189,7 @@ class Robot:
             self.logs.info(f"[map]current_map:{self.robot_push_msg.current_map}||{self.map.current_map}"
                            f"current_map_md5:{self.robot_push_msg.current_map_md5}||")
             self.map.get_map(self.robot_push_msg.current_map)
+            self.map.current_map_md5 = self.robot_push_msg.current_map_md5
 
     def lock_robot(self):
         if self.robot_online:
