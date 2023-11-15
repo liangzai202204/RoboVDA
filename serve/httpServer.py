@@ -6,7 +6,7 @@ from werkzeug.exceptions import HTTPException
 from serve.robot import Robot
 from serve.handleTopic import HandleTopic
 from flask import Flask, jsonify, render_template, abort
-from type.VDA5050 import  order
+from type.VDA5050 import order
 from log.log import MyLogger
 
 
@@ -109,6 +109,9 @@ class HttpServer:
 
     def _get_push_data(self):
         push_data = {
+            "map": {"advanced_point_list": self.robot.map.advanced_point_list,
+                    "current_map": self.robot.map.current_map,
+                    "current_map_md5": self.robot.map.current_map_md5},
             "PushData": self.robot_order.robot.robot_push_msg.model_dump()
         }
         return jsonify(push_data)
@@ -117,8 +120,7 @@ class HttpServer:
         # 启动Flask应用
         self.app.run(host=self.web_host, port=self.web_port)
 
-
-    def create_action(self,action_type):
+    def create_action(self, action_type):
         return order.Action(**{
             "actionType": action_type,
             "actionId": str(uuid.uuid1()),
@@ -126,8 +128,6 @@ class HttpServer:
             "blockingType": "HARD",
             "actionParameters": []
         })
-
-
 
     @response_handler
     def _cancelOrder(self):
@@ -140,4 +140,3 @@ class HttpServer:
     @response_handler
     def _start_pause(self):
         self.robot_order.instant_start_pause(self.create_action("startPause"))
-
