@@ -14,6 +14,7 @@ class ActionType:
     TEST = "test"
     Angle = "angle"
     Ready = "ready"
+    SafeCheck = "safeCheck"
 
 
 class ActionPack(pydantic.BaseModel):
@@ -45,6 +46,8 @@ class ActionPack(pydantic.BaseModel):
             action_task = ActionPack.pick_fork(action, pack_mode)
         elif action.actionType == ActionType.DROP_FORK:
             action_task = ActionPack.drop_fork(action, pack_mode)
+        elif action.actionType == ActionType.SafeCheck:
+            action_task = ActionPack.safe_check(action, pack_mode)
         else:
             print("不支持动作类型：", action.actionType, action.actionParameters)
         return action_task
@@ -132,6 +135,13 @@ class ActionPack(pydantic.BaseModel):
     def drop(cls, action: order.Action, mode: PackMode, script_stage=2) -> dict:
         action_task = cls._pack_action(action, mode, script_stage)
         print("drop:", action_task)
+        return action_task
+
+    @classmethod
+    def safe_check(cls, action: order.Action, mode: PackMode, script_stage=2) -> dict:
+        action_task = cls._pack_action(action, mode, script_stage)
+        action_task.pop("script_stage")
+        print("safe_check:", action_task)
         return action_task
 
     @classmethod

@@ -396,7 +396,7 @@ class HandleTopic:
         elif not res:
             self.report_error(err.ErrorOrder.sendOrderToRobotErr)
 
-    @classmethodm
+    @classmethod
     def is_match_node_start_end(cls, new_node: List[order.Node], old_node: List[order.Node]) -> bool:
         """"
         校对 new base 和 old base 的 node 是否一致

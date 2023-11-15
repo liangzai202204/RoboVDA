@@ -149,7 +149,7 @@ class OrderStateMachine:
                     "actionType": a.actionType,
                     "resultDescription": ""
                 }))
-                if a_s == Status.FINISHED:
+                if a_s == Status.FINISHED or a_s == Status.FAILED:
                     action_f_n -= 1
             if len(nodes_status) == 1:
                 node_f_n=0
@@ -245,6 +245,7 @@ class OrderStateMachine:
         另外，还要将状态机的 nodeState 和 edgeState delete，将 actionState 的状态都改为 failed
         """
         with self.lock:
+            self.init = True
             if self.init:
                 a = cancel_order_action
                 self.cancel_order = state.ActionState(**{
@@ -258,6 +259,7 @@ class OrderStateMachine:
                 self.orders.orders.nodes = {}
                 self.orders.orders.edges = {}
                 self.task_id_list.clear()
+                self.orders.orders.status = Status.FINISHED
                 self.edges_and_actions_id_list.clear()
                 a_s = self.orders.orders.actions
                 for ids,action_s in a_s.items():
