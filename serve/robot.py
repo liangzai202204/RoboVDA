@@ -41,7 +41,8 @@ class Robot:
         self.lock = False
         self.robot_version = "3.4.5"
         self.localizationTypes = ["SLAM"]
-        self.factsheet = self.get_fact_sheet()
+        self.factsheet = None
+        self.params = {}
         self.messages = queue.Queue()
 
     async def run(self):
@@ -53,6 +54,7 @@ class Robot:
                     self.map.get_map()
                     self.lock_robot()
                     self.model.get_model()
+                    self._get_params()
                     self.init = True
                 # self.logs.info(f'[robot]online status:{self.rbk.online_status}')
 
@@ -296,6 +298,14 @@ class Robot:
             not self.localizationTypes.append(self.model.pgv_func)
         f.typeSpecification.navigationTypes = "VIRTUAL_LINE_GUIDED"
 
+        f.physicalParameters.speedMin = 0.01
+        f.physicalParameters.speedMax = self.params.get("MoveFactory", {}).get("MaxSpeed", {}).get("value", 0)
+        f.physicalParameters.accelerationMax = self.params.get("MoveFactory", {}).get("Load_MaxAcc", {}).get("value", 0)
+        f.physicalParameters.decelerationMax = self.params.get("MoveFactory", {}).get("Load_MaxDec", {}).get("value", 0)
+        f.physicalParameters.heightMin = self.model.height
+        f.physicalParameters.heightMax = self.model.height
+        f.physicalParameters.width = self.model.width
+        f.physicalParameters.length = self.model.length
         return f
 
     def _get_params(self):
@@ -471,10 +481,13 @@ class RobotMapManager:
 
 class RobotModel:
     def __init__(self, rbk):
+        self.height = 0
+        self.length = 0
+        self.width = 0
         self.pgv_func = None
-        self.pgv = "None"
-        self.mode = "None"
-        self.agvClass = "None"
+        self.pgv = "NONE"
+        self.mode = "NONE"
+        self.agvClass = "NONE"
         self.model_dir = os.path.join(os.getcwd(), "robotModel")
         if not os.path.exists(self.model_dir):
             os.makedirs(self.model_dir)
@@ -531,6 +544,28 @@ class RobotModel:
                         for dp in d.device_params:
                             if dp.key == "mode":
                                 self.mode = dp.combo_param.child_key
+                            elif dp.key == "shape":
+                                if dp.combo_param.child_key == "rectangle":
+                                    for c_p in dp.combo_param.child_params:
+                                        if c_p.key == "rectangle":
+                                            for cpp in c_p.params:
+                                                if cpp.key == "width":
+                                                    self.width = cpp.double_value
+                                                elif cpp.key == "head":
+                                                    self.length += cpp.double_value
+                                                elif cpp.key == "tail":
+                                                    self.length += cpp.double_value
+                                                elif cpp.key == "height":
+                                                    self.height = cpp.double_value
+                                if dp.combo_param.child_key == "circle":
+                                    for c_p in dp.combo_param.child_params:
+                                        if c_p.key == "circle":
+                                            for cpp in c_p.params:
+                                                if cpp.key == "radius":
+                                                    self.width = cpp.double_value
+                                                    self.length = cpp.double_value
+                                                elif cpp.key == "height":
+                                                    self.height = cpp.double_value
             elif m.name == "pgv":
                 for d in m.devices:
                     if d.name == "chassis":

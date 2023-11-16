@@ -3,24 +3,24 @@ import pydantic
 
 
 class TypeSpecification(pydantic.BaseModel):
-    seriesName: str
-    seriesDescription: str
-    agvKinematic: str  # DIFF, OMNI, THREE WHEEL
-    agvClass: str  # FORKLIFT, CONVEYOR, TAGGER, CARRIER
-    maxLoadMass: float
-    localizationTypes: List[str]  # NATURAL, REFLECTOR, RFID, DMC, SPOT, GRID
-    navigationTypes: List[str]  # PHYSICAL_LINE_GUIDED, VIRTUAL_LINE_GUIDED, AUTONOMOUS
+    seriesName: Optional[str]
+    seriesDescription: Optional[str]
+    agvKinematic: Optional[str]  # DIFF, OMNI, THREE WHEEL
+    agvClass: Optional[str]  # FORKLIFT, CONVEYOR, TAGGER, CARRIER
+    maxLoadMass: Optional[float]
+    localizationTypes: Optional[List[str]]  # NATURAL, REFLECTOR, RFID, DMC, SPOT, GRID
+    navigationTypes: Optional[List[str]]  # PHYSICAL_LINE_GUIDED, VIRTUAL_LINE_GUIDED, AUTONOMOUS
 
 
 class PhysicalParameters(pydantic.BaseModel):
-    speedMin: float
-    speedMax: float
-    accelerationMax: float
-    decelerationMax: float
-    heightMin: float
-    heightMax: float
-    width: float
-    length: float
+    speedMin: Optional[float]
+    speedMax: Optional[float]
+    accelerationMax: Optional[float]
+    decelerationMax: Optional[float]
+    heightMin: Optional[float]
+    heightMax: Optional[float]
+    width: Optional[float]
+    length: Optional[float]
 
 
 class MaxStringLens(pydantic.BaseModel):
@@ -60,28 +60,28 @@ class Timing(pydantic.BaseModel):
 
 
 class ProtocolLimits(pydantic.BaseModel):
-    maxStringLens: MaxStringLens
-    maxArrayLens: MaxArrayLens
-    timing: Timing
+    maxStringLens: Optional[MaxStringLens]
+    maxArrayLens: Optional[MaxArrayLens]
+    timing: Optional[Timing]
 
 
 class OptionalParameter(pydantic.BaseModel):
-    parameter: str
-    support: str
-    description: str
+    parameter: Optional[str]
+    support: Optional[str]
+    description: Optional[str]
 
 
 class AGVActionParameter(pydantic.BaseModel):
-    key: str
-    valueDataType: str
-    description: str
-    isOptional: bool
+    key: Optional[str]
+    valueDataType: Optional[str]
+    description: Optional[str]
+    isOptional: Optional[bool]
 
 
 class AGVAction(pydantic.BaseModel):
-    actionType: str
-    actionDescription: str
-    actionScopes: List[str]
+    actionType: Optional[str]
+    actionDescription: Optional[str]
+    actionScopes: Optional[List[str]]
     actionParameters: Optional[List[AGVActionParameter]] = None
     resultDescription: Optional[str] = None
 
@@ -92,59 +92,59 @@ class ProtocolFeatures(pydantic.BaseModel):
 
 
 class WheelDefinition(pydantic.BaseModel):
-    type: str
-    isActiveDriven: bool
-    isActiveSteered: bool
-    position: dict
-    diameter: float
-    width: float
+    type: Optional[str]
+    isActiveDriven: Optional[bool]
+    isActiveSteered: Optional[bool]
+    position: Optional[dict]
+    diameter: Optional[float]
+    width: Optional[float]
     centerDisplacement: Optional[float]
 
 
 class Envelope2D(pydantic.BaseModel):
-    set: str
-    polygonPoints: List[dict]
-    description: str
+    set: Optional[str]
+    polygonPoints: Optional[List[dict]]
+    description: Optional[str]
 
 
 class Envelope3D(pydantic.BaseModel):
-    set: str
-    format: str
-    data: dict
-    url: str
-    description: str
+    set: Optional[str]
+    format: Optional[str]
+    data: Optional[dict]
+    url: Optional[str]
+    description: Optional[str]
 
 
 class AgvGeometry(pydantic.BaseModel):
-    wheelDefinitions: List[WheelDefinition]
-    envelopes2d: List[Envelope2D]
-    envelopes3d: List[Envelope3D]
+    wheelDefinitions: Optional[List[WheelDefinition]]
+    envelopes2d: Optional[List[Envelope2D]]
+    envelopes3d: Optional[List[Envelope3D]]
 
 
 class LoadSet(pydantic.BaseModel):
-    setName: str
-    loadType: str
+    setName: Optional[str]
+    loadType: Optional[str]
     loadPositions: Optional[List[str]]
-    boundingBoxReference: dict
-    loadDimensions: dict
-    maxWeight: float
-    minLoadhandlingHeight: float
-    maxLoadhandlingHeight: float
-    minLoadhandlingDepth: float
-    maxLoadhandlingDepth: float
-    minLoadhandlingTilt: float
-    maxLoadhandlingTilt: float
-    agvSpeedLimit: float
-    agvAccelerationLimit: float
-    agvDecelerationLimit: float
-    pickTime: float
-    dropTime: float
-    description: str
+    boundingBoxReference: Optional[dict]
+    loadDimensions: Optional[dict]
+    maxWeight: Optional[float]
+    minLoadhandlingHeight: Optional[float]
+    maxLoadhandlingHeight: Optional[float]
+    minLoadhandlingDepth: Optional[float]
+    maxLoadhandlingDepth: Optional[float]
+    minLoadhandlingTilt: Optional[float]
+    maxLoadhandlingTilt: Optional[float]
+    agvSpeedLimit: Optional[float]
+    agvAccelerationLimit: Optional[float]
+    agvDecelerationLimit: Optional[float]
+    pickTime: Optional[float]
+    dropTime: Optional[float]
+    description: Optional[str]
 
 
 class LoadSpecification(pydantic.BaseModel):
-    loadPositions: List[str]
-    loadSets: List[LoadSet]
+    loadPositions: Optional[List[str]]
+    loadSets: Optional[List[LoadSet]]
 
 
 class LocalizationParameters(pydantic.BaseModel):
@@ -152,15 +152,15 @@ class LocalizationParameters(pydantic.BaseModel):
 
 
 class Factsheet(pydantic.BaseModel):
-    headerId: int
-    timestamp: str
-    version: str
-    manufacturer: str
-    serialNumber: str
-    typeSpecification: Optional[TypeSpecification]
-    physicalParameters: Optional[PhysicalParameters]
-    protocolLimits: Optional[ProtocolLimits]
-    protocolFeatures: Optional[ProtocolFeatures]
-    agvGeometry: Optional[AgvGeometry]
-    loadSpecification: Optional[LoadSpecification]
-    localizationParameters: Optional[LocalizationParameters]
+    headerId: Optional[int] = 0
+    timestamp: Optional[str] = ""
+    version: Optional[str] =""
+    manufacturer: Optional[str]=""
+    serialNumber: Optional[str]=''
+    typeSpecification: Optional[TypeSpecification] =None
+    physicalParameters: Optional[PhysicalParameters] = None
+    protocolLimits: Optional[ProtocolLimits]= None
+    protocolFeatures: Optional[ProtocolFeatures]= None
+    agvGeometry: Optional[AgvGeometry]= None
+    loadSpecification: Optional[LoadSpecification]= None
+    localizationParameters: Optional[LocalizationParameters]= None

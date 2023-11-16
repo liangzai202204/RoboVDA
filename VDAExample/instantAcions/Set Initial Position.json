@@ -1,5 +1,5 @@
 {
-    "instantActions": [
+    "actions": [
         {
             "actionType": "initposition",
             "actionId": "3261fe5f-5c91-451d-b2be-339dc46e2ffe",

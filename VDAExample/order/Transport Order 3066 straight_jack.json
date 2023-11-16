@@ -1,0 +1,93 @@
+{
+    "orderId": "75982a12-7b9a-48a3-a8f7-efa1ee1cc465",
+    "orderUpdateId": 0,
+    "zoneSetId": "",
+    "nodes": [
+        {
+            "nodeId": "7a434ec3-91c8-4334-89f8-31d30942fbb7",
+            "sequenceId": 0,
+            "nodeDescription": "Device initial position",
+            "released": true,
+            "nodePosition": {
+                "x": 14.0,
+                "y": 12.3,
+                "theta": 0.0,
+                "allowedDeviationXY": 0.5,
+                "allowedDeviationTheta": 0.5,
+                "mapId": "01632ba1-5e0f-41b3-9d1c-b701fa168c3f",
+                "mapDescription": "Id: 01632ba1-5e0f-41b3-9d1c-b701fa168c3f"
+            },
+            "actions": []
+        },
+        {
+            "nodeId": "11119fc4-7fe4-4a91-b6be-210a065131da",
+            "sequenceId": 2,
+            "nodeDescription": "Exitvector for PointOfInterest 04678a1e-3de5-403f-bafc-e8badbee202a Dolly",
+            "released": true,
+            "nodePosition": {
+                "x": 19.0,
+                "y": 12.3,
+                "theta": 0.0,
+                "allowedDeviationXY": 0.7,
+                "allowedDeviationTheta": 0.0,
+                "mapId": "01632ba1-5e0f-41b3-9d1c-b701fa168c3f",
+                "mapDescription": "Map Id 01632ba1-5e0f-41b3-9d1c-b701fa168c3f"
+            },
+            "actions": [
+                {
+                    "actionType": "pick",
+                    "actionId": "20cd999e-6159-4d58-8a40-4d8fc08f3e1f",
+                    "actionDescription": "pick",
+                    "blockingType": "HARD",
+                    "actionParameters": [
+                        {
+                            "key": "jack_height",
+                            "value": 0.1
+                        },
+                        {
+                            "key": "recognize",
+                            "value": false
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "edges": [
+        {
+            "edgeId": "758de28a-c7f6-4475-b623-c4c895780b26",
+            "sequenceId": 1,
+            "edgeDescription": "Edge connecting 7a434ec3-91c8-4334-89f8-31d30942fbb7 to 11119fc4-7fe4-4a91-b6be-210a065131da",
+            "released": true,
+            "startNodeId": "7a434ec3-91c8-4334-89f8-31d30942fbb7",
+            "endNodeId": "11119fc4-7fe4-4a91-b6be-210a065131da",
+            "maxSpeed": null,
+            "maxHeight": null,
+            "minHeight": null,
+            "orientation": null,
+            "direction": null,
+            "rotationAllowed": false,
+            "maxRotationSpeed": null,
+            "trajectory": {
+                "type": "Straight",
+                "controlPoints": [
+                    {
+                        "x": 14.0,
+                        "y": 12.3
+                    },
+                    {
+                        "x": 19.0,
+                        "y": 12.3
+                    }
+                ]
+            },
+            "length": null,
+            "actions": []
+        }
+    ],
+    "headerId": 0,
+    "timeStamp": "11/15/2022 11:59:09",
+    "version": "v1",
+    "manufacturer": "",
+    "serialNumber": ""
+}

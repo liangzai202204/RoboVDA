@@ -88,39 +88,39 @@ class ActionPack(pydantic.BaseModel):
     @classmethod
     def pack_action_jack(cls, action: order.Action, action_uuid):
         action_task = {}
-        # operation = None
-        # for ap in action.actionParameters:
-        #     if ap.key == "operation":
-        #         operation = ap.value
-        #     elif ap.key == "script_name":
-        #         action_task["script_name"] = ap.value
-        #     elif ap.key == "recfile":
-        #         action_task["recfile"] = ap.value
-        #     elif ap.key == "start_height":
-        #         action_task["start_height"] = ap.value
-        #
-        #     elif ap.key == "rec_height":
-        #         action_task["rec_height"] = ap.value
-        #
-        #     elif ap.key == "end_height":
-        #         action_task["end_height"] = ap.value
-        #
-        #     elif ap.key == "recognize":
-        #         action_task["recognize"] = ap.value
-        # if operation == ActionType.Script or action.actionType == ActionType.Script:
-        #     return ActionPack.pack_action_script(action,action_uuid)
-        # if not operation:
-        #     if action.actionType == ActionType.PICK:
-        #         operation = "ForkLoad"
-        #     elif action.actionType == ActionType.DROP:
-        #         operation = "ForkUnload"
-        #     else:
-        #         print(f"[ActionPack] action.actionType or operation error:{action.actionType}")
-        #         return {}
-        # action_task["operation"] = operation
-        # action_task["id"] = "SELF_POSITION"
-        # action_task["source_id"] = "SELF_POSITION"
-        # action_task["task_id"] = action_uuid
+        operation = None
+        for ap in action.actionParameters:
+            if ap.key == "operation":
+                operation = ap.value
+            elif ap.key == "script_name":
+                action_task["script_name"] = ap.value
+            elif ap.key == "recfile":
+                action_task["recfile"] = ap.value
+            elif ap.key == "jack_height":
+                action_task["jack_height"] = float(ap.value)
+
+            elif ap.key == "use_down_pgv":
+                action_task["use_down_pgv"] = bool(ap.value)
+
+            elif ap.key == "use_pgv":
+                action_task["use_pgv"] = bool(ap.value)
+
+            elif ap.key == "recognize":
+                action_task["recognize"] = bool(ap.value)
+        if operation == ActionType.Script or action.actionType == ActionType.Script:
+            return ActionPack.pack_action_script(action,action_uuid)
+        if not operation:
+            if action.actionType == ActionType.PICK:
+                operation = "JackLoad"
+            elif action.actionType == ActionType.DROP:
+                operation = "JackUnload"
+            else:
+                print(f"[ActionPack] action.actionType or operation error:{action.actionType}")
+                return {}
+        action_task["operation"] = operation
+        action_task["id"] = "SELF_POSITION"
+        action_task["source_id"] = "SELF_POSITION"
+        action_task["task_id"] = action_uuid
         return action_task
 
     @classmethod
@@ -129,11 +129,11 @@ class ActionPack(pydantic.BaseModel):
             if not action_uuid:
                 action_uuid = action.actionId
             action_task = {}
-            if robot_type == 1:
+            if robot_type == "FORKLIFT":
                 return ActionPack.pack_action_fork(action, action_uuid)
-            elif robot_type == 2:
+            elif robot_type == "CARRIER":
                 return ActionPack.pack_action_jack(action, action_uuid)
-            elif robot_type == 0:
+            elif robot_type == "NONE":
                 return ActionPack.pack_action_script(action, action_uuid)
             else:
                 print(f"[ActionPack]不支持类型:{robot_type}")

@@ -1,5 +1,5 @@
 {
-    "instantActions": [
+    "actions": [
         {
             "actionType": "stopPause",
             "actionId": "01d47574-29aa-4dd7-bea2-5efcceea5f22",

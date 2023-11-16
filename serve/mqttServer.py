@@ -129,7 +129,7 @@ class MqttServer:
                     "timeStamp": "2023-02-06T16:40:01.474Z",
                     "version": "5.0.0"
                 }"""
-        client.will_set(self.mqtt_topic_connection, payload="Goodbye!", qos=1, retain=True)
+        client.will_set(self.mqtt_topic_connection, payload=offline, qos=1, retain=True)
         client.on_connect = self._mqtt_on_connect
         client.on_message = self._mqtt_on_message
         client.on_disconnect = self._mqtt_on_disconnect

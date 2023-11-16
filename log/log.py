@@ -1,3 +1,4 @@
+import re
 import logging
 import os
 from logging.handlers import RotatingFileHandler
@@ -23,8 +24,14 @@ class MyLogger:
         os.makedirs(log_dir, exist_ok=True)
 
         # 获取已有的日志文件名列表
-        existing_logs = [filename for filename in os.listdir(log_dir) if filename.endswith(".log")]
+        existing_logs = [filename for filename in os.listdir(log_dir) if re.match(r".*\.log(\.\d+)?", filename)]
         existing_logs.sort(reverse=True)
+
+        # 删除超出限定数量的部分日志文件
+        if len(existing_logs) > 10:
+            logs_to_delete = existing_logs[10:]
+            for log in logs_to_delete:
+                os.remove(os.path.join(log_dir, log))
 
         # 计算当前时间段
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S.%f")
@@ -33,7 +40,7 @@ class MyLogger:
         log_number = -1
         if existing_logs:
             last_log = existing_logs[0]
-            log_number = int(last_log.split("_")[-1].split(".")[0])
+            log_number = int(re.search(r"\.log\.(\d+)$", last_log).group(1)) if re.search(r"\.log\.(\d+)$", last_log) else -1
 
         # 创建新的日志文件名
         log_number += 1

@@ -357,8 +357,10 @@ class OrderStateMachine:
         self.instant_actions.clear()
 
     def set_cancel_status(self):
-
-        self._set_actions_status_failed()
+        with self.lock:
+            self.nodes.clear()
+            self.edges.clear()
+            self._set_actions_status_failed()
 
     def reset_part(self):
         self.instant_actions.clear()
