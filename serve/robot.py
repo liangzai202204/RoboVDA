@@ -7,7 +7,7 @@ import datetime
 
 import rbklib.rbklibPro
 from serve.topicQueue import TopicQueue
-from type.VDA5050 import state
+from type.VDA5050 import state, factsheet
 from typing import List
 from type.pushMsgType import RobotPush
 from type.ApiReq import ApiReq
@@ -19,6 +19,7 @@ from parse_protobuf.Map2D import Map2D
 class Robot:
 
     def __init__(self, rbk: rbklib.rbklibPro.Rbk):
+
         self.rbk = rbk
         self.robot_type = 0  # 车子的类型，0：没有类型，1：fork，2：jack，3：hook，等。这个参数用于任务打包
         self.task_status: asyncio.Queue[dict] = asyncio.Queue()
@@ -39,8 +40,9 @@ class Robot:
         self.nick_name = "seer-vda5050"
         self.lock = False
         self.robot_version = "3.4.5"
+        self.localizationTypes = ["SLAM"]
+        self.factsheet = self.get_fact_sheet()
         self.messages = queue.Queue()
-
 
     async def run(self):
         while True:
@@ -119,7 +121,7 @@ class Robot:
                                                    mapDescription="")
         # 机器人名称、rbk版本
         self.state.serialNumber = self.robot_push_msg.vehicle_id
-        self.state.version = self.robot_version
+        self.state.version = self.robot_push_msg.version
         self.state.loads = [] if not self.robot_push_msg.goods_region.point else self.update_goods()
         self.state.driving = False if self.robot_push_msg.is_stop else True
         self.state.paused = True if self.robot_push_msg.task_status == 3 else False
@@ -275,6 +277,42 @@ class Robot:
     def instant_init_position(self, task):
         self.send_order(task)
         return True
+
+    def get_fact_sheet(self) -> factsheet.Factsheet:
+        f = factsheet.Factsheet()
+        f.typeSpecification.seriesName = self.robot_push_msg.vehicle_id
+        f.typeSpecification.seriesDescription = self.robot_push_msg.vehicle_id
+        if self.model.mode == "differential" or self.model.mode == "dualDiff":
+            f.typeSpecification.agvKinematic = "DIFF"
+        if self.model.mode == "multiSteers":
+            f.typeSpecification.agvKinematic = "OMNI"
+        if self.model.mode == "steer":
+            f.typeSpecification.agvKinematic = "STEER"
+        if self.model.mode == "RGV2" or self.model.mode == "RGV4":
+            f.typeSpecification.agvKinematic = "RGV"
+        f.typeSpecification.agvClass = self.model.agvClass
+        f.typeSpecification.maxLoadMass = 0.5
+        f.typeSpecification.localizationTypes = self.localizationTypes if self.model.pgv_func else \
+            not self.localizationTypes.append(self.model.pgv_func)
+        f.typeSpecification.navigationTypes = "VIRTUAL_LINE_GUIDED"
+
+        return f
+
+    def _get_params(self):
+        try:
+            par_req = self.rbk.call_service(ApiReq.ROBOT_STATUS_PARAMS_REQ.value, {"plugin": "MoveFactory"})
+            if not par_req:
+                self.logs.error(f"req error")
+                return {}
+            self.params = json.loads(par_req)
+            self.logs.info(f"model_req len :{par_req}")
+
+        except OSError as o:
+            self.logs.error(f"_get_params:{o}")
+            return {}
+        except Exception as e:
+            self.logs.error(f"_get_params:{e}")
+        return None
 
 
 class RobotMapManager:
@@ -433,6 +471,10 @@ class RobotMapManager:
 
 class RobotModel:
     def __init__(self, rbk):
+        self.pgv_func = None
+        self.pgv = "None"
+        self.mode = "None"
+        self.agvClass = "None"
         self.model_dir = os.path.join(os.getcwd(), "robotModel")
         if not os.path.exists(self.model_dir):
             os.makedirs(self.model_dir)
@@ -474,7 +516,27 @@ class RobotModel:
                 for d in m.devices:
                     for dp in d.device_params:
                         if dp.key == "mode":
-                            print("mode",dp.combo_param.child_key)
+                            print("mode", dp.combo_param.child_key)
+            elif m.name == "jack":
+                for d in m.devices:
+                    if d.is_enabled:
+                        self.agvClass = "CARRIER"
+            elif m.name == "fork":
+                for d in m.devices:
+                    if d.is_enabled:
+                        self.agvClass = "FORKLIFT"
+            elif m.name == "chassis":
+                for d in m.devices:
+                    if d.name == "chassis":
+                        for dp in d.device_params:
+                            if dp.key == "mode":
+                                self.mode = dp.combo_param.child_key
+            elif m.name == "pgv":
+                for d in m.devices:
+                    if d.name == "chassis":
+                        for dp in d.device_params:
+                            if dp.key == "func":
+                                self.pgv_func = dp.combo_param.child_key
 
 
 class RobotMap:

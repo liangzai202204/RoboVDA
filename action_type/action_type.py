@@ -20,6 +20,7 @@ class ActionType:
     Angle = "angle"
     Ready = "ready"
     Script = "Script"
+    FactsheetRequest ="factsheetRequest"
 
 
 class ActionPack(pydantic.BaseModel):

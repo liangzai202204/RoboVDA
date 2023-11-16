@@ -158,9 +158,9 @@ class Factsheet(pydantic.BaseModel):
     manufacturer: str
     serialNumber: str
     typeSpecification: Optional[TypeSpecification]
-    physicalParameters: PhysicalParameters
-    protocolLimits: ProtocolLimits
-    protocolFeatures: ProtocolFeatures
-    agvGeometry: AgvGeometry
-    loadSpecification: LoadSpecification
-    localizationParameters: LocalizationParameters
+    physicalParameters: Optional[PhysicalParameters]
+    protocolLimits: Optional[ProtocolLimits]
+    protocolFeatures: Optional[ProtocolFeatures]
+    agvGeometry: Optional[AgvGeometry]
+    loadSpecification: Optional[LoadSpecification]
+    localizationParameters: Optional[LocalizationParameters]

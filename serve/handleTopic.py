@@ -3,7 +3,7 @@ import datetime
 import threading
 from serve.OrderStateMachine import OrderStateMachine
 from serve.topicQueue import TopicQueue
-from type.VDA5050 import visualization, order, connection, state, instantActions
+from type.VDA5050 import visualization, order, connection, state, instantActions,factsheet
 from typing import List
 from serve.robot import Robot as Robot
 from action_type.action_type import ActionPack
@@ -69,6 +69,7 @@ class HandleTopic:
                              self.handle_instantActions(),
                              self.handle_connection(),
                              self.handle_visualization(),
+                             self.handle_factsheet(),
                              self.handle_state_report())
 
     async def handle_order(self):
@@ -88,6 +89,15 @@ class HandleTopic:
             self.logs.info("waiting handle_instantActions ........")
             instantAction = await TopicQueue.s_instantActions.get()
             self._handle_instantActions(instantAction)
+
+    async def handle_factsheet(self):
+        """
+            订单统一入口
+        """
+        while True:
+            self.logs.info("waiting handle_factsheet ........")
+            factsheet = await TopicQueue.s_factSheet.get()
+            self._handle_factsheet(factsheet)
 
     async def handle_state(self):
         """
@@ -132,7 +142,7 @@ class HandleTopic:
 
     async def handle_connection(self):
         while True:
-            self.connection.connectionState = "ONLINE" if self.connection_online else ""
+            self.connection.connectionState = "ONLINE" if self.connection_online else "OFFLINE"
             self.connection.headerId = self.connection_header_id
             self.connection.timestamp = datetime.datetime.now().isoformat(timespec='milliseconds') + 'Z'
             await self._enqueue(TopicQueue.p_connection, self.connection)
@@ -158,10 +168,13 @@ class HandleTopic:
            这里是上报 connection topic 是否在线逻辑，根据实际添加逻辑即可
         :return:
         """
-        online = False
         if self.robot.robot_online:
-            online = True
-        return online
+            return True
+        return False
+
+    def _handle_factsheet(self, f: factsheet.Factsheet):
+        self.logs.info("_handle_factsheet")
+
 
     def _handle_instantActions(self, instant: instantActions.InstantActions):
         self.logs.info("handle_instantActions")
@@ -174,7 +187,7 @@ class HandleTopic:
             if handler:
                 handler(action)
             else:
-                raise ValueError(f"不支持动作类型：{action_type}")
+                self.logs.error(f"[instantActions]不支持动作类型：{action_type}")
 
     def instant_stop_pause(self, action: order.Action):
         if self.robot.instant_stop_pause():
@@ -198,6 +211,12 @@ class HandleTopic:
             self.logs.info(f'[instant_action]instant_start_pause ok!')
         else:
             self.order_state_machine.add_instant_action(action, Status.FAILED)
+
+    def instant_factsheet_request(self, action: order.Action):
+        TopicQueue.s_factSheet.put(self.robot.factsheet)
+
+        self.logs.info(f'[instant_action]instant_factsheet_request ok!')
+        self.order_state_machine.add_instant_action(action, Status.FINISHED)
 
     def instant_cancel_task(self, action: order.Action):
         """取消任务逻辑
@@ -522,6 +541,6 @@ class HandleTopic:
             "logReport": ActionPack.logReport,
             "Script": lambda a: self.instant_script(a),
             "cancelOrder": lambda a: self.instant_cancel_task(a),
-            "factsheetRequest": ActionPack.factsheetRequest,
+            "factsheetRequest": lambda a: self.instant_factsheet_request(a),
 
         }

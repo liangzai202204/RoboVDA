@@ -120,6 +120,16 @@ class MqttServer:
 
     def _connect_to_mqtt(self, host: str, port: int, transport: str) -> mqtt_client.Client:
         client = mqtt_client.Client(transport=transport)
+        offline = """
+                {
+                    "connectionState": "CONNECTIONBROKEN",
+                    "headerId": 999999999,
+                    "manufacturer": "seer",
+                    "serialNumber": "",
+                    "timeStamp": "2023-02-06T16:40:01.474Z",
+                    "version": "5.0.0"
+                }"""
+        client.will_set(self.mqtt_topic_connection, payload="Goodbye!", qos=1, retain=True)
         client.on_connect = self._mqtt_on_connect
         client.on_message = self._mqtt_on_message
         client.on_disconnect = self._mqtt_on_disconnect
