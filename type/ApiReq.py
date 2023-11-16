@@ -17,4 +17,5 @@ class ApiReq(enum.Enum):
     ROBOT_STATUS_MODEL_REQ = 1500  # 下载模型文件
     ROBOT_TASK_PAUSE_REQ = 3001  # 暂停导航
     ROBOT_TASK_RESUME_REQ = 3002  # 继续导航
+    ROBOT_STATUS_PARAMS_REQ = 1400  # 机器人参数
 

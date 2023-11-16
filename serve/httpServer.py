@@ -109,6 +109,9 @@ class HttpServer:
 
     def _get_push_data(self):
         push_data = {
+            "map": {"advanced_point_list": self.robot.map.advanced_point_list,
+                    "current_map": self.robot.map.current_map,
+                    "current_map_md5": self.robot.map.current_map_md5},
             "PushData": self.robot_order.robot.robot_push_msg.model_dump()
         }
         return jsonify(push_data)
