@@ -111,6 +111,7 @@ class PackTask:
             if len(self.nodes) == 1:
                 self.pack_node(self.nodes[0])
                 return
+            self.pack_node(self.nodes_edges_list[0])
             for edge, node in zip(self.nodes_edges_list[::2], self.nodes_edges_list[1::2]):
                 node: order.Node
                 edge: order.Edge

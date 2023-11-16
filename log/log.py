@@ -26,6 +26,12 @@ class MyLogger:
         existing_logs = [filename for filename in os.listdir(log_dir) if filename.endswith(".log")]
         existing_logs.sort(reverse=True)
 
+        # 删除超出限定数量的部分日志文件
+        if len(existing_logs) > 10:
+            logs_to_delete = existing_logs[10:]
+            for log in logs_to_delete:
+                os.remove(os.path.join(log_dir, log))
+
         # 计算当前时间段
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S.%f")
 

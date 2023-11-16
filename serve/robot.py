@@ -134,7 +134,7 @@ class Robot:
         load_goods = state.Load()
         load_goods.loadId = ""
         load_goods.loadType = goods.name
-        load_goods.loadPosition = str(json.dumps(goods.point))
+        load_goods.loadPosition = str(goods.point)
         return load_goods
 
     def update_operating_mode(self) -> state.OperatingMode:
