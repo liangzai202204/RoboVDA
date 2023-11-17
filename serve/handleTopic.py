@@ -227,9 +227,8 @@ class HandleTopic:
                 }))
                 self.order_state_machine.set_cancel_order_instant_action(action, Status.FAILED)
                 self.logs.error(f"[instantAction]noOrderToCancel:{self.state_error}")
+
                 return
-            self.order = None
-            self.current_order = None
             if self.robot.instant_cancel_task():
                 self.order_state_machine.set_cancel_order_instant_action(action, Status.FINISHED)
             else:

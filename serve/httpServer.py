@@ -1,10 +1,23 @@
 import json
+import uuid
+
 from serve.robot import Robot
 from serve.handleTopic import HandleTopic
-from flask import Flask, jsonify, render_template
-
+from flask import Flask, jsonify, render_template, render_template_string, abort
+from serve.templates.html import HTML
 from log.log import MyLogger
+from type import order
 
+
+def response_handler(func):
+    def wrapper(*args, **kwargs):
+        try:
+            func(*args, **kwargs)
+            return {"code": 200, "msg": "OK"}
+        except Exception as e:
+            abort(404, str(e))
+
+    return wrapper
 
 class HttpServer:
     def __init__(self, web_host, web_port, robot_order: HandleTopic, robot: Robot):
@@ -22,7 +35,7 @@ class HttpServer:
         def index():
             current_order = self.robot_order.current_order
             current_order_state = self.robot_order.current_order_state
-            return render_template('index.html', current_order=current_order, current_order_state=current_order_state)
+            return render_template_string(HTML, current_order=current_order, current_order_state=current_order_state)
 
         @self.app.route('/get_data', methods=['GET'])
         def get_data():
@@ -90,10 +103,23 @@ class HttpServer:
         # 启动Flask应用
         self.app.run(host=self.web_host, port=self.web_port)
 
+    def create_action(self, action_type):
+        return order.Action(**{
+            "actionType": action_type,
+            "actionId": str(uuid.uuid1()),
+            "actionDescription": "http reset",
+            "blockingType": "HARD",
+            "actionParameters": []
+        })
+
+    @response_handler
     def _cancelOrder(self):
-        self.robot_order.instant_cancel_task()
-        data = {
-            "code": 200,
-            "msg": "OK"
-        }
-        return jsonify(data)
+        self.robot_order.instant_cancel_task(self.create_action("cancelOrder"))
+
+    @response_handler
+    def _stop_pause(self):
+        self.robot_order.instant_stop_pause(self.create_action("stopPause"))
+
+    @response_handler
+    def _start_pause(self):
+        self.robot_order.instant_start_pause(self.create_action("startPause"))
