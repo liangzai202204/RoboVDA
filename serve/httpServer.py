@@ -1,11 +1,10 @@
 import json
 import uuid
-
 from werkzeug.exceptions import HTTPException
-
+from serve.templates.html import HTML
 from serve.robot import Robot
 from serve.handleTopic import HandleTopic
-from flask import Flask, jsonify, render_template, abort
+from flask import Flask, jsonify, render_template, abort,render_template_string
 from type.VDA5050 import order
 from log.log import MyLogger
 
@@ -37,7 +36,7 @@ class HttpServer:
         def index():
             current_order = self.robot_order.current_order
             current_order_state = self.robot_order.current_order_state
-            return render_template('index.html', current_order=current_order, current_order_state=current_order_state)
+            return render_template_string(HTML, current_order=current_order, current_order_state=current_order_state)
 
         @self.app.route('/get_data', methods=['GET'])
         def get_data():
