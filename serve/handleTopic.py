@@ -112,6 +112,8 @@ class HandleTopic:
             self.order_state_machine.update_order_status(self.robot.robot_push_msg.task_status_package,
                                                          self.robot.robot_push_msg.task_status)
             nodes_s, edges_s, actions_s, instantActions_s = self.order_state_machine.get_order_status()
+            self.robot.state.lastNodeId, self.robot.state.lastNodeSequenceId = self.order_state_machine.get_last_node()
+
             nodeState = []
             edgeState = []
             actionState = []
@@ -137,6 +139,7 @@ class HandleTopic:
             self.robot.state.actionStates.clear()
             self.robot.state.actionStates.extend(actionState)
             self.robot.state.actionStates.extend(instantActionState)
+            self.robot.state.newBaseRequest = True if len(self.robot.state.nodeStates) == 0 else False
         except Exception as e:
             self.logs.error(f"[state][update]:{e}")
 

@@ -17,6 +17,8 @@ class OrderStateMachine:
     """
 
     def __init__(self):
+        self.last_node_sequenceId = 0
+        self.last_node_id = ""
         self.uuid_task = {}
         self.taskStatus = None
         self.task_pack_status = None
@@ -129,6 +131,9 @@ class OrderStateMachine:
 
     def del_node(self, ids: str):
         if ids in self.nodes:
+            if node := self.nodes.get(ids, None):
+                self.last_node_id = node.nodeId
+                self.last_node_sequenceId = node.sequenceId
             self.nodes.pop(ids)
             self.log.info(f"del_node :{ids}")
 
@@ -199,6 +204,9 @@ class OrderStateMachine:
     def get_order_status(self):
         with self.lock:
             return self.nodes, self.edges, self.actions, self.instant_actions
+
+    def get_last_node(self):
+        return self.last_node_id, self.last_node_sequenceId
 
     def update_order_status(self, task_pack_status: pushMsgType.TaskStatusPackage, taskStatus: int):
         with self.lock:
