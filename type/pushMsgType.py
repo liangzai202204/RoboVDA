@@ -182,7 +182,7 @@ class RobotPush(BaseModel):
     manual_charge: bool = False
     model: str = ''
     # motor_info: List[Motor] = []
-    motor_steer_angles: List[int] = []
+    # motor_steer_angles: List[int] = []
     move_status_info: str = ''
     nearest_obstacles: List[dict] = []
     odo: float = 0.

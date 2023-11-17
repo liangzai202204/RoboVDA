@@ -225,7 +225,7 @@ class HandleTopic:
                     })],
                     "errorDescription": ""
                 }))
-                self.order_state_machine.set_cancel_order_instant_action(action, Status.FAILED)
+                self.order_state_machine.set_cancel_order_instant_action(action, Status.FINISHED)
                 self.logs.error(f"[instantAction]noOrderToCancel:{self.state_error}")
 
                 return
