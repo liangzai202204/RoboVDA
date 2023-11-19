@@ -235,12 +235,12 @@ class LoadDimensions(BaseModel):
 
 
 class Load(BaseModel):
-    loadId: str
-    loadType: str
-    loadPosition: str
-    boundingBoxReference: Optional[BoundingBoxReference]
-    loadDimensions: Optional[LoadDimensions]
-    weight: float = 0.0
+    loadId: str = ""
+    loadType: str = ""
+    loadPosition: str = ""
+    boundingBoxReference: Optional[BoundingBoxReference] = None
+    loadDimensions: Optional[LoadDimensions] = None
+    weight: Optional[float] = None
 
 
 class State(BaseModel):

@@ -357,7 +357,7 @@ class HandleTopic:
             self.report_error(err.ErrorOrder.orderUpdateIdLowerErr)
 
     def _try_create_order(self, sub_order):
-        print("收到新的orderId，并且当前没有任务，尝试创建新的订单。。。")
+        self.logs.info("new orderId，try to create order...")
         self.order = order.Order.create_order(sub_order)
 
         self.current_order = self.order
