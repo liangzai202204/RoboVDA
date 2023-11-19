@@ -170,7 +170,7 @@ class RobotPush(BaseModel):
     notices: List[dict] = []
     finished_path: List[str] = []
     fork: Fork = Fork()
-    goods_region: GoodsRegion = GoodsRegion()
+    goods_region: Optional[GoodsRegion] = None
     gyro_version: str = ''
     hook: Hook = Hook()
     imu_header: Dict[str, str] = {}

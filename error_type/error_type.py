@@ -17,7 +17,7 @@ class ErrorOrder(str):
     mapNotNodePosition = "地图没有这个点"
     actionPackEmpty = "打包动作为空"
     orderNodeGetMapPointErr = "order 的 nodePosition 在地图中找不到对应点"
-    creatOrderFailed = "creat order failed"
+    createOrderFailed = "create order failed"
 
 
 class ErrorPckTask(str):

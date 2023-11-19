@@ -136,12 +136,13 @@ class Robot:
         # self.state.errors = self.update_errors()
 
     def update_goods(self):
+
         goods = self.robot_push_msg.goods_region
         load_goods = state.Load()
         load_goods.loadId = goods.name
         load_goods.loadType = goods.name
         load_goods.loadPosition = str(goods.point)
-        return load_goods
+        return [load_goods]
 
     def update_operating_mode(self) -> state.OperatingMode:
         mode = state.OperatingMode.MANUAL

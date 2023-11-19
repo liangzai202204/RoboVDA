@@ -3,7 +3,7 @@ import datetime
 import threading
 from serve.OrderStateMachine import OrderStateMachine
 from serve.topicQueue import TopicQueue
-from type.VDA5050 import visualization, order, connection, state, instantActions,factsheet
+from type.VDA5050 import visualization, order, connection, state, instantActions, factsheet
 from typing import List
 from serve.robot import Robot as Robot
 from pack.action_type import ActionPack
@@ -177,7 +177,6 @@ class HandleTopic:
 
     def _handle_factsheet(self, f: factsheet.Factsheet):
         self.logs.info("_handle_factsheet")
-
 
     def _handle_instantActions(self, instant: instantActions.InstantActions):
         self.logs.info("handle_instantActions")
@@ -354,9 +353,9 @@ class HandleTopic:
             err.ErrorOrder.orderUpdateIdLowerErr:
                 lambda s_order: self.add_error("Order", "orderUpdateId", s_order.orderUpdateId,
                                                "order UpdateId Lower Err"),
-            err.ErrorOrder.creatOrderFailed:
-                lambda: self.add_error("Order", "orderId", sub_order.orderId,
-                                       "creat Order Failed")
+            err.ErrorOrder.createOrderFailed:
+                lambda s_order: self.add_error("Order", "orderId", s_order.orderId,
+                                               "creat Order Failed")
         }
 
         error_handler = error_handlers.get(typ)
@@ -416,7 +415,7 @@ class HandleTopic:
                     self.report_error(task, err.ErrorOrder.orderUpdateIdLowerErr)
             except Exception as e:
                 self.logs.error(f"creat order failed:{e}")
-                self.report_error(task, err.ErrorOrder.creatOrderFailed)
+                self.report_error(task, err.ErrorOrder.createOrderFailed)
 
     def _try_create_order(self, sub_order):
         print("收到新的orderId，并且当前没有任务，尝试创建新的订单。。。")
@@ -430,11 +429,12 @@ class HandleTopic:
         :param sub_order:
         :return:
         """
+        self.logs.info(f"[order]_try_update_order")
         if self.is_match_node_start_end(sub_order.nodes, self.current_order.nodes):
             # self.current_order = sub_order
             self.update_order(sub_order)
             return
-        self.report_error(sub_order, err.ErrorOrder.creatOrderFailed)
+        self.report_error(sub_order, err.ErrorOrder.createOrderFailed)
 
     def update_order(self, sub_order: order.Order):
         self.current_order.orderUpdateId = sub_order.orderUpdateId
