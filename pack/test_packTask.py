@@ -1,7 +1,8 @@
 import unittest
-import packTask as packTask
+from pack import packTask as packTask
 from type.mode import PackMode
 from type.VDA5050 import order
+from log.log import MyLogger
 
 
 class MyTestCase(unittest.TestCase):
@@ -9,11 +10,11 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual(True, False)  # add assertion here
 
     def test_pask(self):
-        o = packTask.PackTask('script.py')
+        o = packTask.PackTask('FORKLIFT')
         import json
         import os
         # 假设包 B 的名称为 package_B，JSON 文件名为 data.json
-        path_to_B = os.path.abspath("../VDAExample")
+        path_to_B = os.path.abspath("../VDAExample/order")
 
         json_filename = 'Transport Order.json'
 
@@ -25,8 +26,56 @@ class MyTestCase(unittest.TestCase):
             task,uuids = o.pack(order.Order(**json_content),0)
             print(f"打包结果：{len(task)},{json.dumps(task)}",uuids)
 
+    def test_pask_straight_fork(self):
+        o = packTask.PackTask('FORKLIFT') #  CARRIER
+        import json
+        import os
+        # 假设包 B 的名称为 package_B，JSON 文件名为 data.json
+        path_to_B = os.path.abspath("../VDAExample/order/fork")
 
+        json_filename = 'Transport Order 3066 straight_fork.json'
 
+        json_file_path = os.path.join(path_to_B, json_filename)
+
+        with open(json_file_path, 'r') as json_file:
+            json_content = json.load(json_file)
+            print(json_content)
+            task,uuids = o.pack(order.Order(**json_content),'FORKLIFT')
+            print(f"打包结果：{len(task)},-----{json.dumps(task)}-----",uuids)
+
+    def test_pask_straight_jack(self):
+        o = packTask.PackTask('CARRIER') #  CARRIER
+        import json
+        import os
+        # 假设包 B 的名称为 package_B，JSON 文件名为 data.json
+        path_to_B = os.path.abspath("../VDAExample/order/jack")
+
+        json_filename = 'Transport Order 3066 straight_jack.json'
+
+        json_file_path = os.path.join(path_to_B, json_filename)
+
+        with open(json_file_path, 'r') as json_file:
+            json_content = json.load(json_file)
+            print(json_content)
+            task,uuids = o.pack(order.Order(**json_content),'CARRIER')
+            print(f"打包结果：{len(task)},-----{json.dumps(task)}-----",uuids)
+
+    def test_pask_CubicBeizer2(self):
+        o = packTask.PackTask('CARRIER') #  CARRIER
+        import json
+        import os
+        # 假设包 B 的名称为 package_B，JSON 文件名为 data.json
+        path_to_B = os.path.abspath("../VDAExample/order")
+
+        json_filename = 'Transport Order 3066 CubicBeizer2.json'
+
+        json_file_path = os.path.join(path_to_B, json_filename)
+
+        with open(json_file_path, 'r') as json_file:
+            json_content = json.load(json_file)
+            print(json_content)
+            task,uuids = o.pack(order.Order(**json_content),'CARRIER')
+            print(f"打包结果：{len(task)},-----{json.dumps(task)}-----",uuids)
 
     def test_pask_one_node(self):
         o = packTask.PackTask(PackMode.params)

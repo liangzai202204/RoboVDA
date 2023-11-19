@@ -1,3 +1,5 @@
+from typing import Union
+from log.log import MyLogger
 from type.VDA5050 import order
 import pydantic
 from type.mode import PackMode
@@ -24,10 +26,12 @@ class ActionType:
 
 
 class ActionPack(pydantic.BaseModel):
+
     """
     script_stage = 1
 
     """
+
 
     @classmethod
     def pack_action_script(cls, action: order.Action, action_uuid):
@@ -162,33 +166,51 @@ class ActionPack(pydantic.BaseModel):
             print(f"action pack error:{e}")
 
     @classmethod
-    def pack_edge(cls, edge: order.Edge, start_node: order.NodePosition,
-                  end_node: order.NodePosition, uuid_task: str, robot_type: int):
+    def pack_edge(cls, edge: order.Edge, start_node: Union[order.NodePosition,order.Node],
+                  end_node: Union[order.NodePosition, order.Node], uuid_task: str, robot_type: str):
         action_task = {}
         if edge.trajectory:
-            action_task["trajectory"] = edge.trajectory.model_dump()
-            if len(edge.actions) == 1:
-                for e_a in edge.actions:
-                    if e_a.blockingType == order.ActionBlockingType.HARD:
-                        action_task["script_stage"] = 2
-                    elif e_a.blockingType == order.ActionBlockingType.NONE:
-                        action_task["script_stage"] = 1
-                    elif e_a.blockingType == order.ActionBlockingType.SOFT:
-                        action_task["script_stage"] = 1
-                    action_task["operation"] = "Script"
-                    script_name = None
-                    for ap in e_a.actionParameters:
-                        if ap.key == "script_name":
-                            script_name = ap.value
-                    action_task["script_name"] = script_name if script_name else "script.py"
-                    action_task["script_args"] = {
-                        "action_parameters": [a.model_dump() for a in e_a.actionParameters]}
-            action_task["id"] = edge.endNodeId
-            action_task["source_id"] = edge.startNodeId
-            action_task["task_id"] = uuid_task
-            action_task["sourcePos"] = start_node.model_dump()
-            action_task["targetPos"] = end_node.model_dump()
+            if isinstance(start_node, order.Node) and isinstance(end_node, order.Node):
+                for endNode_a in end_node.actions:
+                    if endNode_a.actionType == ActionType.PICK or endNode_a.actionType == ActionType.DROP:
+                        if robot_type == "FORKLIFT" or robot_type == "CARRIER":
+                            action_task = ActionPack.pack_action(endNode_a, robot_type, uuid_task)
+                            action_task["sourcePos"] = start_node.nodePosition.model_dump()
+                            action_task["targetPos"] = end_node.nodePosition.model_dump()
+                            action_task["trajectory"] = edge.trajectory.model_dump()
+                            action_task["id"] = edge.endNodeId
+                            action_task["source_id"] = edge.startNodeId
+                            action_task["task_id"] = uuid_task
+                    else:
+                        print(f"[actionPack] ActionType:{endNode_a.actionType}")
+                        return {}
+            elif isinstance(start_node, order.NodePosition) and isinstance(end_node, order.NodePosition):
 
+                if len(edge.actions) == 1:
+                    for e_a in edge.actions:
+                        if e_a.blockingType == order.ActionBlockingType.HARD:
+                            action_task["script_stage"] = 2
+                        elif e_a.blockingType == order.ActionBlockingType.NONE:
+                            action_task["script_stage"] = 1
+                        elif e_a.blockingType == order.ActionBlockingType.SOFT:
+                            action_task["script_stage"] = 1
+                        action_task["operation"] = "Script"
+                        script_name = None
+                        for ap in e_a.actionParameters:
+                            if ap.key == "script_name":
+                                script_name = ap.value
+                        action_task["script_name"] = script_name if script_name else "script.py"
+                        action_task["script_args"] = {
+                            "action_parameters": [a.model_dump() for a in e_a.actionParameters]}
+                action_task["sourcePos"] = start_node.model_dump()
+                action_task["targetPos"] = end_node.model_dump()
+                action_task["trajectory"] = edge.trajectory.model_dump()
+                action_task["id"] = edge.endNodeId
+                action_task["source_id"] = edge.startNodeId
+                action_task["task_id"] = uuid_task
+            else:
+                print(f"[actionPack] start_node or end_node type error:{start_node},{end_node}")
+                return {}
         else:
             print(f"edge not has trajectory")
             print(f"edge's action only support one action")

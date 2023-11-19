@@ -1,18 +1,16 @@
 import copy
 import uuid
 import threading
-from typing import List, Union
+from typing import List
 
-from action_type.action_type import ActionPack
-from type.moveTaskList import Task
+from pack.action_type import ActionPack, ActionType
 from type.VDA5050 import order
-from error_type import error_type as err
 from log.log import MyLogger
 
 
 class PackTask:
     def __init__(self, script_name):
-        self.robot_type = 0
+        self.robot_type = None
         self.nodes_point = None
         self.order = None
         self.nodes: List[order.Node] = []
@@ -25,7 +23,7 @@ class PackTask:
         self.uuid_task = {}
         self.script_name = script_name
 
-    def pack(self, new_order: order.Order, robot_type) -> (list, dict):
+    def pack(self, new_order: order.Order, robot_type: str) -> (list, dict):
         with self.lock:
             try:
                 self.robot_type = robot_type
@@ -69,6 +67,7 @@ class PackTask:
 
             for edge in self.edges:
                 if edge.released:
+                    tag_edge_node_task = False
                     startNode = self._get_node(edge.startNodeId)
                     endNode = self._get_node(edge.endNodeId)
                     if startNode.actions:
@@ -80,6 +79,24 @@ class PackTask:
                                     if a.actionId not in self.uuid_task:
                                         self.uuid_task[a.actionId] = str(uuid.uuid4())
                                         self.task_pack_list.append(a_task)
+                    #  pick on endNode,need combine startNode and endNode,when actionType and agvClass was jack or fork
+                    print("....",endNode.actions)
+                    for endNode_a in endNode.actions:
+                        print("==============",(endNode_a.actionType == ActionType.PICK or endNode_a.actionType == ActionType.DROP) and (self.robot_type == "FORKLIFT" or self.robot_type == "CARRIER"))
+                        if (endNode_a.actionType == ActionType.PICK or endNode_a.actionType == ActionType.DROP) and (self.robot_type == "FORKLIFT" or self.robot_type == "CARRIER"):
+                            edge_uuid = str(uuid.uuid4())
+                            edge_task = ActionPack.pack_edge(edge, startNode,
+                                                             endNode, edge_uuid, self.robot_type)
+                            if edge_task:
+                                self.uuid_task[edge.edgeId] = edge_uuid
+                                self.task_pack_list.append(edge_task)
+                            tag_edge_node_task = True
+                            print("b1")
+                            break
+                    if tag_edge_node_task:
+                        print("b2")
+                        break
+                    print("b3")
                     edge_uuid = str(uuid.uuid4())
                     edge_task = ActionPack.pack_edge(edge, startNode.nodePosition,
                                                      endNode.nodePosition, edge_uuid, self.robot_type)

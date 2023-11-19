@@ -255,7 +255,7 @@ class InstantActionsTest(unittest.TestCase):
     def test_pack_class(self):
         import json
         import os
-        from serve.packTask import PackTask
+        from pack.packTask import PackTask
         # 假设包 B 的名称为 package_B，JSON 文件名为 data.json
         path_to_B = os.path.abspath("../VDAExample")
         json_filename = 'Transport Order.json'

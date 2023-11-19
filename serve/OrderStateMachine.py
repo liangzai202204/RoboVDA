@@ -5,7 +5,7 @@ from type.RobotOrderStatus import RobotOrderStatus
 from type import pushMsgType
 from type.VDA5050 import order, state
 from type.RobotOrderStatus import Status
-from action_type import action_type
+from pack import action_type
 from log.log import MyLogger
 
 
