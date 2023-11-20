@@ -1,6 +1,7 @@
 import threading
 from typing import Union
 
+from pack.action_type import ActionType
 from type.RobotOrderStatus import RobotOrderStatus
 from type import pushMsgType
 from type.VDA5050 import order, state
@@ -17,6 +18,7 @@ class OrderStateMachine:
     """
 
     def __init__(self):
+        self.robot_type = None
         self.last_node_sequenceId = 0
         self.last_node_id = ""
         self.uuid_task = {}
@@ -33,7 +35,7 @@ class OrderStateMachine:
         self.last_node = None
         self.tasks_uuid = []
 
-    def creat_order_uuid(self):
+    def create_order_uuid(self):
         """根据 order 生成任务 id
         order 中的 orderId 是任务的唯一id
         order 中的 相邻的 node-edge-node 组合成一个 3066任务，并且生成响应的 任务id--uuid
@@ -99,7 +101,7 @@ class OrderStateMachine:
                 return
             self.instant_actions[n_action.actionId] = state.ActionState(**n_action.model_dump())
 
-    def add_order(self, n_order: order.Order,uuid_task:dict):
+    def add_order(self, n_order: order.Order,uuid_task:dict,robot_type):
         """将所有的node、edge、action添加到状态机
         :param uuid_task:
         :param n_order:
@@ -107,6 +109,9 @@ class OrderStateMachine:
         """
         with self.lock:
             try:
+                self.robot_type = robot_type
+                if not uuid_task:
+                    return
                 self.uuid_task = uuid_task
                 if not self.order:
                     self.order = n_order
@@ -153,15 +158,15 @@ class OrderStateMachine:
     def set_action_status(self, ids: str, status: Status):
         if self.actions.get(ids, None):
             self.actions[ids].actionStatus = status
-            self.log.info(f"改变 action 状态:{status} ok！,actionId：{ids}")
+            self.log.info(f"change action status:{status} ok！,actionId：{ids}")
         else:
-            self.log.error(f"当准备改变 action 状态时，找不到对应的 actionId：{ids}")
+            self.log.error(f"when changing action status，cannot found actionId：{ids}")
 
     def set_instant_action_status(self, ids: str, status: Status):
         if self.instant_actions.get(ids, None):
             self.instant_actions[ids].actionStatus = status
         else:
-            self.log.error(f"当准备改变 instant action 状态时，找不到对应的 actionId：{ids}")
+            self.log.error(f"when changing instant action status，cannot found  actionId：{ids}")
 
     @property
     def actions_empty(self):
@@ -236,27 +241,15 @@ class OrderStateMachine:
                 """
                 if self.instant_actions:
                     for instant_action_id, instant_action in self.instant_actions.items():
-                        if instant_action.actionType == 'cancelOrder':
-                            if taskStatus == 6:
+                        action_type = instant_action.actionType
+                        if action_type in ['cancelOrder', 'startPause', 'stopPause']:
+                            if (action_type == 'cancelOrder' and taskStatus == 6) or (
+                                    action_type == 'startPause' and taskStatus == 3) or (
+                                    action_type == 'stopPause' and taskStatus != 3):
                                 instant_action.actionStatus = Status.FINISHED
                             else:
                                 instant_action.actionStatus = Status.FAILED
-                        elif instant_action.actionType == 'startPause':
-                            if taskStatus == 3:
-                                instant_action.actionStatus = Status.FINISHED
-                            else:
-                                instant_action.actionStatus = Status.FAILED
-                        elif instant_action.actionType == 'stopPause':
-                            if taskStatus != 3:
-                                instant_action.actionStatus = Status.FINISHED
-                            else:
-                                instant_action.actionStatus = Status.FAILED
-                        elif instant_action.actionType == 'initPosition':
-                            task_statu = next((task for task in task_pack_status.task_status_list if
-                                               task.task_id == instant_action_id), None)
-                            if task_statu:
-                                self.update_instant_actions_status(instant_action_id, task_statu.status)
-                        elif instant_action.actionType == 'Script':
+                        elif action_type in ['initPosition', 'Script']:
                             task_statu = next((task for task in task_pack_status.task_status_list if
                                                task.task_id == instant_action_id), None)
                             if task_statu:
@@ -271,36 +264,57 @@ class OrderStateMachine:
                             self.nodes.clear()
                         if self.edges and len(self.nodes) == 0:
                             self.edges.clear()
-                    for e_id,u_id in self.uuid_task.items():
-                        get_edge = self.edges.get(e_id,None)
+                    for u_id,e_id in self.uuid_task.items():
+                        get_edge = self.edges.get(e_id, None)
 
                         if get_edge:
                             self.log.info(f"get edge ok!!! edge id({e_id}):{get_edge}")
                             start_node = self.nodes.get(get_edge.startNodeId)
                             end_node = self.nodes.get(get_edge.endNodeId)
                             action_in_edge = None
+                            node_action_id_in_edge = None
+                            for endNode_a in end_node.actions:
+                                if (endNode_a.actionType == ActionType.PICK or endNode_a.actionType == ActionType.DROP) and (
+                                        self.robot_type == "FORKLIFT" or self.robot_type == "CARRIER"):
+                                    node_action_id_in_edge = endNode_a.actionId
                             if get_edge.actions:
                                 action_in_edge = get_edge.actions[0]  # 只允许一个动作
                             for task_statu in task_pack_status.task_status_list:
                                 # self.log.info(f"edgeId:{e_id},edgeTaskId:{u_id},task_statu.task_id:{task_statu.task_id}")
                                 if task_statu.task_id == u_id:
                                     if task_statu.status == RobotOrderStatus.Completed.value:
+                                        if node_action_id_in_edge:
+                                            self.set_action_status(node_action_id_in_edge, Status.FINISHED)
                                         if action_in_edge:
                                             self.set_action_status(action_in_edge.actionId, Status.FINISHED)
                                         need_del_edge_id.append(e_id)
                                     elif task_statu.status == RobotOrderStatus.Failed.value and action_in_edge:
+                                        if node_action_id_in_edge:
+                                            self.set_action_status(node_action_id_in_edge, Status.FAILED)
                                         self.set_action_status(action_in_edge.actionId, Status.FAILED)
                                     elif task_statu.status == RobotOrderStatus.StatusNone.value and action_in_edge:
+                                        if node_action_id_in_edge:
+                                            self.set_action_status(node_action_id_in_edge, Status.INITIALIZING)
                                         self.set_action_status(action_in_edge.actionId, Status.INITIALIZING)
                                     elif task_statu.status == RobotOrderStatus.Running.value and action_in_edge:
+                                        if node_action_id_in_edge:
+                                            self.set_action_status(node_action_id_in_edge, Status.RUNNING)
                                         self.set_action_status(action_in_edge.actionId, Status.RUNNING)
                                     elif task_statu.status == RobotOrderStatus.Canceled.value and action_in_edge:
+                                        if node_action_id_in_edge:
+                                            self.set_action_status(node_action_id_in_edge, Status.FAILED)
                                         self.set_action_status(action_in_edge.actionId, Status.FAILED)
                                     elif task_statu.status == RobotOrderStatus.Suspended.value and action_in_edge:
+                                        if node_action_id_in_edge:
+                                            self.set_action_status(node_action_id_in_edge, Status.PAUSED)
                                         self.set_action_status(action_in_edge.actionId, Status.PAUSED)
                                     elif task_statu.status == RobotOrderStatus.NotFound.value and action_in_edge:
+                                        if node_action_id_in_edge:
+                                            self.set_action_status(node_action_id_in_edge, Status.FAILED)
                                         self.set_action_status(action_in_edge.actionId, Status.FAILED)
                                     elif task_statu.status == RobotOrderStatus.Waiting.value and action_in_edge:
+                                        if node_action_id_in_edge:
+                                            self.set_action_status(node_action_id_in_edge, Status.WAITING)
                                         self.set_action_status(action_in_edge.actionId, Status.WAITING)
                                     # else:
                                     #     self.log.warning(f"更新状态机 action 的状态时，找不到状态：{task_statu.status}")

@@ -72,7 +72,7 @@ class MyLogger:
                 'INFO': 'green',
                 'WARNING': 'yellow',
                 'ERROR': 'red',
-                'CRITICAL': 'red,bg_white',
+                'CRITICAL': 'bg_white',
             },
             reset=True,
             style='%'

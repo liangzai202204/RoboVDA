@@ -61,7 +61,7 @@ class PackTask:
 
                             a_task = ActionPack.pack_action(a, self.robot_type, action_uuid)
                             if a_task:
-                                self.uuid_task[a.actionId] = str(uuid.uuid4())
+                                self.uuid_task[action_uuid] = a.actionId
                                 self.task_pack_list.append(a_task)
                 return
 
@@ -77,31 +77,26 @@ class PackTask:
                                 a_task = ActionPack.pack_action(a, self.robot_type, action_uuid)
                                 if a_task:
                                     if a.actionId not in self.uuid_task:
-                                        self.uuid_task[a.actionId] = str(uuid.uuid4())
+                                        self.uuid_task[action_uuid] = a.actionId
                                         self.task_pack_list.append(a_task)
                     #  pick on endNode,need combine startNode and endNode,when actionType and agvClass was jack or fork
-                    print("....",endNode.actions)
                     for endNode_a in endNode.actions:
-                        print("==============",(endNode_a.actionType == ActionType.PICK or endNode_a.actionType == ActionType.DROP) and (self.robot_type == "FORKLIFT" or self.robot_type == "CARRIER"))
                         if (endNode_a.actionType == ActionType.PICK or endNode_a.actionType == ActionType.DROP) and (self.robot_type == "FORKLIFT" or self.robot_type == "CARRIER"):
                             edge_uuid = str(uuid.uuid4())
                             edge_task = ActionPack.pack_edge(edge, startNode,
                                                              endNode, edge_uuid, self.robot_type)
                             if edge_task:
-                                self.uuid_task[edge.edgeId] = edge_uuid
+                                self.uuid_task[edge_uuid] = edge.edgeId
                                 self.task_pack_list.append(edge_task)
                             tag_edge_node_task = True
-                            print("b1")
                             break
                     if tag_edge_node_task:
-                        print("b2")
                         break
-                    print("b3")
                     edge_uuid = str(uuid.uuid4())
                     edge_task = ActionPack.pack_edge(edge, startNode.nodePosition,
                                                      endNode.nodePosition, edge_uuid, self.robot_type)
                     if edge_task:
-                        self.uuid_task[edge.edgeId] = edge_uuid
+                        self.uuid_task[edge_uuid] = edge.edgeId
                         self.task_pack_list.append(edge_task)
                     if endNode.actions and endNode.released:
                         for a2 in endNode.actions:
@@ -109,7 +104,7 @@ class PackTask:
                                 action_uuid = str(uuid.uuid4())
                                 a_task = ActionPack.pack_action(a2, self.robot_type, action_uuid)
                                 if a_task:
-                                    self.uuid_task[a2.actionId] = str(uuid.uuid4())
+                                    self.uuid_task[action_uuid] = a2.actionId
                                     self.task_pack_list.append(a_task)
         except Exception as e:
             self.log.error(f"pack_params error:{e}")

@@ -249,7 +249,7 @@ class HandleTopic:
                     "errorDescription": ""
                 }))
                 self.logs.error(f"[instantAction]noOrderToCancel:{self.state_error}")
-                self.order_state_machine.add_instant_action(action, Status.FAILED)
+                self.order_state_machine.add_instant_action(action, Status.FINISHED)
                 return
 
             if self.robot.instant_cancel_task():
@@ -506,7 +506,7 @@ class HandleTopic:
         try:
             uuid_task = self.pack_send(self.current_order)
             # 狀態機
-            self.order_state_machine.add_order(self.current_order, uuid_task)
+            self.order_state_machine.add_order(self.current_order, uuid_task,self.robot.model.agvClass)
         except Exception as e:
             self.logs.info(f"试图打包任务，发给机器人 失败:{e}")
             self.report_error(err.ErrorOrder.sendOrderToRobotErr, err.ErrorOrder.sendOrderToRobotErr)
