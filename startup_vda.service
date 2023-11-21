@@ -1,5 +1,5 @@
 [Unit]
-Description=Your Program
+Description=/usr/local/SeerRobotics/vda/RoboVda.sh
 ConditionPathExists=/usr/local/SeerRobotics/vda/RoboVda.sh
 After=network.target
 

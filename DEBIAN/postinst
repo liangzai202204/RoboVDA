@@ -1,0 +1,6 @@
+#!/bin/bash
+
+echo seer | sudo -S chmod 777 /usr/local/SeerRobotics/vda/RoboVda.sh
+echo seer | sudo -S chmod 777 /etc/systemd/system/startup_vda.service
+echo seer | sudo -S systemctl enable startup_vda
+echo seer | sudo -S systemctl start startup_vda

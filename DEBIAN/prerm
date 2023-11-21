@@ -1,0 +1,7 @@
+#!/bin/bash
+
+systemctl stop startup_vda
+systemctl disable startup_vda
+rm /etc/systemd/system/startup_vda.service
+systemctl daemon-reload
+pkill RoboVda

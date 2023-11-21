@@ -14,6 +14,6 @@ else
         if [ ! -d "/usr/local/SeerRobotics/vda/robotMap" ]; then  # 检查目录是否存在
         echo seer | sudo -S mkdir -p /usr/local/SeerRobotics/vda/robotModel  # 创建目录（包括父目录）
     fi
-    cd /usr/bin  # 切换到程序所在目录
+    cd /usr/local/SeerRobotics/vda/  # 切换到程序所在目录
     echo seer | sudo -S ./RoboVda  # 运行 Python 程序
 fi
