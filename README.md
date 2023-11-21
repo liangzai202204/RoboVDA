@@ -19,8 +19,15 @@ This script requires having installed on your system:
    ```
 3. Run the script with your Python script file as an argument:
    ```
-   ./make_app.sh app.py
+   ./make_app.sh RoboVda.py
    ```
 4. The Python script will be converted into an executable file under the `dist/` directory.
 
 Please note: The Shell script will check if PyInstaller is installed on your system. If not, it will attempt to install it. Make sure you are connected to the internet.
+
+## .deb and zip
+
+1. Run the script
+   ```
+   sudo ./build_deb.sh
+   ```

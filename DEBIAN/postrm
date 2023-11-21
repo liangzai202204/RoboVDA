@@ -1,0 +1,25 @@
+#!/bin/bash
+set -e
+
+
+
+
+
+if [[ $(uname -r) =~ Microsoft$ ]]; then
+    echo "This is WSL"
+else
+
+    systemctl daemon-reload
+
+    if [ -f /etc/systemd/system/startup_vda.service ]; then
+
+    if [ "`systemctl is-enabled startup_vda.service`" = "enabled" ]; then
+        systemctl disable startup_vda.service
+        systemctl daemon-reload
+    fi
+
+fi
+fi
+
+
+exit 0

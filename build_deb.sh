@@ -10,8 +10,12 @@ mkdir -p SeerRobotics/RoboVda-SRC/DEBIAN
 cp DEBIAN/control SeerRobotics/RoboVda-SRC/DEBIAN/
 cp DEBIAN/postinst SeerRobotics/RoboVda-SRC/DEBIAN/
 cp DEBIAN/prerm SeerRobotics/RoboVda-SRC/DEBIAN/
+cp DEBIAN/postrm SeerRobotics/RoboVda-SRC/DEBIAN/
+cp DEBIAN/preinst SeerRobotics/RoboVda-SRC/DEBIAN/
 chmod 775 SeerRobotics/RoboVda-SRC/DEBIAN/postinst
 chmod 775 SeerRobotics/RoboVda-SRC/DEBIAN/prerm
+chmod 775 SeerRobotics/RoboVda-SRC/DEBIAN/preinst
+chmod 775 SeerRobotics/RoboVda-SRC/DEBIAN/postrm
 
 mkdir -p SeerRobotics/RoboVda-SRC/usr/local/SeerRobotics/vda
 cp RoboVda.sh SeerRobotics/RoboVda-SRC/usr/local/SeerRobotics/vda
@@ -36,7 +40,7 @@ echo "build zip."
 cd ..
 
 folder_name="SeerRobotics"  # 替换为实际的文件夹名称
-zip_file_name="SeerRobotics.zip"  # 替换为实际的压缩文件名称
+zip_file_name="SeerRobotics-1.zip"  # 替换为实际的压缩文件名称
 
 if [ -d "$folder_name" ]; then  # 检查文件夹是否存在
     zip -r "$zip_file_name" "$folder_name" -x "$folder_name/RoboVda-SRC/*"  # 压缩文件夹并排除指定的文件夹

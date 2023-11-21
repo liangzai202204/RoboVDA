@@ -1,7 +1,49 @@
 #!/bin/bash
+set -e
 
-systemctl stop startup_vda
-systemctl disable startup_vda
-rm /etc/systemd/system/startup_vda.service
-systemctl daemon-reload
-pkill RoboVda
+#
+
+
+exit 0
+##!/bin/bash
+#
+## 检查服务是否存在并且正在运行
+#if sudo systemctl is-active --quiet startup_vda; then
+#    echo "服务 startup_vda 存在并且正在运行，将执行停止和禁用操作。"
+#
+#    # 停止和禁用服务
+#    sudo systemctl stop startup_vda
+#    sudo systemctl disable startup_vda
+#else
+#    echo "服务 startup_vda 不存在或者未运行，无需执行停止和禁用操作。"
+#fi
+#
+## 删除服务文件
+#if [ -f /etc/systemd/system/startup_vda.service ]; then
+#    sudo rm /etc/systemd/system/startup_vda.service
+#    echo "已删除 /etc/systemd/system/startup_vda.service 文件。"
+#else
+#    echo "/etc/systemd/system/startup_vda.service 文件不存在，无需删除。"
+#fi
+#
+## 删除程序文件
+#if [ -d /usr/local/SeerRobotics/vda ]; then
+#    sudo rm -rf /usr/local/SeerRobotics/vda
+#    echo "已删除 /usr/local/SeerRobotics/vda 目录及其中的所有文件。"
+#else
+#    echo "/usr/local/SeerRobotics/vda 目录不存在，无需删除。"
+#fi
+#
+## 检查进程是否存在
+#if pgrep -x "RoboVda" > /dev/null; then
+#    # 杀死进程
+#    sudo pkill RoboVda
+#    echo "已杀死进程 RoboVda."
+#else
+#    echo "进程 RoboVda 不存在，无需杀死。"
+#fi
+#
+## 重新加载systemd服务配置
+#sudo systemctl daemon-reload
+#
+#echo "prerm ok！"
