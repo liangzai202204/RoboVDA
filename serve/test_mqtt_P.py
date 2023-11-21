@@ -58,8 +58,70 @@ class MyTestCase(unittest.TestCase):
             client.connect(get_mqtt_ip(), 1883, 60)
             client.publish("robot/order", json.dumps(json_content))
 
+    def test_creat_order_jackunload_3(self):
+            import json
+            path_to_B = os.path.abspath("../VDAExample/order/jack")
+
+            json_filename = 'Transport Order 3066 CubicBeizer3_jackLoadAndjackUnload.json'
+
+            json_file_path = os.path.join(path_to_B, json_filename)
+
+            with open(json_file_path, 'r') as json_file:
+                json_content = json.load(json_file)
+                client = mqtt.Client()
+                client.connect(get_mqtt_ip(), 1883, 60)
+                client.publish("robot/order", json.dumps(json_content))
 
 
+
+class instantActionsTestCase(unittest.TestCase):
+    def test_something(self):
+        self.assertEqual(True, False)  # add assertion here
+
+    def test_creat_order_cancel(self):
+        import json
+        path_to_B = os.path.abspath("../VDAExample/instantAcions")
+
+        json_filename = 'Cancel Order InstantAction.json'
+
+        json_file_path = os.path.join(path_to_B, json_filename)
+
+        with open(json_file_path, 'r') as json_file:
+            json_content = json.load(json_file)
+            client = mqtt.Client()
+            client.connect(get_mqtt_ip(), 1883, 60)
+            client.publish("robot/instantActions", json.dumps(json_content))
+
+
+    def test_creat_order_jackunload_1(self):
+        import json
+        path_to_B = os.path.abspath("../VDAExample/order/jack")
+
+        json_filename = 'Transport Order 3066 CubicBeizer2_jackUnload.json'
+
+        json_file_path = os.path.join(path_to_B, json_filename)
+
+        with open(json_file_path, 'r') as json_file:
+            json_content = json.load(json_file)
+            client = mqtt.Client()
+            client.connect(get_mqtt_ip(), 1883, 60)
+            client.publish("robot/order", json.dumps(json_content))
+
+
+
+    def test_creat_order_jackunload_3(self):
+            import json
+            path_to_B = os.path.abspath("../VDAExample/order/jack")
+
+            json_filename = 'Transport Order 3066 CubicBeizer3_jackLoadAndjackUnload.json'
+
+            json_file_path = os.path.join(path_to_B, json_filename)
+
+            with open(json_file_path, 'r') as json_file:
+                json_content = json.load(json_file)
+                client = mqtt.Client()
+                client.connect(get_mqtt_ip(), 1883, 60)
+                client.publish("robot/order", json.dumps(json_content))
 
 
 if __name__ == '__main__':

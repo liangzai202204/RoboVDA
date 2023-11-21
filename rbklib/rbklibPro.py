@@ -78,59 +78,6 @@ class Rbk:
             # 如果报文类型不在范围内，则抛出异常
             raise ValueError("没有与报文类型对应的socket,或者需要指定一个socket")
 
-    def robot_config_download_map_req(self, map_name: str):
-        return self.request(4011, {"map_name": map_name})
-
-    def robot_status_map_md5_req(self, map_names):
-        return self.request(1302, {"map_names": map_names})
-
-    def robot_control_load_map_req(self, map_name: str):
-        """
-        切换载入的地图
-
-        :param map_name: 要切换的地图名(不能包含中文等非法字符, 只能使用 0-9, a-z, A-Z, -, _)
-        """
-        return self.request(2022, {"map_name": map_name})
-
-    def robot_control_reloc_req(self, x: float = None, y: float = None, angle: float = None, length: float = 0,
-                                home: bool = False):
-        """
-         重定位
-
-         :param x: 世界坐标系中的 x 坐标, 单位 m
-         :param y: 世界坐标系中的 y 坐标, 单位 m
-         :param angle: 世界坐标系中的角度, 单位 rad
-         :param length: 重定位区域半径，单位 m
-         :param home: 在 RobotHome 重定位(若为 true, 前三个参数无效, 并从 Roboshop 参数配置中的 RobotHome1-5 重定位,
-                      若 RobotHome1-5 未配置, 则不做任何操作。若缺省则认为是 false)
-         """
-        d = {}
-        if x is not None:
-            d["x"] = x
-        if y is not None:
-            d["y"] = y
-        if angle is not None:
-            d["angle"] = angle
-        if length is not None:
-            d["length"] = length
-        d["home"] = home
-        return self.request(2002, d)
-
-    def robot_status_map_req(self):
-        """
-        查询机器人载入的地图以及储存的地图
-        """
-        return self.request(1300)
-
-    def robot_config_lock_req(self, nick_name: str):
-        return self.request(4005, {"nick_name": nick_name})
-
-    def robot_task_go_target_list_req(self, **kwargs):
-        return self.request(3066, kwargs)
-
-    def robot_task_cancel_req(self):
-        return self.request(3003)
-
     def call_service(self, *request):
         if request.__len__() == 1:
             return self.request(request[0])
@@ -161,6 +108,7 @@ class BaseSo:
 
                 self.so.connect((self.ip, self.port))
                 self.connected = True
+                self.log.info(f"[rbk]connect rbk({self.ip}:{self.port}) ok!")
             except Exception as e:
                 self.log.warning(f"连接失败：{e}")
                 self.connected = False

@@ -53,32 +53,21 @@ class PackTask:
                     然后再打包
             """
 
-            if self.nodes.__len__() == 1:
-                if self.nodes[0].actions:
-                    if self.nodes[0].released:
-                        for a in self.nodes[0].actions:
-                            action_uuid = str(uuid.uuid4())
+            if self.nodes[0].actions:
+                if self.nodes[0].released:
+                    for a in self.nodes[0].actions:
+                        action_uuid = str(uuid.uuid4())
 
-                            a_task = ActionPack.pack_action(a, self.robot_type, action_uuid)
-                            if a_task:
-                                self.uuid_task[action_uuid] = a.actionId
-                                self.task_pack_list.append(a_task)
-                return
+                        a_task = ActionPack.pack_action(a, self.robot_type, action_uuid)
+                        if a_task:
+                            self.uuid_task[action_uuid] = a.actionId
+                            self.task_pack_list.append(a_task)
 
             for edge in self.edges:
                 if edge.released:
                     tag_edge_node_task = False
                     startNode = self._get_node(edge.startNodeId)
                     endNode = self._get_node(edge.endNodeId)
-                    if startNode.actions:
-                        for a in startNode.actions:
-                            if a.actionId not in self.uuid_task:
-                                action_uuid = str(uuid.uuid4())
-                                a_task = ActionPack.pack_action(a, self.robot_type, action_uuid)
-                                if a_task:
-                                    if a.actionId not in self.uuid_task:
-                                        self.uuid_task[action_uuid] = a.actionId
-                                        self.task_pack_list.append(a_task)
                     #  pick on endNode,need combine startNode and endNode,when actionType and agvClass was jack or fork
                     for endNode_a in endNode.actions:
                         if (endNode_a.actionType == ActionType.PICK or endNode_a.actionType == ActionType.DROP) and (self.robot_type == "FORKLIFT" or self.robot_type == "CARRIER"):
@@ -91,7 +80,7 @@ class PackTask:
                             tag_edge_node_task = True
                             break
                     if tag_edge_node_task:
-                        break
+                        continue
                     edge_uuid = str(uuid.uuid4())
                     edge_task = ActionPack.pack_edge(edge, startNode.nodePosition,
                                                      endNode.nodePosition, edge_uuid, self.robot_type)

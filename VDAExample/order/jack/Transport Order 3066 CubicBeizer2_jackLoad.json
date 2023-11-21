@@ -58,10 +58,6 @@
                     "blockingType": "HARD",
                     "actionParameters": [
                         {
-                            "key": "jack_height",
-                            "value": 0.1
-                        },
-                        {
                             "key": "recognize",
                             "value": false
                         }

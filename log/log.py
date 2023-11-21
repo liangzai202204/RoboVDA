@@ -20,7 +20,7 @@ class MyLogger:
             return
         self.__initialized = True
 
-        log_dir = os.getcwd() + "/scripts-logs/"
+        log_dir = "/usr/local/SeerRobotics/vda/scripts-logs/"
         os.makedirs(log_dir, exist_ok=True)
 
         # 获取已有的日志文件名列表

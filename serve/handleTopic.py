@@ -414,7 +414,7 @@ class HandleTopic:
                 else:
                     self.report_error(task, err.ErrorOrder.orderUpdateIdLowerErr)
             except Exception as e:
-                self.logs.error(f"creat order failed:{e}")
+                self.logs.error(f"create order failed:{e}")
                 self.report_error(task, err.ErrorOrder.createOrderFailed)
 
     def _try_create_order(self, sub_order):

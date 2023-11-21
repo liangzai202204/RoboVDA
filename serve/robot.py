@@ -326,159 +326,6 @@ class Robot:
         return None
 
 
-class RobotMapManager:
-    def __init__(self, rbk):
-        self.map_dir = os.path.join(os.getcwd(), "robotMap")
-        self.maps = {}
-        self.current_map = None
-        self.current_map_md5 = None
-        self.rbk = rbk
-        self.logs = MyLogger()
-        self.map_point_index = None
-
-    def add_map(self, map_name, md5, map_path):
-        self.maps[map_name] = {
-            'md5': md5,
-            'path': map_path
-        }
-
-    def remove_map(self, map_name):
-        if map_name in self.maps:
-            try:
-                os.remove(self.maps[map_name]['path'])
-                self.logs.info(f"del map file:{self.maps[map_name]['path']}")
-                del self.maps[map_name]
-            except OSError as e:
-                self.logs.info(f"Error deleting file {map_name}: {str(e)}")
-        if self.current_map == map_name:
-            self.current_map = None
-            self.map_point_index = None
-
-    def get_md5(self, map_name):
-        return self.maps.get(map_name).get('md5')
-
-    def get_map_path(self, map_name):
-        self.logs.info(f"path:{self.maps.get(map_name).get('path')}")
-        return self.maps.get(map_name).get('path')
-
-    def reload_map(self, map_dir, name, md5):
-        # 在这里添加重新加载地图的逻辑
-        self.load_map(map_dir, name, md5)
-
-    def load_map(self, map_dir, name, md5=None):
-        if not md5:
-            md5 = self.get_updated_md5(name + '.smap')
-        map_path = os.path.join(map_dir, name + '.smap')
-        # data = self.rbk.robot_config_download_map_req(name)
-        data = self.rbk.call_service(ApiReq.ROBOT_CONFIG_DOWNLOADMAP_REQ.value, {"map_name": name})
-        if os.path.exists(map_dir):
-            with open(map_path, 'wb') as file:
-                # 可选：写入内容到文件
-                file.write(data)
-            self.logs.info(f"[robot] load map OK! map name:{name},save path:{map_path}")
-            self.add_map(name, md5, map_path)
-        else:
-            self.logs.error(f"[robot] try to get robot map,but state has no {map_dir}"
-                            f",path:{map_path}")
-
-    def get_updated_md5(self, map_name: str):
-        try:
-            # c_md5_res = self.rbk.robot_status_map_md5_req([map_name])
-            c_md5_res = self.rbk.call_service(ApiReq.ROBOT_STATUS_MAPMD5_REQ.value, {"map_names": [map_name]})
-            c_md5_json = json.loads(c_md5_res)
-            if c_md5_json.get("ret_code") == 0:
-                if c_md5_json["map_info"][0]["name"] == map_name:
-                    md5_map = c_md5_json["map_info"][0]["md5"]
-                    return md5_map
-                else:
-                    self.logs.error(f"[map]獲取地圖md5時，返回的地圖名稱不相等")
-            else:
-                self.logs.error(f"[map]獲取地圖md5時,返回異常，{c_md5_json}")
-        except KeyError as k:
-            self.logs.error(f"[map]get_updated_md5{k}")
-        except socket.timeout as s:
-            self.logs.error(f"[map]get_updated_md5{s}")
-        except Exception as e:
-            self.logs.error(f"[map]get_updated_md5{e}")
-
-    def switch_map(self, target_map: str) -> bool:
-        # map_res = self.rbk.robot_control_load_map_req(target_map)
-        map_res = self.rbk.call_service(ApiReq.ROBOT_CONTROL_LOADMAP_REQ.value, {"map_name": target_map})
-        map_res_json = json.loads(map_res)
-        if map_res_json.get("ret_code"):
-            if map_res_json["ret_code"] == 0:
-                # self.rbk.robot_control_reloc_req()
-                self.rbk.call_service(ApiReq.ROBOT_CONTROL_RELOC_REQ.value)
-                return True
-            else:
-                return False
-        return False
-
-    def get_current_map(self, current_map=None, md5=None):
-        if not os.path.exists(self.map_dir):
-            os.makedirs(self.map_dir)
-        if not current_map:
-            self.load_map(self.map_dir, self.current_map, self.current_map_md5)
-        else:
-            self.load_map(self.map_dir, current_map)
-            self.current_map = current_map
-            self.current_map_md5 = md5
-        self.map_point_index = self.map_index(self.get_map_path(self.current_map))
-
-    def _get_map(self):
-        try:
-            map_req = self.rbk.call_service(ApiReq.ROBOT_STATUS_MAP_REQ.value)
-            if not map_req:
-                self.logs.error("[map]req error")
-                return {}
-            self.logs.info(f"[map]map_req{map_req}")
-            map_req_json = json.loads(map_req)
-            return map_req_json
-        except OSError as o:
-            self.logs.error(f"_get_map:{o}")
-            return {}
-        except Exception as e:
-            self.logs.error(f"[map]_get_map error:{e}")
-        return None
-
-    def get_all_map(self):
-        self.logs.info(f"-----------------get_all_map---------------------")
-        # 檢查是否有地圖文件
-
-        if not os.path.exists(self.map_dir):
-            # 创建目录
-            os.makedirs(self.map_dir)
-        map_req = self._get_map()
-        map_list = map_req.get("maps")
-        if not map_list:
-            self.logs.error(f"[map]加載失敗")
-            return
-        self.logs.info(f"map_list:{map_list}")
-        for m in map_list:
-            self.load_map(self.map_dir, m)
-
-    def map_index(self, maps: str):
-        index = dict()
-        nodes = dict()
-        if maps == "":
-            return index
-        if os.path.exists(maps):
-            try:
-                with open(maps, "r", encoding="utf-8") as f:
-                    map_data = json.load(f)
-                for node in map_data['advancedPointList']:
-                    nodes[node['instanceName']] = node["pos"]
-
-                for key, value in nodes.items():
-                    index[(value["x"], value["y"])] = key
-                self.map_point_index = index
-                self.logs.info(f"[map]map_index:{index}")
-            except Exception as e:
-                self.logs.error(f"[map]map_index{e}")
-        else:
-            self.logs.error(f"[map]no exists map :{maps}")
-        return index
-
 
 class RobotModel:
     def __init__(self, rbk):
@@ -489,7 +336,7 @@ class RobotModel:
         self.pgv = "NONE"
         self.mode = "NONE"
         self.agvClass = "NONE"
-        self.model_dir = os.path.join(os.getcwd(), "robotModel")
+        self.model_dir = os.path.join("/usr/local/SeerRobotics/vda/", "robotModel")
         if not os.path.exists(self.model_dir):
             os.makedirs(self.model_dir)
         self.model_path = os.path.join(os.path.join(os.getcwd(), "robotModel"), "robot.model")
@@ -578,10 +425,10 @@ class RobotModel:
 class RobotMap:
     def __init__(self, rbk):
         self.advanced_point_list = []
-        self.map_dir = os.path.join(os.getcwd(), "robotMap")
+        self.map_dir = os.path.join("/usr/local/SeerRobotics/vda/", "robotMap")
         if not os.path.exists(self.map_dir):
             os.makedirs(self.map_dir)
-        self.model_path = os.path.join(os.path.join(os.getcwd(), "robotMap"), "robot.smap")
+        self.model_path = os.path.join(os.path.join("/usr/local/SeerRobotics/vda/", "robotMap"), "robot.smap")
         self.rbk = rbk
         self.map = None
         self.log = MyLogger()

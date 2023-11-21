@@ -4,7 +4,7 @@ import datetime
 import json
 import uuid
 
-from rbklib.rbklib import Rbklib
+from rbklib.rbklibPro import Rbk
 from type.VDA5050 import order, state
 
 import networkx as nx
@@ -44,7 +44,7 @@ class SimOrder:
         config.read(config_path)
         ip = config.get('robot', 'robot_ip') if config.get('robot', 'robot_ip') else ip
         print(ip)
-        self.rbk = Rbklib(ip)
+        self.rbk = Rbk(ip)
         self.map = Map(self.get_map_path()) if self.rbk.so_19204 else Map(search_smap_files(get_map_path1()))
         self.loc = None
         self.init_point = ""

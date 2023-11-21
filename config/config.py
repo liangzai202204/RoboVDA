@@ -16,6 +16,7 @@ class Config:
         else:
             self.file_path = file_path
         self.config = configparser.ConfigParser()
+        self.create_service()
         self.read_config()
 
     def read_config(self):
@@ -100,6 +101,9 @@ class Config:
         return {
             "script_name":self.config.get('script', 'script_name')
         }
+
+    def create_service(self):
+        pass
 
 
 if __name__ == '__main__':
