@@ -55,17 +55,18 @@ jobs:
       id: create_release
       uses: actions/create-release@v1
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.ROBOVDA }}
       with:
         tag_name: v${{ env.VERSION}}
         release_name: Release v${{ env.VERSION}}
         draft: false
         prerelease: false
+        
 
     - name: Upload Release Asset
       uses: actions/upload-release-asset@v1
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.ROBOVDA }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: ./${{ env.ZIP_NAME }}
