@@ -47,5 +47,5 @@ jobs:
     - name: Upload Artifact
       uses: actions/upload-artifact@v2
       with:
-        name: ${{ env.GITHUB_ENV }}
-        path: ./${{ env.filename }}
+        name: ${{ env.ZIP_NAME }}
+        path: ./${{ env.ZIP_NAME }}
