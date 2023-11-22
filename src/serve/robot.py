@@ -17,7 +17,7 @@ from src.parse_protobuf.Map2D import Map2D
 
 class Robot:
 
-    def __init__(self, rbk: src.rbklib.rbklibPro.Rbk):
+    def __init__(self, rbk: src.rbklib.rbklibPro):
 
         self.rbk = rbk
         self.robot_type = 0  # 车子的类型，0：没有类型，1：fork，2：jack，3：hook，等。这个参数用于任务打包

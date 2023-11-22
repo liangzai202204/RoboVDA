@@ -32,12 +32,12 @@ Please note: The Shell script will check if PyInstaller is installed on your sys
    cp dist/RoboVda SeerRobotics/RoboVda-SRC/usr/local/SeerRobotics/vda/
    ```
    
-2. make deb
+2. make deb && make zip
    ```bash
-   dpkg-deb --build SeerRobotics/RoboVda-SRC
-   ```
+   version=`grep "^Version:" SeerRobotics/RoboVda-SRC/DEBIAN/control | awk '{print $2}'`
+   current_time=$(date +"%Y%m%d%H%M%S")
+   filename="RoboVda-SRC-v${version}-${current_time}"
+   dpkg-deb --build SeerRobotics/RoboVda-SRC ${filename}.deb
 
-3. make zip
-   ```bash
-   zip -r SeerRobotics.zip SeerRobotics -x SeerRobotics/RoboVda-SRC/* 
+   zip -r ${filename}.zip ${filename}.deb
    ```

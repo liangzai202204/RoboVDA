@@ -191,6 +191,9 @@ class HandleTopic:
             else:
                 self.logs.error(f"[instantActions]不支持动作类型：{action_type}")
 
+    def http_handle_instantActions(self, instant: instantActions.InstantActions):
+        self._handle_instantActions(instant)
+
     def instant_stop_pause(self, action: order.Action):
         if self.robot.instant_stop_pause():
             self.order_state_machine.add_instant_action(action)
@@ -362,6 +365,9 @@ class HandleTopic:
         if error_handler:
             error_handler(sub_order)
         self.logs.info(f"report_error ok!!!")
+
+    def http_run_order(self, task: order.Order):
+        self._run_order(task)
 
     def _run_order(self, task: order.Order):
         self.logs.info("[order] rec and start")

@@ -20,7 +20,6 @@ HTML="""
             box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
             color: white;
         }
-
         .header h1 {
             font-size: 32px;
             margin-top: 0;
@@ -42,7 +41,16 @@ HTML="""
         .button-container h2 {
             color: #008cdd;
         }
-
+        .input-container textarea {
+          width: 100%;
+          height: 200px;
+          padding: 10px;
+          border: 1px solid #ccc;
+          border-radius: 4px;
+          resize: none;
+          font-size: 14px;
+          line-height: 1.5;
+        }
         .button-container ul {
             list-style: none;
             margin: 0;
@@ -51,11 +59,9 @@ HTML="""
             flex-wrap: wrap;
             justify-content: flex-start;
         }
-
         .button-container li {
             margin: 10px;
         }
-
         .button-container button {
             padding: 10px 16px;
             background-color: #008cdd;
@@ -67,7 +73,6 @@ HTML="""
             display: block;
             margin-bottom: 10px;
         }
-
         .button-container button:hover {
             background-color: #006fad;
 
@@ -87,7 +92,6 @@ HTML="""
             background-color: #88D0E454;
             box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
         }
-
         .data-display h2 {
             color: #008cdd;
         }
@@ -107,7 +111,6 @@ HTML="""
             border: 2px solid blue;
 
         }
-
         #data-container {
             width: auto;
             height: auto;
@@ -123,12 +126,12 @@ HTML="""
     </div>
 
     <div class="container">
+
         <div class="button-container">
             <h2>选择数据内容:</h2>
             <ul>
                 <li>
                     <button onclick="postData('/cancelOrder')" id="cancelOrderBtn">取消訂單</button>
-                    <button onclick="postData('/postEndpoint2')" id="postEndpoint2Btn">发送POST请求2</button>
                     <button onclick="getData('/get_data')" id="getDataBtn">order/state</button>
                     <button onclick="refreshData('/getOrderStatus')" id="refreshOrderBtn">订单状态</button>
                     <button onclick="refreshData('/getState')" id="refreshStateBtn">topic State</button>
@@ -143,11 +146,34 @@ HTML="""
             <pre id="data-container"></pre>
         </div>
 
-
+</div>
+            <div class="container">
+            <div class="button-container">
+    <h2><button onclick="postMqttMessage()">发送MQTT消息:</button></h2>
+    <textarea id="mqttMsgInput" placeholder="请输入发送的消息内容" rows="30" cols="100"></textarea>
+    </div>
 
     </div>
 
 <script>
+    function postMqttMessage() {
+    const input = document.getElementById('mqttMsgInput');
+    const message = input.value;
+    console.log("dayin ")
+
+    fetch('/mqttMsg', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ message }) // 将消息内容以JSON格式传递给服务器
+    })
+    .then(response => response.json())
+    .then(data => {
+        const dataContainer = document.getElementById('data-container');
+        dataContainer.innerHTML = JSON.stringify(data, null, 2);
+    });
+}
         function handleClick(btnId) {
         const btn = document.getElementById(btnId);
         btn.classList.add('active'); // 添加 active 类名
@@ -187,8 +213,6 @@ HTML="""
         dataContainer.innerHTML = JSON.stringify(data, null, 2);
     });
 }
-
-
     function refreshData(url) {
         fetch(url)
             .then(response => response.json())
@@ -198,7 +222,8 @@ HTML="""
             });
     }
 </script>
-
 </body>
 </html>
+
+
 """
