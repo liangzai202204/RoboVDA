@@ -1,0 +1,12 @@
+[Unit]
+Description=/usr/local/SeerRobotics/vda/RoboVda.sh
+ConditionPathExists=/usr/local/SeerRobotics/vda/RoboVda.sh
+After=network.target
+
+[Service]
+ExecStart=/usr/local/SeerRobotics/vda/RoboVda.sh
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

@@ -5,9 +5,9 @@ import time
 from typing import Union
 import pydantic
 from paho.mqtt import client as mqtt_client
-from log.log import MyLogger
-from serve.topicQueue import TopicQueue, EventLoop
-from type import state, order, instantActions, connection, visualization, factsheet
+from src.log.log import MyLogger
+from src.serve.topicQueue import TopicQueue, EventLoop
+from src.type import state, order, instantActions, connection, visualization, factsheet
 
 RobotMessage = Union[state.State, str, bytes, order.Order, instantActions.InstantActions, connection.Connection]
 

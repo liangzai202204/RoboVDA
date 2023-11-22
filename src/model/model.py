@@ -1,6 +1,6 @@
 import base64
 
-from parse_protobuf.Model import Model
+from src.parse_protobuf.Model import Model
 
 import json
 import os

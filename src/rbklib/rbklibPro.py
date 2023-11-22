@@ -5,8 +5,8 @@ import threading
 from queue import Queue
 import socket
 import time
-from log.log import MyLogger
-from serve.topicQueue import TopicQueue
+from src.log.log import MyLogger
+from src.serve.topicQueue import TopicQueue
 
 
 class Rbk:
