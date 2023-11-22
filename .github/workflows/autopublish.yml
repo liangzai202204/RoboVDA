@@ -21,8 +21,17 @@ jobs:
     - name: Install dependencies
       run: pip install -r requirements.txt  # 安装依赖，如果有的话
 
+    - name: Build RoboVda
+      run: pip install -r requirements.txt  # 安装依赖，如果有的话
+
     - name: Build and Package
       run: |
+        pyinstaller --onefile src/RoboVda.py
+        chmod 775 SeerRobotics/RoboVda-SRC/DEBIAN/postinst
+        chmod 775 SeerRobotics/RoboVda-SRC/DEBIAN/prerm
+        chmod 775 SeerRobotics/RoboVda-SRC/DEBIAN/preinst
+        chmod 775 SeerRobotics/RoboVda-SRC/DEBIAN/postrm
+        cp dist/RoboVda SeerRobotics/RoboVda-SRC/usr/local/SeerRobotics/vda/
         version=`grep "^Version:" SeerRobotics/RoboVda-SRC/DEBIAN/control | awk '{print $2}'`
         current_time=$(date +"%Y%m%d%H%M%S")
         filename="RoboVda-SRC-v${version}-${current_time}"
