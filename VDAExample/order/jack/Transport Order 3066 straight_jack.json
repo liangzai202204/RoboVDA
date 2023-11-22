@@ -4,7 +4,7 @@
     "zoneSetId": "",
     "nodes": [
         {
-            "nodeId": "7a434ec3-91c8-4334-89f8-31d30942fbb7",
+            "nodeId": "LM1",
             "sequenceId": 0,
             "nodeDescription": "Device initial position",
             "released": true,
@@ -20,7 +20,7 @@
             "actions": []
         },
         {
-            "nodeId": "11119fc4-7fe4-4a91-b6be-210a065131da",
+            "nodeId": "LM2",
             "sequenceId": 2,
             "nodeDescription": "Exitvector for PointOfInterest 04678a1e-3de5-403f-bafc-e8badbee202a Dolly",
             "released": true,
@@ -55,12 +55,12 @@
     ],
     "edges": [
         {
-            "edgeId": "758de28a-c7f6-4475-b623-c4c895780b26",
+            "edgeId": "LM1-LM2",
             "sequenceId": 1,
             "edgeDescription": "Edge connecting 7a434ec3-91c8-4334-89f8-31d30942fbb7 to 11119fc4-7fe4-4a91-b6be-210a065131da",
             "released": true,
-            "startNodeId": "7a434ec3-91c8-4334-89f8-31d30942fbb7",
-            "endNodeId": "11119fc4-7fe4-4a91-b6be-210a065131da",
+            "startNodeId": "LM1",
+            "endNodeId": "LM2",
             "maxSpeed": null,
             "maxHeight": null,
             "minHeight": null,

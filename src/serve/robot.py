@@ -118,7 +118,7 @@ class Robot:
                                                            self.robot_push_msg.reloc_status == 2 or
                                                            self.robot_push_msg.reloc_status == 4) else False,
                                                    deviationRange=0.,
-                                                   localizationScore=0.,
+                                                   localizationScore=self.robot_push_msg.confidence,
                                                    mapDescription="")
         # 机器人名称、rbk版本
         self.state.serialNumber = self.robot_push_msg.vehicle_id

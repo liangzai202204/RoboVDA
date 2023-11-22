@@ -106,6 +106,8 @@ class ActionPack(pydantic.BaseModel):
             elif ap.key == "use_pgv":
                 action_task["use_pgv"] = bool(ap.value)
 
+            elif ap.key == "recGoOut":
+                action_task["recGoOut"] = bool(ap.value)
             elif ap.key == "recognize":
                 action_task["recognize"] = bool(ap.value)
         if operation == ActionType.Script or action.actionType == ActionType.Script:
@@ -202,6 +204,7 @@ class ActionPack(pydantic.BaseModel):
                 action_task["sourcePos"] = start_node.model_dump()
                 action_task["targetPos"] = end_node.model_dump()
                 action_task["trajectory"] = edge.trajectory.model_dump()
+                action_task["hold_dir"] = edge.holdDir
                 action_task["id"] = edge.endNodeId
                 action_task["source_id"] = edge.startNodeId
                 action_task["task_id"] = uuid_task
