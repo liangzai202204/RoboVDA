@@ -18,22 +18,21 @@ jobs:
       with:
         python-version: '3.9'     # 设置Python环境
 
-    - name: Build project
-      id: build-step   # 给步骤一个ID，便于后续引用
+
+    - name: Build and Package
       run: |
         version=`grep "^Version:" SeerRobotics/RoboVda-SRC/DEBIAN/control | awk '{print $2}'`
         current_time=$(date +"%Y%m%d%H%M%S")
         filename="RoboVda-SRC-v${version}-${current_time}"
         dpkg-deb --build SeerRobotics/RoboVda-SRC ${filename}.deb
-        zip -r ${filename}.zip ${filename}.deb
+        zip -r ${filename}.zip ${filename}.deb      
         echo "ZIP_NAME=${filename}.zip" >> $GITHUB_ENV
-        
 
     - name: Install dependencies
       run: pip install -r requirements.txt  # 安装依赖，如果有的话
 
-    - name: Upload artifact
+    - name: Upload Artifact
       uses: actions/upload-artifact@v2
       with:
-        name: ${{ env.GITHUB_ENV }}   # 使用环境变量ZIP_NAME作为制品的名称
-        path: ./RoboVda-SRC.zip
+        name: ${{ env.filename }}.zip
+        path: ./${{ env.filename }}.zip
