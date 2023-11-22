@@ -18,6 +18,8 @@ jobs:
       with:
         python-version: '3.9'     # 设置Python环境
 
+    - name: Install dependencies
+      run: pip install -r requirements.txt  # 安装依赖，如果有的话
 
     - name: Build and Package
       run: |
@@ -28,8 +30,7 @@ jobs:
         zip -r ${filename}.zip ${filename}.deb      
         echo "ZIP_NAME=${filename}.zip" >> $GITHUB_ENV
 
-    - name: Install dependencies
-      run: pip install -r requirements.txt  # 安装依赖，如果有的话
+
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v2
