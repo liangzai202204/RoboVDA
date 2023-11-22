@@ -1,0 +1,49 @@
+#!/bin/bash
+#
+
+set -e
+
+action=$1
+version=$2
+
+ldconfig
+
+sleep 2
+
+if [[ $(uname -r) =~ icrosoft$ ]]; then
+    echo "This is WSL"
+else
+
+    systemctl daemon-reload
+    systemctl enable startup_vda.service
+    systemctl daemon-reload
+fi
+
+##!/bin/bash
+#
+##!/bin/bash
+#
+## 检查文件是否存在
+if [ -f "/usr/local/SeerRobotics/vda/RoboVda.sh" ] && [ -f "/etc/systemd/system/startup_vda.service" ]; then
+    echo "Files exist"
+    echo seer | sudo -S chmod 777 /usr/local/SeerRobotics/vda/RoboVda.sh
+
+else
+    echo "Files do not exist"
+    exit 0
+fi
+#
+## 检查服务是否存在
+#if systemctl status startup_vda >/dev/null 2>&1; then
+#    echo "Service exists"
+#else
+#    echo "Service does not exist"
+#    exit 0
+#fi
+#
+## 赋予文件权限
+#echo seer | sudo -S chmod 777 /usr/local/SeerRobotics/vda/RoboVda.sh
+#echo seer | sudo -S chmod 777 /etc/systemd/system/startup_vda.service
+#echo seer | sudo -S systemctl enable startup_vda
+#echo seer | sudo -S systemctl start startup_vda
+exit 0

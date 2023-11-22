@@ -13,21 +13,31 @@ This script requires having installed on your system:
 ## Usage
 
 1. Ensure your python script file has the shebang line (`#!/usr/bin/env python3`) at the beginning. Here, `app.py` is used as an example Python script.
-2. Make the `make_app.sh` Shell script executable by running:
+2. Make the Shell script executable by running:
+   ```bash
+   pyinstaller --onefile src/RoboVda.py
    ```
-   chmod +x make_app.sh
-   ```
-3. Run the script with your Python script file as an argument:
-   ```
-   ./make_app.sh RoboVda.py
-   ```
-4. The Python script will be converted into an executable file under the `dist/` directory.
+3. The Python script will be converted into an executable file under the `dist/` directory.
 
 Please note: The Shell script will check if PyInstaller is installed on your system. If not, it will attempt to install it. Make sure you are connected to the internet.
 
-## .deb and zip
+## make .deb and zip
 
-1. Run the script
+1. chmod
+   ```bash
+   chmod 775 SeerRobotics/RoboVda-SRC/DEBIAN/postinst
+   chmod 775 SeerRobotics/RoboVda-SRC/DEBIAN/prerm
+   chmod 775 SeerRobotics/RoboVda-SRC/DEBIAN/preinst
+   chmod 775 SeerRobotics/RoboVda-SRC/DEBIAN/postrm
+   cp dist/RoboVda SeerRobotics/RoboVda-SRC/usr/local/SeerRobotics/vda/
    ```
-   sudo ./build_deb.sh
+   
+2. make deb
+   ```bash
+   dpkg-deb --build SeerRobotics/RoboVda-SRC
+   ```
+
+3. make zip
+   ```bash
+   zip -r SeerRobotics.zip SeerRobotics -x SeerRobotics/RoboVda-SRC/* 
    ```
