@@ -1,3 +1,5 @@
+![src](./assets/src.webp)
+
 # Python Script to Executable for rbk
 
 This repository provides a Shell script to easily convert Python scripts to executable files on Linux systems.
@@ -31,7 +33,7 @@ Please note: The Shell script will check if PyInstaller is installed on your sys
    chmod 775 SeerRobotics/RoboVda-SRC/DEBIAN/postrm
    cp dist/RoboVda SeerRobotics/RoboVda-SRC/usr/local/SeerRobotics/vda/
    ```
-   
+
 2. make deb && make zip
    ```bash
    version=`grep "^Version:" SeerRobotics/RoboVda-SRC/DEBIAN/control | awk '{print $2}'`
