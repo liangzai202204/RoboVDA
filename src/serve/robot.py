@@ -18,7 +18,7 @@ from src.parse_protobuf.Model import Model
 
 class Robot:
 
-    def __init__(self, rbk: rbklib.rbklibPro.Rbk):
+    def __init__(self, rbk: src.rbklib.rbklibPro.Rbk):
         self.rbk = rbk
         self.task_status: asyncio.Queue[dict] = asyncio.Queue()
         self.ApiReq_queue: asyncio.Queue[ApiReq] = asyncio.Queue()
