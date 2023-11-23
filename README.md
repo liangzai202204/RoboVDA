@@ -21,7 +21,7 @@ This script requires having installed on your system:
 
 Please note: The Shell script will check if PyInstaller is installed on your system. If not, it will attempt to install it. Make sure you are connected to the internet.
 
-## make .deb and zip
+## make .deb and zip for ubuntu-18.04
 
 1. chmod
    ```bash
@@ -31,13 +31,13 @@ Please note: The Shell script will check if PyInstaller is installed on your sys
    chmod 775 SeerRobotics/RoboVda-SRC/DEBIAN/postrm
    cp dist/RoboVda SeerRobotics/RoboVda-SRC/usr/local/SeerRobotics/vda/
    ```
-   
-2. make deb
-   ```bash
-   dpkg-deb --build SeerRobotics/RoboVda-SRC
-   ```
 
-3. make zip
+2. make deb && make zip
    ```bash
-   zip -r SeerRobotics.zip SeerRobotics -x SeerRobotics/RoboVda-SRC/* 
+   version=`grep "^Version:" SeerRobotics/RoboVda-SRC/DEBIAN/control | awk '{print $2}'`
+   current_time=$(date +"%Y%m%d%H%M%S")
+   filename="RoboVda-SRC-v${version}-${current_time}"
+   dpkg-deb --build SeerRobotics/RoboVda-SRC ${filename}.deb
+
+   zip -r ${filename}.zip ${filename}.deb
    ```
