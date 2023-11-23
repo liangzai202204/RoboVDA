@@ -22,12 +22,34 @@ class Rbk:
         self.online_status = dict()
 
     def connect(self):
-        self.so_19301.connect_push()
+        print(self.online)
+        self.so_19301.connect()
         self.so_19204.connect()
         self.so_19205.connect()
         self.so_19206.connect()
         self.so_19207.connect()
         self.so_19210.connect()
+        return self.online
+
+    def run(self):
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.create_task(self.start())
+        try:
+            loop.run_forever()
+        finally:
+            loop.close()
+
+    async def start(self):
+        while True:
+            if not self.online:
+                if not self.connect():
+                    await asyncio.sleep(1)
+                    self.log.warning(f"[rbk]connect failed")
+                else:
+                    self.log.warning(f"[rbk]connect OK")
+            else:
+                await self.so_19301.robot_push()
 
     @property
     def online(self):
@@ -42,7 +64,6 @@ class Rbk:
                 and self.so_19207.connected and self.so_19301.connected:
             return True
         else:
-
             return False
 
     def __del__(self):
@@ -99,27 +120,25 @@ class BaseSo:
         self.max_reconnect_delay = 60  # 最大重连延迟（秒）
 
     def connect(self):
-        while not self.connected:
-            try:
-                self.so = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                self.so.setblocking(False)
-                self.so.settimeout(self.socket_timeout)
+        try:
+            self.so = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.so.setblocking(False)
+            self.so.settimeout(self.socket_timeout)
 
-                self.so.connect((self.ip, self.port))
-                self.connected = True
-                self.log.info(f"[rbk]connect rbk({self.ip}:{self.port}) ok!")
-            except Exception as e:
-                self.log.warning(f"连接失败：{e}")
-                self.connected = False
-                self.reconnect_attempts += 1
+            self.so.connect((self.ip, self.port))
+            self.connected = True
+            self.log.info(f"[rbk]connect rbk({self.ip}:{self.port}) ok!")
+        except Exception as e:
+            self.log.warning(f"连接失败：{e}")
+            self.connected = False
+            self.reconnect_attempts += 1
 
-                if self.reconnect_attempts > self.max_reconnect_attempts:
-                    self.log.warning(f"达到最大重连尝试次数，繼續重新鏈接")
-                    self.reconnect_attempts = 0
-                    self.initial_reconnect_delay = 1
-                reconnect_delay = self.get_reconnect_delay()
-                self.log.warning(f"等待 {reconnect_delay} 秒后进行重连")
-                time.sleep(reconnect_delay)
+            if self.reconnect_attempts > self.max_reconnect_attempts:
+                self.log.warning(f"达到最大重连尝试次数，繼續重新鏈接")
+                self.reconnect_attempts = 0
+                self.initial_reconnect_delay = 1
+            reconnect_delay = self.get_reconnect_delay()
+            self.log.warning(f"等待 {reconnect_delay} 秒后进行重连")
 
     def _request(self, so: socket.socket, msgType, reqId=1, msg=None):
         """
@@ -292,7 +311,6 @@ class So19301(BaseSo):
         self.thread = threading.Thread(target=_run_loop, args=(self.loop,), daemon=True)
 
     def connect_push(self):
-        self.connect()
         self.loop.call_soon_threadsafe(self.loop.create_task, self.robot_push())
         self.thread.start()
 
@@ -304,17 +322,13 @@ class So19301(BaseSo):
         """
         机器人推送API
         """
-
-        while True:
-            # 接收报文头
-            try:
-                await self.recv()
-
-            except Exception as e:
-                self.log.warning(f"获取机器人数据失败：{e}")
-                self.connected = False
-                self.reconnect()
-                return None
+        try:
+            await self.recv()
+        except Exception as e:
+            self.log.warning(f"获取机器人数据失败：{e}")
+            self.connected = False
+            self.reconnect()
+            return None
 
     async def recv(self):
         headData = self.so.recv(16)

@@ -11,6 +11,7 @@ from src.error_type import error_type as err
 from src.type.RobotOrderStatus import Status
 from src.pack.packTask import PackTask
 from src.log.log import MyLogger
+from src.config.config import Config
 
 
 # 定义装饰器函数
@@ -30,13 +31,12 @@ def lock_decorator(func):
 
 class HandleTopic:
 
-    def __init__(self, robot: Robot, mode, loop=None, state_report_frequency=1, robot_type=1, script_name="script.py"):
-        self.state_report_frequency = state_report_frequency
+    def __init__(self, robot: Robot, config: Config):
+        self.state_report_frequency = config.state_report_frequency
+        self.robot_type = config.robot_type
         self.init = False
-        self._event_loop = asyncio.get_event_loop() if loop is None else loop
         self.robot: Robot = robot
         self.lock_order = threading.Lock()
-        self.robot_type = robot_type
         self.order = None
         self.current_order = None
         # 用於保存協議層面的 error，錯誤產生的時候存放，在新的訂單來臨時清空。區別於在 robot.py 的 update errors（來自於機器人的錯誤）
@@ -50,36 +50,48 @@ class HandleTopic:
         self.logs = MyLogger()
         self.state = state.State.create_state()
         self.init = False  # 表示第一次运行，用于判断运单逻辑
-        self.mode = mode  # 定义动作模式 False为参数，True为binTask
         # 訂單狀態機
         self.order_state_machine = OrderStateMachine()
-        self.pack_task = PackTask(script_name)
+        self.pack_task = PackTask(config.script_name)
         self.handle_actions = self._handle_actions()
 
     def __del__(self):
         self._cls()
 
     async def run(self):
-
-        await self._run()
+        while True:
+            if self.robot.robot_online:
+                await self._run()
+            else:
+                await asyncio.sleep(1)
+                self.logs.warning(f"[HandleTopic]robot not on line ,waiting 1 s")
 
     async def _run(self):
-        await asyncio.gather(self.handle_order(),
-                             self.handle_state(),
-                             self.handle_instantActions(),
-                             self.handle_connection(),
-                             self.handle_visualization(),
-                             self.handle_factsheet(),
-                             self.handle_state_report())
+        results = await asyncio.gather(self.handle_order(),
+                                       self.handle_state(),
+                                       self.handle_instantActions(),
+                                       self.handle_connection(),
+                                       self.handle_visualization(),
+                                       self.handle_factsheet(),
+                                       self.handle_state_report(),
+                                       return_exceptions=True)
+        for i, result in enumerate(results):
+            if isinstance(result, Exception):
+                self.logs.error(f"Task {i} raised exception: {result}")
+            else:
+                self.logs.info(f"Task {i} succeeded with result: {result}")
 
     async def handle_order(self):
         """
             订单统一入口
         """
         while True:
-            self.logs.info("waiting order........")
-            o = await TopicQueue.s_order.get()
-            self._run_order(o)
+            if self.robot.robot_online:
+                self.logs.info("waiting order........")
+                o = await TopicQueue.s_order.get()
+                self._run_order(o)
+            else:
+                self.logs.info("robot not online........")
 
     async def handle_instantActions(self):
         """
@@ -512,7 +524,7 @@ class HandleTopic:
         try:
             uuid_task = self.pack_send(self.current_order)
             # 狀態機
-            self.order_state_machine.add_order(self.current_order, uuid_task,self.robot.model.agvClass)
+            self.order_state_machine.add_order(self.current_order, uuid_task, self.robot.model.agvClass)
         except Exception as e:
             self.logs.info(f"试图打包任务，发给机器人 失败:{e}")
             self.report_error(err.ErrorOrder.sendOrderToRobotErr, err.ErrorOrder.sendOrderToRobotErr)

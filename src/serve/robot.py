@@ -56,6 +56,9 @@ class Robot:
                     self._get_params()
                     self.init = True
                 # self.logs.info(f'[robot]online status:{self.rbk.online_status}')
+            else:
+                await asyncio.sleep(1)
+                self.logs.info(f"[robot]robot not on line ,waiting 1 s")
 
     @property
     def robot_online(self) -> bool:
@@ -338,10 +341,12 @@ class RobotModel:
         self.model_dir = os.path.join("/usr/local/SeerRobotics/vda/", "robotModel")
         if not os.path.exists(self.model_dir):
             os.makedirs(self.model_dir)
-        self.model_path = os.path.join(os.path.join(os.getcwd(), "robotModel"), "robot.model")
+        self.model_path = os.path.join(self.model_dir, "robot.model")
         self.rbk = rbk
         self.model = None
+        self.mode = None
         self.log = MyLogger()
+        self.model_msg = {}
 
     def _get_model(self):
         try:
@@ -371,26 +376,23 @@ class RobotModel:
 
         self.model = Model(model_req)
         for m in self.model.device_types:
-            print(m.name)
-            if m.name == "chassis":
-                for d in m.devices:
-                    for dp in d.device_params:
-                        if dp.key == "mode":
-                            print("mode", dp.combo_param.child_key)
-            elif m.name == "jack":
+            if m.name == "jack":
                 for d in m.devices:
                     if d.is_enabled:
                         self.agvClass = "CARRIER"
+                        self.model_msg["agvClass"] = self.agvClass
             elif m.name == "fork":
                 for d in m.devices:
                     if d.is_enabled:
                         self.agvClass = "FORKLIFT"
+                        self.model_msg["agvClass"] = self.agvClass
             elif m.name == "chassis":
                 for d in m.devices:
                     if d.name == "chassis":
                         for dp in d.device_params:
                             if dp.key == "mode":
                                 self.mode = dp.combo_param.child_key
+                                self.model_msg["agvClass"] = self.agvClass
                             elif dp.key == "shape":
                                 if dp.combo_param.child_key == "rectangle":
                                     for c_p in dp.combo_param.child_params:
@@ -413,6 +415,7 @@ class RobotModel:
                                                     self.length = cpp.double_value
                                                 elif cpp.key == "height":
                                                     self.height = cpp.double_value
+
             elif m.name == "pgv":
                 for d in m.devices:
                     if d.name == "chassis":
