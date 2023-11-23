@@ -6,11 +6,15 @@ import paho.mqtt.client as mqtt
 
 def get_mqtt_ip():
     config = configparser.ConfigParser()
-    config_path = os.path.join(os.path.dirname(os.getcwd()), 'config.ini')
+    if os.name == 'nt':  # Windows系统
+        config_path = os.path.join(os.environ['USERPROFILE'], 'Desktop')
+    elif os.name == 'posix':  # Linux或者Mac OS系统
+        config_path = '/usr/local/SeerRobotics/vda'
+    config_path = os.path.join(config_path, 'config.ini')
     # 读取配置文件
     config.read(config_path)
     ip = config.get('mqtt', 'mqtt_host')
-    print("ip:",ip)
+    print("ip:", ip)
     return ip
 
 

@@ -4,8 +4,25 @@ import stat
 
 
 class Config:
-    args = dict
-    args_mqtt = dict
+    """
+    配置文件類，初始化時讀取配置文件，如果沒有則使用默認參數
+    """
+    mqtt_host: str = "localhost"
+    mqtt_port: int = 1883
+    mqtt_transport: str = "tcp"
+    robot_ip: str = "localhost"
+    robot_type: int = 1
+    mode: int = 0
+    web_host: str = "localhost"
+    web_port: int = 5000
+    mqtt_topic_order: str = 'robot/order'
+    mqtt_topic_state: str = 'robot/state'
+    mqtt_topic_visualization: str = 'robot/visualization'
+    mqtt_topic_connection: str = 'robot/connection'
+    mqtt_topic_instantActions: str = 'robot/instantActions'
+    mqtt_topic_factsheet: str = 'robot/factsheet'
+    state_report_frequency: float = 1.1
+    script_name: str = 'script.py'
 
     def __init__(self, file_path=None):
         if not file_path:
@@ -16,97 +33,39 @@ class Config:
         else:
             self.file_path = file_path
         self.config = configparser.ConfigParser()
-        self.create_service()
-        self.read_config()
+        self.init_config()
 
-    def read_config(self):
+    def init_config(self):
         # 读取配置文件
         try:
-            if not os.path.exists(os.path.join(self.file_path, 'config.ini')):
-                # 创建新的配置文件
-                if not os.path.exists(self.file_path):
-                    os.makedirs(self.file_path)
-                # 将配置内容写入文件
-                self.config.add_section('mqtt')
-                self.config.set('mqtt', 'mqtt_host', 'localhost')
-                self.config.set('mqtt', 'mqtt_port', '1883')
-                self.config.set('mqtt', 'mqtt_transport', 'tcp')
-
-                self.config.add_section('topic')
-                self.config.set('topic', 'order', 'robot/order')
-                self.config.set('topic', 'state', 'robot/state')
-                self.config.set('topic', 'visualization', 'robot/visualization')
-                self.config.set('topic', 'connection', 'robot/connection')
-                self.config.set('topic', 'instantActions', 'robot/instantActions')
-                self.config.set('topic', 'factsheet', 'robot/factsheet')
-
-                self.config.add_section('robot')
-                self.config.set('robot', 'robot_ip', '192.168.0.1')
-                self.config.set('robot', 'mode', '0')
-                self.config.set('robot', 'robot_type', '1')
-
-                self.config.add_section('web')
-                self.config.set('web', 'web_host', 'localhost')
-                self.config.set('web', 'web_port', '5000')
-                self.config.add_section('network')
-                self.config.set('network', 'state_report_frequency', '1')
-                self.config.add_section('script')
-                self.config.set('script', 'script_name', 'script.py')
-                with open(os.path.join(self.file_path, 'config.ini'), 'w') as configfile:
-                    self.config.write(configfile)
-                os.chmod(os.path.join(self.file_path, 'config.ini'),
-                         stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH | stat.S_IWOTH)
-            self.config.read(os.path.join(self.file_path, 'config.ini'))
-            print(self.config.sections())
+            if os.path.exists(os.path.join(self.file_path, 'config.ini')):
+                self.config.read(os.path.join(self.file_path, 'config.ini'))
+                print(self.config.sections())
+                self.configs()
         except Exception as e:
             print("config", e)
 
-    @property
     def configs(self):
-        self.args = {
-            "mqtt_host": self.config.get('mqtt', 'mqtt_host'),
-            "mqtt_port": self.config.getint('mqtt', 'mqtt_port'),
-            "mqtt_transport": self.config.get('mqtt', 'mqtt_transport'),
-            "robot_ip": self.config.get('robot', 'robot_ip'),
-            "robot_type": self.config.getint('robot', 'robot_type'),
-            "mode": self.config.getint('robot', 'mode'),
-            'web_host': self.config.get('web', 'web_host'),
-            "web_port": self.config.getint('web', 'web_port'),
-            'mqtt_topic_order': self.config.get('topic', 'order'),
-            'mqtt_topic_state': self.config.get('topic', 'state'),
-            'mqtt_topic_visualization': self.config.get('topic', 'visualization'),
-            'mqtt_topic_connection': self.config.get('topic', 'connection'),
-            "mqtt_topic_instantActions": self.config.get('topic', 'instantActions'),
-            "mqtt_topic_factsheet": self.config.get('topic', 'factsheet'),
-            "state_report_frequency": self.config.getfloat('network', 'state_report_frequency'),
-            "script_name": self.config.get('script', 'script_name')
-        }
-        return self.args
+        self.mqtt_host = self.config.get('mqtt', 'mqtt_host')
+        self.mqtt_port = self.config.getint('mqtt', 'mqtt_port')
+        self.mqtt_transport = self.config.get('mqtt', 'mqtt_transport')
+        self.robot_ip = self.config.get('robot', 'robot_ip')
+        self.robot_type = self.config.getint('robot', 'robot_type')
+        self.mode = self.config.getint('robot', 'mode')
+        self.web_host = self.config.get('web', 'web_host')
+        self.web_port = self.config.getint('web', 'web_port')
+        self.mqtt_topic_order = self.config.get('topic', 'order')
+        self.mqtt_topic_state = self.config.get('topic', 'state')
+        self.mqtt_topic_visualization = self.config.get('topic', 'visualization')
+        self.mqtt_topic_connection = self.config.get('topic', 'connection')
+        self.mqtt_topic_instantActions = self.config.get('topic', 'instantActions')
+        self.mqtt_topic_factsheet = self.config.get('topic', 'factsheet')
+        self.state_report_frequency = self.config.getfloat('network', 'state_report_frequency')
+        self.script_name = self.config.get('script', 'script_name')
 
-    def config_mqtt(self):
-        self.args_mqtt = {
-            "mqtt_host": self.config.get('mqtt', 'mqtt_host'),
-            "mqtt_port": self.config.getint('mqtt', 'mqtt_port'),
-            "mqtt_transport": self.config.get('mqtt', 'mqtt_transport'),
-            'mqtt_topic_order': self.config.get('topic', 'order'),
-            'mqtt_topic_state': self.config.get('topic', 'state'),
-            'mqtt_topic_visualization': self.config.get('topic', 'visualization'),
-            'mqtt_topic_connection': self.config.get('topic', 'connection'),
-            "mqtt_topic_instantActions": self.config.get('topic', 'instantActions'),
-            "mqtt_topic_factsheet": self.config.get('topic', 'factsheet'),
-        }
-        return self.args_mqtt
-
-    def config_script(self):
-        return {
-            "script_name":self.config.get('script', 'script_name')
-        }
-
-    def create_service(self):
-        pass
 
 
 if __name__ == '__main__':
     # c = Config()
-    # c.read_config()
+    # print(c.mqtt_host)
     pass

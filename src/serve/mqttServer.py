@@ -7,42 +7,27 @@ from paho.mqtt import client as mqtt_client
 from src.log.log import MyLogger
 from src.serve.topicQueue import TopicQueue, EventLoop
 from src.type.VDA5050 import state, order, factsheet, connection, instantActions, visualization
+from src.config.config import Config
 
 RobotMessage = Union[state.State, str, bytes, order.Order, instantActions.InstantActions, connection.Connection]
 
 
 class MqttServer:
-    def __init__(self,
-                 mqtt_host="127.0.0.1",
-                 mqtt_port=1883,
-                 mqtt_transport="tcp",
-                 mqtt_topic_order: str = None,
-                 mqtt_topic_state: str = None,
-                 mqtt_topic_visualization: str = None,
-                 mqtt_topic_connection: str = None,
-                 mqtt_topic_instantActions: str = None,
-                 mqtt_topic_factsheet: str = None,
-                 ):
+    def __init__(self, config: Config):
         self.connected = False
         self.logs = MyLogger()
-        # topic route
-        self.mqtt_topic_order = mqtt_topic_order
-        self.mqtt_topic_state = mqtt_topic_state
-        self.mqtt_topic_visualization = mqtt_topic_visualization
-        self.mqtt_topic_connection = mqtt_topic_connection
-        self.mqtt_topic_instantActions = mqtt_topic_instantActions
-        self.mqtt_topic_factsheet = mqtt_topic_factsheet
+        self.config = config
         # connect to MQTT
-        print("mqtt", mqtt_host, mqtt_port, mqtt_transport)
-        self.mqtt_client_s = self._connect_to_mqtt(mqtt_host, mqtt_port, mqtt_transport)
+        print("mqtt connection", config.mqtt_host, config.mqtt_port, config.mqtt_transport)
+        self.mqtt_client_s = None
         self._mqtt_messages: asyncio.Queue[RobotMessage] = asyncio.Queue()
         self.msg_topics = {
-            self.mqtt_topic_state: state.State,
-            self.mqtt_topic_order: order.Order,
-            self.mqtt_topic_instantActions: instantActions.InstantActions,
-            self.mqtt_topic_connection: connection.Connection,
-            self.mqtt_topic_visualization: visualization.Visualization,
-            self.mqtt_topic_factsheet: factsheet.Factsheet
+            self.config.mqtt_topic_state: state.State,
+            self.config.mqtt_topic_order: order.Order,
+            self.config.mqtt_topic_instantActions: instantActions.InstantActions,
+            self.config.mqtt_topic_connection: connection.Connection,
+            self.config.mqtt_topic_visualization: visualization.Visualization,
+            self.config.mqtt_topic_factsheet: factsheet.Factsheet
         }
         self.handlers = {
             state.State: self._mqtt_handle_state,
@@ -54,6 +39,22 @@ class MqttServer:
         }
 
     async def run(self):
+        while True:
+            if not self.connected or not self.mqtt_client_s:
+                self.mqtt_client_s = self._connect_to_mqtt(self.config.mqtt_host,
+                                                           self.config.mqtt_port,
+                                                           self.config.mqtt_transport)
+                if self.mqtt_client_s and self.connected:
+                    self.mqtt_client_s.loop_start()
+                    self.logs.info(f"[MQTT]MQTT online")
+                else:
+                    self.logs.info(f"[MQTT]MQTT not online ,waiting 10 s")
+                await asyncio.sleep(1)
+
+            else:
+                await self._run()
+
+    async def _run(self):
         results = await asyncio.gather(
             self._handle_mqtt_subscribe_messages(),
             self._handle_mqtt_publish_messages_sate(),
@@ -61,7 +62,7 @@ class MqttServer:
             self._handle_mqtt_publish_messages_visualization()
         )
         # 所有协程执行完毕后的回调函数
-        self.logs.info(f"All coroutines have finished executing!{results}")
+        self.logs.info(f"[mqtt]All coroutines have finished executing!{results}")
 
     async def _handle_mqtt_subscribe_messages(self):
         """
@@ -69,6 +70,10 @@ class MqttServer:
         :return:
         """
         while True:
+            if not self.mqtt_client_s:
+                self.mqtt_client_s = self._connect_to_mqtt(self.config.mqtt_host,
+                                                           self.config.mqtt_port,
+                                                           self.config.mqtt_transport)
             message = await self._mqtt_messages.get()
             if handler := self.handlers.get(type(message)):
                 handler(message)
@@ -82,7 +87,7 @@ class MqttServer:
         """
         while True:
             message = await self.get_state()
-            self.mqtt_client_s.publish(self.mqtt_topic_state, json.dumps(message.model_dump()))
+            self.mqtt_client_s.publish(self.config.mqtt_topic_state, json.dumps(message.model_dump()))
             # self.logs.info(f"[publish][{self.mqtt_topic_state}]|"
             #                f"{len(json.dumps(message.model_dump()))}")
 
@@ -93,7 +98,7 @@ class MqttServer:
         """
         while True:
             message = await self.get_connection()
-            self.mqtt_client_s.publish(self.mqtt_topic_connection, json.dumps(message.model_dump()))
+            self.mqtt_client_s.publish(self.config.mqtt_topic_connection, json.dumps(message.model_dump()))
             # self.logs.info(f"[publish][{self.mqtt_topic_connection}]|"
             #                f"{len(json.dumps(message.model_dump()))}|{json.dumps(message.model_dump())}")
 
@@ -104,7 +109,7 @@ class MqttServer:
         """
         while True:
             message = await self.get_visualization()
-            self.mqtt_client_s.publish(self.mqtt_topic_visualization, json.dumps(message.model_dump()))
+            self.mqtt_client_s.publish(self.config.mqtt_topic_visualization, json.dumps(message.model_dump()))
             # self.logs.info(f"[publish][{self.mqtt_topic_visualization}]|"
             #                f"{len(json.dumps(message.model_dump()))}|")
 
@@ -128,49 +133,46 @@ class MqttServer:
                     "timeStamp": "2023-02-06T16:40:01.474Z",
                     "version": "5.0.0"
                 }"""
-        client.will_set(self.mqtt_topic_connection, payload=offline, qos=1, retain=True)
+        client.will_set(self.config.mqtt_topic_connection, payload=offline, qos=1, retain=True)
         client.on_connect = self._mqtt_on_connect
         client.on_message = self._mqtt_on_message
         client.on_disconnect = self._mqtt_on_disconnect
-        while not self.connected:
-            try:
-                client.connect(host, port)
-                self.connected = True
-                self.logs.info("MQTT blocker connect finnish")
-            except ConnectionRefusedError:
-                self.logs.error("MQTT blocker Failed to connect to mqtt broker, retrying in 1 s")
-                time.sleep(1)
-            except socket.gaierror:
-                self.logs.error(f"Could not resolve mqtt hostname {host}, retrying in ")
-                time.sleep(1)
-            except socket.timeout as e:
-                self.logs.error(f"Could not resolve mqtt hostname {host}, socket.timeout {e} ")
-                time.sleep(1)
-            except OSError as o:
-                self.logs.error(f"Could not resolve mqtt hostname {host}, socket.timeout {o} ")
-                time.sleep(1)
-        return client
+        try:
+            client.connect(host, port)
+            self.connected = True
+            self.logs.info("MQTT blocker connect finnish")
+            return client
+        except ConnectionRefusedError:
+            self.logs.error("MQTT blocker Failed to connect to mqtt broker, retrying in 1 s")
+        except socket.gaierror:
+            self.logs.error(f"Could not resolve mqtt hostname {host}, retrying in ")
+        except socket.timeout as e:
+            self.logs.error(f"Could not resolve mqtt hostname {host}, socket.timeout {e} ")
+        except OSError as o:
+            self.logs.error(f"Could not resolve mqtt hostname {host}, socket.timeout {o} ")
+        self.connected = False
+        return None
 
     def _mqtt_on_connect(self, client, userdata, flags, rc):
-        client.subscribe(self.mqtt_topic_order)
-        client.subscribe(self.mqtt_topic_state)
-        client.subscribe(self.mqtt_topic_connection)
-        client.subscribe(self.mqtt_topic_factsheet)
-        client.subscribe(self.mqtt_topic_instantActions)
-        client.subscribe(self.mqtt_topic_visualization)
+        client.subscribe(self.config.mqtt_topic_order)
+        client.subscribe(self.config.mqtt_topic_state)
+        client.subscribe(self.config.mqtt_topic_connection)
+        client.subscribe(self.config.mqtt_topic_factsheet)
+        client.subscribe(self.config.mqtt_topic_instantActions)
+        client.subscribe(self.config.mqtt_topic_visualization)
         self.logs.info(f"serve subscribe start:"
-                       f"{self.mqtt_topic_order}|"
-                       f"{self.mqtt_topic_state}|"
-                       f"{self.mqtt_topic_connection}|"
-                       f"{self.mqtt_topic_factsheet}|"
-                       f"{self.mqtt_topic_instantActions}|"
-                       f"{self.mqtt_topic_visualization}|")
+                       f"{self.config.mqtt_topic_order}|"
+                       f"{self.config.mqtt_topic_state}|"
+                       f"{self.config.mqtt_topic_connection}|"
+                       f"{self.config.mqtt_topic_factsheet}|"
+                       f"{self.config.mqtt_topic_instantActions}|"
+                       f"{self.config.mqtt_topic_visualization}|")
 
     def _mqtt_on_message(self, client, userdata, msg):
         try:
 
             if topic_class := self.msg_topics.get(msg.topic):
-                if msg.topic == self.mqtt_topic_order or self.mqtt_topic_instantActions == msg.topic:
+                if msg.topic == self.config.mqtt_topic_order or self.config.mqtt_topic_instantActions == msg.topic:
                     self.logs.info(f"[mqtt]topic {msg.topic} rec")
                     self.logs.info(f"[mqtt]topic {msg.topic}||{msg.payload}")
                 self._enqueue(topic_class(**json.loads(msg.payload)))
@@ -181,12 +183,17 @@ class MqttServer:
 
     def _mqtt_on_disconnect(self, client, userdata, rc):
         self.connected = False
+        self.mqtt_client_s = None
+        self.mqtt_client_s = self._connect_to_mqtt(self.config.mqtt_host,
+                                                   self.config.mqtt_port,
+                                                   self.config.mqtt_transport)
         self.logs.error(f"[MQTT]mqtt Disconnected:{rc}")
 
     def _enqueue(self, obj):
         asyncio.run_coroutine_threadsafe(self._mqtt_messages.put(obj), EventLoop.event_loop)
 
-    def _mqtt_handle_state(self,message):
+    def _mqtt_handle_state(self, state: state.State):
+        # self.logs.info(state.model_dump())
         pass
 
     def _mqtt_handle_order(self, sub_order: order.Order):

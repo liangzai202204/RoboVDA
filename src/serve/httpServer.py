@@ -116,7 +116,9 @@ class HttpServer:
             "map": {"advanced_point_list": self.robot.map.advanced_point_list,
                     "current_map": self.robot.map.current_map,
                     "current_map_md5": self.robot.map.current_map_md5},
-            "PushData": self.robot_order.robot.robot_push_msg.model_dump()
+            "PushData": self.robot_order.robot.robot_push_msg.model_dump(),
+            "model_msg": self.robot.model.model_msg,
+            "online_status": self.robot.rbk.online_status
         }
         return jsonify(push_data)
 
