@@ -1,8 +1,6 @@
 #!/bin/bash
 set -e
 
-action=$1
-version=$2
 
 
 
