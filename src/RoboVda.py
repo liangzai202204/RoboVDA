@@ -29,7 +29,7 @@ class RoboVda:
         # 线程设置
         self.rbk_run_t = threading.Thread(target=self.rbk.run, name="rbk connect")
         self.robot_run_t = threading.Thread(target=self.robot.run, name="robot run")
-        self.http_server_t = threading.Thread(target=self.http_server.start_web, name="http server")
+        self.http_server_t = threading.Thread(target=self.http_server.run, name="http server")
         set_as_daemon([self.rbk_run_t, self.robot_run_t, self.http_server_t])
 
     def run(self):

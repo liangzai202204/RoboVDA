@@ -122,7 +122,7 @@ class HttpServer:
         }
         return jsonify(push_data)
 
-    def start_web(self):
+    def run(self):
         # 启动Flask应用
         self.app.run(host=self.web_host, port=self.web_port)
 

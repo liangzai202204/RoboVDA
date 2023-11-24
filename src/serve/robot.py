@@ -328,7 +328,6 @@ class Robot:
         return None
 
 
-
 class RobotModel:
     def __init__(self, rbk):
         self.height = 0
@@ -426,7 +425,7 @@ class RobotModel:
 
 class RobotMap:
     def __init__(self, rbk):
-        self.advanced_point_list = []
+        self.advanced_point_list = {}
         self.map_dir = os.path.join("/usr/local/SeerRobotics/vda/", "robotMap")
         if not os.path.exists(self.map_dir):
             os.makedirs(self.map_dir)
@@ -469,7 +468,14 @@ class RobotMap:
             map_req = self._get_map(self.current_map)
             if map_req:
                 self.map = Map2D(map_req)
-                self.advanced_point_list = [point.class_name for point in self.map.advanced_point_list]
+                self.advanced_point_list = {
+                    str(point.instance_name): {
+                        "x": point.pos.x,
+                        "y": point.pos.y,
+                        "z": point.pos.z,
+                        "dir": point.dir
+                    } for point in self.map.advanced_point_list
+                }
 
     def _get_current_map(self):
         try:
