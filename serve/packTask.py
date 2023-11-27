@@ -167,7 +167,7 @@ class PackTask:
             if (not node.nodePosition.theta or node.nodePosition.theta == 0) and edge.actions is None:
                 edge_task["reach_angle"] = 3.141592653589793
             edge_task["angle"] = node.nodePosition.theta
-            if edge.holdDir:
+            if edge.holdDir is not None:
                 edge_task["hold_dir"] = edge.holdDir
             if edge.actions:
                 self.pack_actions(edge, edge_task)
