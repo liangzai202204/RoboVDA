@@ -1,0 +1,97 @@
+{
+  "headerId": 0,
+  "timestamp": "2023-11-24T14:45:04.478Z",
+  "version": "2.0.0",
+  "manufacturer": "",
+  "serialNumber": "",
+  "orderId": "424d8aa0-93e4-4e2d-a19d-1f06a6150010",
+  "orderUpdateId": 0,
+  "nodes": [
+    {
+      "nodeId": "8a3a8a26-9c7a-4e40-8aa7-9236c36f0a51",
+      "sequenceId": 0,
+      "released": true,
+      "nodePosition": {
+        "x": 37.694,
+        "y": -10.613,
+        "theta": 1.5707963267948966,
+        "allowedDeviationXY": 0.5,
+        "allowedDeviationTheta": 0.5,
+        "mapId": "01632ba1-5e0f-41b3-9d1c-b701fa168c3f",
+        "mapDescription": "Id: 01632ba1-5e0f-41b3-9d1c-b701fa168c3f"
+      },
+      "actions": [],
+      "nodeDescription": "AP168"
+    },
+    {
+      "nodeId": "ff725494-a44e-4862-9cf1-f15e764af80e",
+      "sequenceId": 2,
+      "released": true,
+      "nodePosition": {
+        "x": 37.694,
+        "y": -10.103,
+        "theta": 1.5707963267948966,
+        "allowedDeviationXY": 0.5,
+        "allowedDeviationTheta": 0.5,
+        "mapId": "01632ba1-5e0f-41b3-9d1c-b701fa168c3f",
+        "mapDescription": "Id: 01632ba1-5e0f-41b3-9d1c-b701fa168c3f"
+      },
+      "actions": [],
+      "nodeDescription": "AP169"
+    },
+    {
+      "nodeId": "e2c2b461-a6c5-414d-a5f4-d9a8a33fd530",
+      "sequenceId": 4,
+      "released": true,
+      "nodePosition": {
+        "x": 37.694,
+        "y": -9.601,
+        "theta": 1.5707963267948966,
+        "allowedDeviationXY": 0.5,
+        "allowedDeviationTheta": 0.5,
+        "mapId": "01632ba1-5e0f-41b3-9d1c-b701fa168c3f",
+        "mapDescription": "Id: 01632ba1-5e0f-41b3-9d1c-b701fa168c3f"
+      },
+      "actions": [],
+      "nodeDescription": "AP170"
+    }
+  ],
+  "edges": [
+    {
+      "edgeId": "4a466013-2459-4871-9cd8-3eda9ac749ff",
+      "sequenceId": 1,
+      "edgeDescription": "AP168-AP169",
+      "released": true,
+      "startNodeId": "8a3a8a26-9c7a-4e40-8aa7-9236c36f0a51",
+      "endNodeId": "ff725494-a44e-4862-9cf1-f15e764af80e",
+      "maxSpeed": 0.0,
+      "maxHeight": 0.0,
+      "orientation": 0.0,
+      "holdDir": 0.0,
+      "direction": "",
+      "rotationAllowed": false,
+      "maxRotationSpeed": 0.0,
+      "trajectory": null,
+      "length": 0.0,
+      "actions": []
+    },
+    {
+      "edgeId": "d98ac55a-0840-483b-961d-7e468790b4b7",
+      "sequenceId": 3,
+      "edgeDescription": "AP169-AP170",
+      "released": true,
+      "startNodeId": "ff725494-a44e-4862-9cf1-f15e764af80e",
+      "endNodeId": "e2c2b461-a6c5-414d-a5f4-d9a8a33fd530",
+      "maxSpeed": 0.0,
+      "maxHeight": 0.0,
+      "orientation": 0.0,
+      "holdDir": 0.0,
+      "direction": "",
+      "rotationAllowed": false,
+      "maxRotationSpeed": 0.0,
+      "trajectory": null,
+      "length": 0.0,
+      "actions": []
+    }
+  ]
+}

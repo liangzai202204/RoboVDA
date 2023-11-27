@@ -3,8 +3,8 @@ import uuid
 from src.serve.templates.html import HTML
 from src.serve.robot import Robot
 from src.serve.handleTopic import HandleTopic
-from src.type.VDA5050 import order ,instantActions
-from flask import Flask, jsonify, abort,render_template_string,request
+from src.type.VDA5050 import order, instantActions
+from flask import Flask, jsonify, abort, render_template_string, request
 from src.type.VDA5050 import order
 from src.log.log import MyLogger
 from src.serve.topicQueue import TopicQueue
@@ -13,8 +13,8 @@ from src.serve.topicQueue import TopicQueue
 def response_handler(func):
     def wrapper(*args, **kwargs):
         try:
-            func(*args, **kwargs)
-            return {"code": 200, "msg": "OK"}
+            res = func(*args, **kwargs)
+            return {"code": 200, "msg": "OK" if not res else res}
         except Exception as e:
             abort(404, str(e))
 
@@ -70,7 +70,7 @@ class HttpServer:
         @self.app.route('/stopPause', methods=['POST'])
         def stopPause():
             return self._stop_pause()
-        
+
         @self.app.route('/mqttMsg', methods=['POST'])
         def mqttMsg():
             return self._mqttMsg(request.data)
@@ -148,22 +148,24 @@ class HttpServer:
         self.robot_order.instant_start_pause(self.create_action("startPause"))
 
     @response_handler
-    def _mqttMsg(self,body):
-        print(body)
-        print(type(body))
-
-        by = json.loads(body.decode("utf-8"))
-        message = by.get("message")
-        print(message)
-        print(type(message))
-        if message:
-            if isinstance(message,str):
-                message = json.loads(message)
-            if isinstance(message,dict):
-                print(message)
-                if message.get("actions"):
-                    self.robot_order.http_handle_instantActions(instantActions.InstantActions(**message))
-                    print("http InstantActions")
-                if message.get("nodes"):
-                    self.robot_order.http_run_order(order.Order(**message))
-                    print("http InstantActions")
+    def _mqttMsg(self, body):
+        try:
+            if message := json.loads(body.decode("utf-8")).get("message"):
+                if isinstance(message, str):
+                    message = json.loads(message)
+                if isinstance(message, dict):
+                    print(message)
+                    if message.get("actions"):
+                        self.robot_order.http_handle_instantActions(instantActions.InstantActions(**message))
+                        print("http InstantActions")
+                    elif message.get("nodes"):
+                        self.robot_order.http_run_order(order.Order(**message))
+                        print("http InstantActions")
+                    elif message.get("id"):
+                        if o := self.robot_order.sim_order.creat_order(message):
+                            self.robot_order.http_run_order(o)
+                            return o.model_dump()
+            self.log.info(f"[httpServer]create order")
+        except Exception as e:
+            self.log.error(f"[httpServer]create order error,body:{body}")
+            self.log.error(f"[httpServer]create order error,msg:{e}")

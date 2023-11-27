@@ -1,258 +1,146 @@
-import configparser
-import copy
 import datetime
 import json
 import uuid
-
-from src.rbklib.rbklibPro import Rbk
+from src.config.config import Config
+from src.serve.robot import RobotMap, Robot
 from src.type.VDA5050 import order
-
+from src.parse_protobuf.Map2D import Map2D
 import networkx as nx
-
-import os
-import glob
-
-
-def get_map_path1():
-    current_directory = os.getcwd()
-    pj_path = os.path.dirname(os.path.abspath(current_directory))
-    return os.path.join(os.path.join(pj_path, "serve"),"robotMap")
-
-
-def search_smap_files(folder):
-    # 使用 glob 模块匹配符合条件的文件路径列表
-    smap_files = glob.glob(os.path.join(folder, '*.smap'))
-
-    if smap_files:
-        print("找到以下 .smap 文件:")
-        for file in smap_files:
-            print(file)
-            return file
-    else:
-        print("未找到 .smap 文件")
-
-
 
 
 class SimOrder:
 
-    def __init__(self, ip="192.168.4.64"):
+    def __init__(self, config: Config, robot: Robot):
 
-        config = configparser.ConfigParser()
-        config_path = os.path.join(os.path.dirname(os.getcwd()), 'config.ini')
-        # 读取配置文件
-        config.read(config_path)
-        ip = config.get('robot', 'robot_ip') if config.get('robot', 'robot_ip') else ip
-        print(ip)
-        self.rbk = Rbk(ip)
-        self.map = Map(self.get_map_path()) if self.rbk.so_19204 else Map(search_smap_files(get_map_path1()))
-        self.loc = None
-        self.init_point = ""
-        self.node_point_id = dict()
-        self.map_pos = map_pos(self.get_map_path())
+        self.config: Config = config
+        self.robot: Robot = robot
+        self.map: RobotMap = robot.map
+        self.G = nx.DiGraph()  # 创建一个有向图
+        if self.map.node_list and self.map.edge_list:
+            self.G.add_nodes_from(self.map.node_list)  # 添加节点
+            self.G.add_edges_from(self.map.edge_list)  # 添加边
+        self.shortest_path = []
+        self.sequenceId_node = 0
+        self.sequenceId_edge = 0
 
-    @staticmethod
-    def get_map_path():
-        current_directory = os.getcwd()
-        pj_path = os.path.dirname(os.path.abspath(current_directory))
-        return os.path.join(pj_path, "serve/robotMap/robot_map.smap")
+    def get_sequenceId(self):
+        self.sequenceId_node += 2
+        self.sequenceId_edge = self.sequenceId_node - 1
+        return self.sequenceId_node
 
+    def find_path(self, start, end, selfPosition=None):
+        # if selfPosition == "SELF_POSITION":
+        #     self.shortest_path.append(selfPosition)
+        self.shortest_path.extend(nx.shortest_path(self.G, start, end))
 
-    def creat_order(self, tasks: list, released: bool = True, order_count: int = 1,init = None,action_type="test"):
-        # 获取机器人当前位置
-        if self.rbk.so_19204:
-            _, res = self.rbk.robot_status_loc_req()
-            res_json = json.loads(res)
-            current_station = res_json["current_station"]
-            last_station = res_json["last_station"]
-            print("current_station",current_station)
-            if current_station:
-                self.init_point = current_station
-            else:
-                if last_station:
-                    self.init_point = last_station
+    def create_node(self, point):
+        point_xy = self.map.advanced_point_list.get(point)
+        if not point_xy:
+            return None
+        return order.Node(nodeId=point,
+                          sequenceId=self.get_sequenceId(),
+                          released=True,
+                          actions=[],
+                          nodePosition={
+                              "x": point_xy["x"],
+                              "y": point_xy["y"],
+                              "theta": point_xy["dir"],
+                              "allowedDeviationXY": 0.5,
+                              "allowedDeviationTheta": 0.5,
+                              "mapId": self.map.current_map,
+                              "mapDescription": f"md5: {self.map.current_map_md5}"
+                          },
+                          nodeDescription=point)
+
+    def create_edge(self, startNodeId, endNodeId):
+        e = order.Edge(edgeId=f"{startNodeId}-{endNodeId}",
+                       sequenceId=self.sequenceId_edge,
+                       edgeDescription=f"{startNodeId}-{endNodeId}",
+                       released=True,
+                       startNodeId=startNodeId,
+                       length=0.,
+                       endNodeId=endNodeId)
+        print(e.model_dump())
+        return e
+
+    def creat_order(self, massage: dict):
+        """
+        :param massage:massage = {
+            "id":"",
+            "source_id":"",
+            ...
+        }
+        """
+        start = massage.get("source_id")
+        end = massage.get("id")
+        try:
+            if not self.robot.robot_push_msg.current_station and not start:
+                start = "SELF_POSITION"
+            if self.robot.robot_push_msg.current_station != start:
+                start = self.robot.robot_push_msg.current_station
+            if self.robot.robot_push_msg.current_station and not start:
+                start = self.robot.robot_push_msg.current_station
+            print(f"start:{start}")
+            print(f"end:{end}")
+            self.find_path(start, end)
+            nodes = []
+            edges = []
+            if self.shortest_path:
+                print("线路", self.shortest_path)
+                for i, p in enumerate(self.shortest_path):
+                    nodes.append(self.create_node(p))
+                    if len(nodes) >= 2:
+                        edges.append(self.create_edge(self.shortest_path[i - 1], self.shortest_path[i]))
+                orders_1 = order.Order(headerId=0,
+                                       timestamp=datetime.datetime.now().isoformat(timespec='milliseconds') + 'Z',
+                                       version="2.0.0",
+                                       manufacturer="",
+                                       serialNumber="",
+                                       orderId=str(uuid.uuid4()),
+                                       orderUpdateId=1,
+                                       nodes=nodes,
+                                       edges=edges)
+                print(orders_1.model_dump())
+                self.shortest_path.clear()
+                return orders_1
+        except Exception as e:
+            print(e)
         else:
-            print("init", init)
-            if init:
-                self.init_point = init
-            else:
-                self.init_point = "AP1"
-        mid_pos = self.init_point
-        # 遍历所有节点的任务
-        sequenceId = 0
-        orderId = str(uuid.uuid4())
-        headerId = 0
-        orderUpdateId = 0
-        orders_1 = order.Order(headerId=headerId,
-                               timestamp=datetime.datetime.now().isoformat(timespec='milliseconds') + 'Z',
-                               version="2.0.0",
-                               manufacturer="",
-                               serialNumber="",
-                               orderId=orderId,
-                               orderUpdateId=orderUpdateId,
-                               nodes=[],
-                               edges=[])
-        p_all = []
-        action_list = dict()
-        # print(tasks)
-        for index, task in enumerate(tasks):
-            action_list[task[0]] = task[1]
-            if index == 0:
-                print("index",mid_pos, "p",task[0])
-                paths = self.map.shortest_path(mid_pos, task[0])
-            else:
-                print("1----", p_all[-1], task[0])
-                paths = self.map.shortest_path(p_all[-1], task[0])
-                print("2----", paths)
-            if index != 0 and index != len(tasks):
-                paths = paths[1:]
-            # print(paths)
-            p_all += paths
-        print(p_all)
-        # 预先生成nodeID
-        for i, p in enumerate(p_all):
-            self.node_point_id[p] = str(uuid.uuid4())
-
-        for index, loc in enumerate(p_all):
-            print(index, loc)
-            print(self.node_point_id)
-            params = action_list.get(loc)
-
-            # 开始生成node、edge、action
-            pos = self.map_pos.get(loc)
-            # print(p, pos)
-            # print(i)
-            # 生成第一个node
-            # index == 0 为了避免重复生成node
-            if index == 0:
-                node = order.Node(nodeId=self.node_point_id[loc],
-                                  sequenceId=sequenceId,
-                                  released=True,
-                                  actions=[],
-                                  nodePosition={
-                                      "x": pos["x"],
-                                      "y": pos["y"],
-                                      "theta": -0.026340157,
-                                      "allowedDeviationXY": 0.5,
-                                      "allowedDeviationTheta": 0.5,
-                                      "mapId": "01632ba1-5e0f-41b3-9d1c-b701fa168c3f",
-                                      "mapDescription": "Id: 01632ba1-5e0f-41b3-9d1c-b701fa168c3f"
-                                  },
-                                  nodeDescription=loc)
-                orders_1.nodes.append(node)
-            # 交替生成node和edge
-            else:
-                sequenceId += 1
-                edge = order.Edge(edgeId=str(uuid.uuid4()),
-                                  sequenceId=sequenceId,
-                                  edgeDescription=p_all[index - 1] + "-" + p_all[index],
-                                  released=False,
-                                  startNodeId=self.node_point_id[p_all[index - 1]],
-                                  length=0.,
-                                  endNodeId=self.node_point_id[p_all[index]])
-                orders_1.edges.append(edge)
-
-                sequenceId += 1
-                node = order.Node(nodeId=self.node_point_id[loc],
-                                  sequenceId=sequenceId,
-                                  released=False,
-                                  actions=[],
-                                  nodePosition={
-                                      "x": pos["x"],
-                                      "y": pos["y"],
-                                      "theta": -0.026340157,
-                                      "allowedDeviationXY": 0.5,
-                                      "allowedDeviationTheta": 0.5,
-                                      "mapId": "01632ba1-5e0f-41b3-9d1c-b701fa168c3f",
-                                      "mapDescription": "Id: 01632ba1-5e0f-41b3-9d1c-b701fa168c3f"
-                                  },
-                                  nodeDescription=loc)
-                # 注意，这里没有边的动作
-                if params:
-                    a = order.Action.creat()
-                    a.actionId = str(uuid.uuid4())
-                    a.actionType = action_type
-                    a.actionParameters = params
-                    node.actions.append(a)
-                orders_1.nodes.append(node)
-        print("order:", json.dumps(orders_1.model_dump()))
-
-        return self.creat_order_base_on(orders_1, order_count=order_count, released=released)
-
-    def creat_order_base_on(self, orders_1: order.Order, order_count: int = 1, released: bool = True):
-        order_list = []
-        orderUpdateId = 0
-        # order 是一个完整的任务，节点全是base
-        headerId = 0
-        # 下面生成订单数量
-        nodes_len = orders_1.nodes.__len__()
-        edge_len = orders_1.edges.__len__()
-        print(nodes_len, edge_len, order_count)
-        if nodes_len - 1 != edge_len:
-            print("生成的order异常：", nodes_len, edge_len, json.dumps(orders_1.dict()))
-        if order_count >= nodes_len:
-            order_count = nodes_len
-        if 1 < order_count <= nodes_len and nodes_len > 3 and released:
-            print("分解")
-            # 用python写程序，输入两个变量是：列表[]和int，列表元素是字典{"base":True}。
-            # 需要做的是，输入[]，和int，计算[]的长度，根据int的值生成对应对应数量的[],但是[]的内容base是不同的
-            # 当int=1,[]的前1个base所有值都为True，剩下的都为False
-            # 当int=2，[]的前1个base所有值都为True，剩下的都为False
-            # 以此类推
-            for i in range(order_count):
-                if i == 0:
-                    print("000000000000000000000000000000000000000000", order_count)
-                    order_list.append(orders_1)
-                    continue
-
-                headerId += 1
-                orderUpdateId += 1
-                new_order = order.Order(headerId=headerId,
-                                        timestamp=datetime.datetime.now().isoformat(timespec='milliseconds') + 'Z',
-                                        version="2.0.0",
-                                        manufacturer="",
-                                        serialNumber="",
-                                        orderId=orders_1.orderId,
-                                        orderUpdateId=orderUpdateId,
-                                        nodes=[],
-                                        edges=[])
-                e_s = copy.deepcopy(orders_1.edges)
-                n_s = copy.deepcopy(orders_1.nodes)
-                for n in range(i):
-
-                    n_s[n].released = True
-                    if n == i - 1:
-                        n_s[n + 1].released = True
-                for e in range(i):
-                    e_s[e].released = True
-                new_order.nodes = n_s
-                new_order.edges = e_s
-                order_list.append(new_order)
-        else:
-            for n in orders_1.nodes:
-                n.released = True
-            for e in orders_1.edges:
-                e.released = True
-            order_list.append(orders_1)
-        return order_list
+            print("当前没有点")
+        return None
 
 
 class Map:
     def __init__(self, m: str):
         node_list, edge_list = self.output_node_edge(m)
-        print(node_list)
-        print(edge_list)
+        # print(node_list)
+        # print(edge_list)
         self.G = nx.DiGraph()  # 创建一个有向图
         self.G.add_nodes_from(node_list)  # 添加节点
         self.G.add_edges_from(edge_list)  # 添加边
+        print(m)
+        with open(m, "r") as f:
+            map_data = json.load(f)
+        self.map = Map2D(map_data)
+        self.advanced_point_list = {
+            str(point.instance_name): {
+                "x": point.pos.x,
+                "y": point.pos.y,
+                "z": point.pos.z,
+                "dir": point.dir
+            } for point in self.map.advanced_point_list
+        }
+        self.node_list = [instance.instance_name for instance in self.map.advanced_point_list]
+        self.edge_list = [(acl.start_pos.instance_name, acl.end_pos.instance_name) for acl in
+                          self.map.advanced_curve_list]
 
     @staticmethod
     def output_node_edge(map: str):
-        print(map)
+        # print(map)
         with open(map, "r") as f:
             map_data = json.load(f)
         node_list = []
-        print(map_data)
+        # print(map_data)
         for node in map_data['advancedPointList']:
             node_list.append(node['instanceName'])
         edge_list = []
@@ -264,14 +152,6 @@ class Map:
         return node_list, edge_list
 
     def shortest_path(self, s, e):
-        print("0000000000",s, e)
+        print("0000000000", s, e)
         return nx.shortest_path(self.G, source=s, target=e)
 
-
-def map_pos(maps: str):
-    with open(maps, "r") as f:
-        map_data = json.load(f)
-    nodes = dict()
-    for node in map_data['advancedPointList']:
-        nodes[node['instanceName']] = node["pos"]
-    return nodes

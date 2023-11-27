@@ -7,25 +7,6 @@ import paho.mqtt.client as mqtt
 from src.type.VDA5050 import state, order
 
 
-def get_mqtt_ip():
-    config = configparser.ConfigParser()
-    config_path = os.path.join(os.path.dirname(os.getcwd()), 'config.ini')
-    # 读取配置文件
-    config.read(config_path)
-    ip = config.get('mqtt', 'mqtt_host')
-    print("ip:",ip)
-    return ip
-
-
-def get_order_topic():
-    config = configparser.ConfigParser()
-    config_path = os.path.join(os.path.dirname(os.getcwd()), 'config.ini')
-    # 读取配置文件
-    config.read(config_path)
-    order = config.get('topic', 'order')
-    return order
-
-
 class MyTestCase(unittest.TestCase):
 
 
@@ -80,27 +61,21 @@ class MyTestCase(unittest.TestCase):
     def test_order_binTask_empty_params(self):
         import json
         import sim_order as s
-        a = s.SimOrder(ip="192.168.198.168")
+        a = s.SimOrder()
         datas = []
-        params = [{
-            "key": "id",
-            "value": "loc-1"
-        }, {
-            "key": "binTask",
-            "value": "load"
-        }]
-        data1 = ("AP105", params)
-        data2 = ("LM96", [])
-        data3 = ("AP105", params)
+        params = []
+        data1 = ("AP169", params)
+        # data2 = ("LM96", [])
+        # data3 = ("AP105", params)
         datas.append(data1)
-        datas.append(data2)
-        datas.append(data3)
-        o1 = a.creat_order(datas, released=True, order_count=10)
+        # datas.append(data2)
+        # datas.append(data3)
+        o1 = a.creat_order(datas, released=True, order_count=10, init="AP171")
         client = mqtt.Client()
-        client.connect(get_mqtt_ip(), 1883, 60)
+        client.connect(a.config.robot_ip, 1883, 60)
 
         for o in o1:
-            client.publish(get_order_topic(), json.dumps(o.model_dump()))
+            client.publish(a.config.mqtt_topic_order, json.dumps(o.model_dump()))
             print("---", json.dumps(o.model_dump()))
             time.sleep(1)
         print(len(o1))

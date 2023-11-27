@@ -12,6 +12,7 @@ from src.type.RobotOrderStatus import Status
 from src.pack.packTask import PackTask
 from src.log.log import MyLogger
 from src.config.config import Config
+from src.sim.sim_order import SimOrder
 
 
 # 定义装饰器函数
@@ -36,6 +37,7 @@ class HandleTopic:
         self.robot_type = config.robot_type
         self.init = False
         self.robot: Robot = robot
+        self.sim_order = SimOrder(config, robot)
         self.lock_order = threading.Lock()
         self.order = None
         self.current_order = None
@@ -52,7 +54,7 @@ class HandleTopic:
         self.init = False  # 表示第一次运行，用于判断运单逻辑
         # 訂單狀態機
         self.order_state_machine = OrderStateMachine()
-        self.pack_task = PackTask(config.script_name)
+        self.pack_task = PackTask(config)
         self.handle_actions = self._handle_actions()
 
     def __del__(self):
@@ -460,12 +462,12 @@ class HandleTopic:
         # 狀態機
         uuid_task = self.pack_send(update_order)
         if uuid_task:
-            self.order_state_machine.add_order(update_order, uuid_task)
+            self.order_state_machine.add_order(update_order, uuid_task, self.robot.model.agvClass)
         else:
             self.logs.error(f"[pack][send]actionId empty:{uuid_task}")
 
     def pack_send(self, new_order: order.Order):
-        task_list, uuid_task = self.pack_task.pack(new_order, self.robot.model.agvClass)
+        task_list, uuid_task = self.pack_task.pack(new_order, self.robot)
         self.logs.info(f"[pack]res:{task_list}，{uuid_task}")
         if task_list:
             self.robot.send_order(task_list)

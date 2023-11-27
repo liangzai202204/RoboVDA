@@ -2,15 +2,17 @@ import copy
 import uuid
 import threading
 from typing import List
-
+from src.config.config import Config
 from src.pack.action_type import ActionPack, ActionType
 from src.type.VDA5050 import order
 from src.log.log import MyLogger
+from src.serve.robot import Robot as Robot
 
 
 class PackTask:
-    def __init__(self, script_name):
-        self.robot_type = None
+    def __init__(self, config: Config):
+        self.config = config
+        self.robot: Robot = None
         self.nodes_point = None
         self.order = None
         self.nodes: List[order.Node] = []
@@ -21,12 +23,12 @@ class PackTask:
         self.log = MyLogger()
         self.lock = threading.Lock()
         self.uuid_task = {}
-        self.script_name = script_name
 
-    def pack(self, new_order: order.Order, robot_type: str) -> (list, dict):
+    def pack(self, new_order: order.Order, robot: Robot) -> (list, dict):
         with self.lock:
             try:
-                self.robot_type = robot_type
+                if not self.robot:
+                    self.robot = robot
                 self.clear_pack()
                 if not self.order:
                     self.order = new_order
@@ -49,16 +51,16 @@ class PackTask:
 
     def _pack(self):
         try:
+            self.task_pack_list.clear()
             """先从 edges 遍历，在edge中找到 startNode 和 endNode,
                     然后再打包
             """
-
             if self.nodes[0].actions:
                 if self.nodes[0].released:
                     for a in self.nodes[0].actions:
                         action_uuid = str(uuid.uuid4())
 
-                        a_task = ActionPack.pack_action(a, self.robot_type, action_uuid)
+                        a_task = ActionPack.pack_action(a, action_uuid, self.robot, self.config)
                         if a_task:
                             self.uuid_task[action_uuid] = a.actionId
                             self.task_pack_list.append(a_task)
@@ -70,10 +72,12 @@ class PackTask:
                     endNode = self._get_node(edge.endNodeId)
                     #  pick on endNode,need combine startNode and endNode,when actionType and agvClass was jack or fork
                     for endNode_a in endNode.actions:
-                        if (endNode_a.actionType == ActionType.PICK or endNode_a.actionType == ActionType.DROP) and (self.robot_type == "FORKLIFT" or self.robot_type == "CARRIER"):
+                        if (endNode_a.actionType == ActionType.PICK or endNode_a.actionType == ActionType.DROP) and \
+                                (self.robot.model.agvClass == "FORKLIFT" or self.robot.model.agvClass == "CARRIER"):
                             edge_uuid = str(uuid.uuid4())
                             edge_task = ActionPack.pack_edge(edge, startNode,
-                                                             endNode, edge_uuid, self.robot_type)
+                                                             endNode, edge_uuid, self.robot, self.config
+                                                             )
                             if edge_task:
                                 self.uuid_task[edge_uuid] = edge.edgeId
                                 self.task_pack_list.append(edge_task)
@@ -83,7 +87,7 @@ class PackTask:
                         continue
                     edge_uuid = str(uuid.uuid4())
                     edge_task = ActionPack.pack_edge(edge, startNode.nodePosition,
-                                                     endNode.nodePosition, edge_uuid, self.robot_type)
+                                                     endNode.nodePosition, edge_uuid, self.robot, self.config)
                     if edge_task:
                         self.uuid_task[edge_uuid] = edge.edgeId
                         self.task_pack_list.append(edge_task)
@@ -91,7 +95,7 @@ class PackTask:
                         for a2 in endNode.actions:
                             if a2.actionId not in self.uuid_task:
                                 action_uuid = str(uuid.uuid4())
-                                a_task = ActionPack.pack_action(a2, self.robot_type, action_uuid)
+                                a_task = ActionPack.pack_action(a2, self.robot.model.agvClass, action_uuid)
                                 if a_task:
                                     self.uuid_task[action_uuid] = a2.actionId
                                     self.task_pack_list.append(a_task)

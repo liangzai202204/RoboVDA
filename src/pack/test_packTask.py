@@ -2,6 +2,9 @@ import unittest
 from src.pack import packTask as packTask
 from src.type.mode import PackMode
 from src.type.VDA5050 import order
+from src.config.config import Config
+from src.serve.robot import Robot
+from src.rbklib.rbklibPro import Rbk
 
 
 class MyTestCase(unittest.TestCase):
@@ -91,6 +94,27 @@ class MyTestCase(unittest.TestCase):
             json_content = json.load(json_file)
             print(json_content)
             task = o.pack(order.Order(**json_content))
+            print(f"打包结果：{json.dumps(task)}")
+
+    def test_pask_mappoint1(self):
+        """测试站点导航的pack"""
+        c = Config()
+        rbk = Rbk(c.robot_ip)
+        r = Robot(rbk)
+        o = packTask.PackTask(c)
+        import json
+        import os
+        # 假设包 B 的名称为 package_B，JSON 文件名为 data.json
+        path_to_B = os.path.abspath("../../VDAExample/order/mapPoint/")
+
+        json_filename = 'mapPiont_1.json'
+
+        json_file_path = os.path.join(path_to_B, json_filename)
+
+        with open(json_file_path, 'r') as json_file:
+            json_content = json.load(json_file)
+            print(json_content)
+            task = o.pack(order.Order(**json_content), r)
             print(f"打包结果：{json.dumps(task)}")
 
 

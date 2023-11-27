@@ -425,11 +425,16 @@ class RobotModel:
 
 class RobotMap:
     def __init__(self, rbk):
-        self.advanced_point_list = {}
+        self.edge_list = []  # 所有的高级点
+        self.node_list = []  # 所有点的连线
+        self.XYDir = {}  # {坐标：站点}
+        self.advanced_point_list = {}  # {站点：坐标}
         self.map_dir = os.path.join("/usr/local/SeerRobotics/vda/", "robotMap")
         if not os.path.exists(self.map_dir):
             os.makedirs(self.map_dir)
         self.model_path = os.path.join(os.path.join("/usr/local/SeerRobotics/vda/", "robotMap"), "robot.smap")
+        if os.path.exists(self.model_path):
+            self.set_map()
         self.rbk = rbk
         self.map = None
         self.log = MyLogger()
@@ -467,15 +472,31 @@ class RobotMap:
         if self._get_current_map():
             map_req = self._get_map(self.current_map)
             if map_req:
-                self.map = Map2D(map_req)
-                self.advanced_point_list = {
-                    str(point.instance_name): {
-                        "x": point.pos.x,
-                        "y": point.pos.y,
-                        "z": point.pos.z,
-                        "dir": point.dir
-                    } for point in self.map.advanced_point_list
-                }
+                self.set_map(map_req)
+
+    def set_map(self, map_req=None):
+        if map_req:
+            self.map = Map2D(map_req)
+        else:
+            with open(self.model_path, "r") as f:
+                map_data = json.load(f)
+                self.map = Map2D(map_data)
+        if self.map:
+            self.advanced_point_list = {
+                str(point.instance_name): {
+                    "x": point.pos.x,
+                    "y": point.pos.y,
+                    "z": point.pos.z,
+                    "dir": point.dir
+                } for point in self.map.advanced_point_list
+            }
+            for point in self.map.advanced_point_list:
+                self.XYDir[(point.pos.x, point.pos.y, point.dir)] = point.instance_name
+            self.node_list = [instance.instance_name for instance in self.map.advanced_point_list]
+            self.edge_list = [(acl.start_pos.instance_name, acl.end_pos.instance_name) for acl in
+                              self.map.advanced_curve_list]
+        else:
+            self.log.error(f'[map] no map')
 
     def _get_current_map(self):
         try:

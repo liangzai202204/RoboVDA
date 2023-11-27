@@ -1,6 +1,8 @@
 from typing import Union
 from src.type.VDA5050 import order
 import pydantic
+from src.serve.robot import Robot as Robot
+from src.config.config import Config
 
 instant_action_type = ['startPause', 'stopPause', 'startCharging',
                        'stopCharging', 'initPosition', 'stateRequest',
@@ -19,7 +21,8 @@ class ActionType:
     Angle = "angle"
     Ready = "ready"
     Script = "Script"
-    FactsheetRequest ="factsheetRequest"
+    FactsheetRequest = "factsheetRequest"
+    SafeCheck = "safeCheck"
 
 
 class ActionPack(pydantic.BaseModel):
@@ -29,9 +32,8 @@ class ActionPack(pydantic.BaseModel):
 
     """
 
-
     @classmethod
-    def pack_action_script(cls, action: order.Action, action_uuid):
+    def pack_action_script(cls, action: order.Action, action_uuid, config: Config = None):
         action_task = {}
         operation = None
         script_name = None
@@ -41,15 +43,16 @@ class ActionPack(pydantic.BaseModel):
             if ap.key == "script_name":
                 script_name = ap.value
         action_task["operation"] = operation if operation else ActionType.Script
-        action_task["script_name"] = script_name if script_name else "script.py"
-        action_task["script_args"] = {"action_parameters": [a.model_dump() for a in action.actionParameters]}
+        action_task["script_name"] = script_name if script_name else config.script_name
+        action_task["script_args"] = {"action_parameters": [a.model_dump() for a in action.actionParameters],
+                                      "operation": action.actionType}
         action_task["id"] = "SELF_POSITION"
         action_task["source_id"] = "SELF_POSITION"
         action_task["task_id"] = action_uuid
         return action_task
 
     @classmethod
-    def pack_action_fork(cls, action: order.Action, action_uuid):
+    def pack_action_fork(cls, action: order.Action, action_uuid, config):
         action_task = {}
         operation = None
         for ap in action.actionParameters:
@@ -87,7 +90,7 @@ class ActionPack(pydantic.BaseModel):
         return action_task
 
     @classmethod
-    def pack_action_jack(cls, action: order.Action, action_uuid):
+    def pack_action_jack(cls, action: order.Action, action_uuid, config):
         action_task = {}
         operation = None
         for ap in action.actionParameters:
@@ -127,19 +130,19 @@ class ActionPack(pydantic.BaseModel):
         return action_task
 
     @classmethod
-    def pack_action(cls, action: order.Action, robot_type, action_uuid=None):
+    def pack_action(cls, action: order.Action, action_uuid, robot: Robot, config: Config):
         try:
             if not action_uuid:
                 action_uuid = action.actionId
             action_task = {}
-            if robot_type == "FORKLIFT":
-                return ActionPack.pack_action_fork(action, action_uuid)
-            elif robot_type == "CARRIER":
-                return ActionPack.pack_action_jack(action, action_uuid)
-            elif robot_type == "NONE":
-                return ActionPack.pack_action_script(action, action_uuid)
+            if robot.model.agvClass == "FORKLIFT":
+                return ActionPack.pack_action_fork(action, action_uuid, config)
+            elif robot.model.agvClass == "CARRIER":
+                return ActionPack.pack_action_jack(action, action_uuid, config)
+            elif robot.model.agvClass == "NONE":
+                return ActionPack.pack_action_script(action, action_uuid, config)
             else:
-                print(f"[ActionPack]不支持类型:{robot_type}")
+                print(f"[ActionPack]不支持类型:{robot.model.agvClass}")
             print(f"[pack][{action.actionType}]:{action_task}")
             return action_task
             # action_mapping = {
@@ -166,14 +169,14 @@ class ActionPack(pydantic.BaseModel):
 
     @classmethod
     def pack_edge(cls, edge: order.Edge, start_node: Union[order.NodePosition, order.Node],
-                  end_node: Union[order.NodePosition, order.Node], uuid_task: str, robot_type: str):
+                  end_node: Union[order.NodePosition, order.Node], uuid_task: str, robot: Robot, config: Config):
         action_task = {}
         if edge.trajectory:
             if isinstance(start_node, order.Node) and isinstance(end_node, order.Node):
                 for endNode_a in end_node.actions:
                     if endNode_a.actionType == ActionType.PICK or endNode_a.actionType == ActionType.DROP:
-                        if robot_type == "FORKLIFT" or robot_type == "CARRIER":
-                            action_task = ActionPack.pack_action(endNode_a, robot_type, uuid_task)
+                        if robot.model.agvClass == "FORKLIFT" or robot.model.agvClass == "CARRIER":
+                            action_task = ActionPack.pack_action(endNode_a, uuid_task, robot, config)
                             action_task["sourcePos"] = start_node.nodePosition.model_dump()
                             action_task["targetPos"] = end_node.nodePosition.model_dump()
                             action_task["trajectory"] = edge.trajectory.model_dump()
@@ -184,7 +187,6 @@ class ActionPack(pydantic.BaseModel):
                         print(f"[actionPack] ActionType:{endNode_a.actionType}")
                         return {}
             elif isinstance(start_node, order.NodePosition) and isinstance(end_node, order.NodePosition):
-
                 if len(edge.actions) == 1:
                     for e_a in edge.actions:
                         if e_a.blockingType == order.ActionBlockingType.HARD:
@@ -200,11 +202,14 @@ class ActionPack(pydantic.BaseModel):
                                 script_name = ap.value
                         action_task["script_name"] = script_name if script_name else "script.py"
                         action_task["script_args"] = {
-                            "action_parameters": [a.model_dump() for a in e_a.actionParameters]}
+                            "action_parameters": [a.model_dump() for a in e_a.actionParameters],
+                            "operation": e_a.actionType
+                        }
                 action_task["sourcePos"] = start_node.model_dump()
                 action_task["targetPos"] = end_node.model_dump()
                 action_task["trajectory"] = edge.trajectory.model_dump()
-                action_task["hold_dir"] = edge.holdDir
+                if edge.holdDir is not None:
+                    action_task["hold_dir"] = edge.holdDir
                 action_task["id"] = edge.endNodeId
                 action_task["source_id"] = edge.startNodeId
                 action_task["task_id"] = uuid_task
@@ -212,9 +217,61 @@ class ActionPack(pydantic.BaseModel):
                 print(f"[actionPack] start_node or end_node type error:{start_node},{end_node}")
                 return {}
         else:
-            print(f"edge not has trajectory")
-            print(f"edge's action only support one action")
-            return {}
+            if isinstance(start_node, order.Node) and isinstance(end_node, order.Node):
+                for endNode_a in end_node.actions:
+                    if endNode_a.actionType == ActionType.PICK or endNode_a.actionType == ActionType.DROP:
+                        if robot.model.agvClass == "FORKLIFT" or robot.model.agvClass == "CARRIER":
+                            action_task = ActionPack.pack_action(endNode_a, uuid_task, robot, config)
+                            start_id = robot.map.XYDir.get(
+                                (start_node.nodePosition.x, start_node.nodePosition.y, start_node.nodePosition.theta))
+                            end_id = robot.map.XYDir.get(
+                                (end_node.nodePosition.x, end_node.nodePosition.y, end_node.nodePosition.theta))
+                            if not start_id and not end_id:
+                                print("map no point3", start_id, end_id)
+                                return {}
+                            action_task["id"] = end_id
+                            action_task["source_id"] = start_id
+                            action_task["task_id"] = uuid_task
+                    else:
+                        print(f"[actionPack] ActionType:{endNode_a.actionType}")
+                        return {}
+            elif isinstance(start_node, order.NodePosition) and isinstance(end_node, order.NodePosition):
+                if len(edge.actions) == 1:
+                    for e_a in edge.actions:
+                        if e_a.blockingType == order.ActionBlockingType.HARD:
+                            action_task["script_stage"] = 2
+                        elif e_a.blockingType == order.ActionBlockingType.NONE:
+                            action_task["script_stage"] = 1
+                        elif e_a.blockingType == order.ActionBlockingType.SOFT:
+                            action_task["script_stage"] = 1
+                        action_task["operation"] = "Script"
+                        script_name = None
+                        for ap in e_a.actionParameters:
+                            if ap.key == "script_name":
+                                script_name = ap.value
+                        action_task["script_name"] = script_name if script_name else "script.py"
+                        action_task["script_args"] = {
+                            "action_parameters": [a.model_dump() for a in e_a.actionParameters],
+                            "operation": e_a.actionType}
+                if edge.holdDir:
+                    action_task["hold_dir"] = edge.holdDir
+                start_id = robot.map.XYDir.get(
+                    (start_node.x, start_node.y, start_node.theta))
+                end_id = robot.map.XYDir.get(
+                    (end_node.x, end_node.y, end_node.theta))
+                print("map no point1", start_id, end_id)
+                if not start_id and not end_id:
+                    print("map no point2", start_id, end_id)
+
+                    print("map no point")
+                    return {}
+                action_task["id"] = end_id
+                action_task["source_id"] = start_id
+                action_task["task_id"] = uuid_task
+            else:
+                print(f"[actionPack] start_node or end_node type error:{start_node},{end_node}")
+                return {}
+            return action_task
 
         return action_task
 

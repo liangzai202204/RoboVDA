@@ -268,7 +268,7 @@ class OrderStateMachine:
                         get_edge = self.edges.get(e_id, None)
 
                         if get_edge:
-                            self.log.info(f"get edge ok!!! edge id({e_id}):{get_edge}")
+                            # self.log.info(f"get edge ok!!! edge id({e_id}):{get_edge}")
                             start_node = self.nodes.get(get_edge.startNodeId)
                             end_node = self.nodes.get(get_edge.endNodeId)
                             action_in_edge = None
