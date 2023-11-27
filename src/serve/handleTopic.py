@@ -100,18 +100,24 @@ class HandleTopic:
             订单统一入口
         """
         while True:
-            self.logs.info("waiting handle_instantActions ........")
-            instantAction = await TopicQueue.s_instantActions.get()
-            self._handle_instantActions(instantAction)
+            if self.robot.robot_online:
+                self.logs.info("waiting handle_instantActions ........")
+                instantAction = await TopicQueue.s_instantActions.get()
+                self._handle_instantActions(instantAction)
+            else:
+                self.logs.info("robot not online........")
 
     async def handle_factsheet(self):
         """
             订单统一入口
         """
         while True:
-            self.logs.info("waiting handle_factsheet ........")
-            factsheet = await TopicQueue.s_factSheet.get()
-            self._handle_factsheet(factsheet)
+            if self.robot.robot_online:
+                self.logs.info("waiting handle_factsheet ........")
+                factsheet = await TopicQueue.s_factSheet.get()
+                self._handle_factsheet(factsheet)
+            else:
+                self.logs.info("robot not online........")
 
     async def handle_state(self):
         """
@@ -270,12 +276,9 @@ class HandleTopic:
                 return
 
             if self.robot.instant_cancel_task():
-                self.order_state_machine.set_cancel_status()
-                self.order_state_machine.add_instant_action(action)
-                self.order = None
-                self.current_order = None
+                self.order_state_machine.set_cancel_status(action)
             else:
-                self.order_state_machine.add_instant_action(action, Status.FAILED)
+                self.order_state_machine.set_cancel_status(action, Status.FAILED)
         except Exception as e:
             self.logs.error(f"set_cancel_order_instant_action error:{e}")
 
@@ -382,6 +385,9 @@ class HandleTopic:
 
     def http_run_order(self, task: order.Order):
         self._run_order(task)
+
+    def http_run_instant_actions(self, task: instantActions.InstantActions):
+        self._handle_instantActions(task)
 
     def _run_order(self, task: order.Order):
         self.logs.info("[order] rec and start")

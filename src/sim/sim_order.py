@@ -33,14 +33,20 @@ class SimOrder:
         #     self.shortest_path.append(selfPosition)
         self.shortest_path.extend(nx.shortest_path(self.G, start, end))
 
-    def create_node(self, point):
+    def create_node(self, point, task=None):
         point_xy = self.map.advanced_point_list.get(point)
         if not point_xy:
             return None
+        a_s = []
+        if task:
+            a = order.Action.creat()
+            a.actionId = str(uuid.uuid4())
+            a.actionType = task
+            a_s.append(a)
         return order.Node(nodeId=point,
                           sequenceId=self.get_sequenceId(),
                           released=True,
-                          actions=[],
+                          actions=a_s,
                           nodePosition={
                               "x": point_xy["x"],
                               "y": point_xy["y"],
@@ -73,6 +79,7 @@ class SimOrder:
         """
         start = massage.get("source_id")
         end = massage.get("id")
+        task = massage.get("task")
         try:
             if not self.robot.robot_push_msg.current_station and not start:
                 start = "SELF_POSITION"
@@ -91,7 +98,10 @@ class SimOrder:
             if self.shortest_path:
                 print("线路", self.shortest_path)
                 for i, p in enumerate(self.shortest_path):
-                    nodes.append(self.create_node(p))
+                    if i + 1 == len(self.shortest_path):
+                        nodes.append(self.create_node(p, task))
+                    else:
+                        nodes.append(self.create_node(p))
                     if len(nodes) >= 2:
                         edges.append(self.create_edge(self.shortest_path[i - 1], self.shortest_path[i]))
                 orders_1 = order.Order(headerId=0,

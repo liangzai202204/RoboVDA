@@ -95,7 +95,7 @@ class PackTask:
                         for a2 in endNode.actions:
                             if a2.actionId not in self.uuid_task:
                                 action_uuid = str(uuid.uuid4())
-                                a_task = ActionPack.pack_action(a2, self.robot.model.agvClass, action_uuid)
+                                a_task = ActionPack.pack_action(a2, action_uuid, self.robot, self.config)
                                 if a_task:
                                     self.uuid_task[action_uuid] = a2.actionId
                                     self.task_pack_list.append(a_task)
