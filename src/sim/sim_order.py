@@ -82,6 +82,9 @@ class SimOrder:
                 start = self.robot.robot_push_msg.current_station
             print(f"start:{start}")
             print(f"end:{end}")
+            if not self.map.advanced_point_list.get(start) and not self.map.advanced_point_list.get(end):
+                print("起点或者终点不在地图中")
+                return
             self.find_path(start, end)
             nodes = []
             edges = []
