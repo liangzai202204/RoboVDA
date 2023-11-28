@@ -92,85 +92,77 @@ class OrderStateMachine:
             print("not self.init")
             return robot_state
         with self.lock:
-
+            nodes_status = self.orders.orders.nodes
+            actions_status = self.orders.orders.actions
+            edges_status = self.orders.orders.edges
             # 每次更新state。都將state的内容清空，然後遍歷添加 state
-
-            robot_state.nodeStates.clear()
-            robot_state.edgeStates.clear()
-            robot_state.actionStates.clear()
-
-
-
-            if self.cancel_order:
-                robot_state.actionStates.append(self.cancel_order)
-            if self.instant_action_start_pause:
-                robot_state.actionStates.append(self.instant_action_start_pause)
-                if self.instant_action_stop_pause:
-                    self.instant_action_start_pause = None
-            if self.instant_action_stop_pause:
-                robot_state.actionStates.append(self.instant_action_start_pause)
-                if self.instant_action_start_pause:
-                    self.instant_action_stop_pause = None
-            if self.current_order:
-                # 在 topic state 中更在 lastNode 字段
-                robot_state.lastNodeId = self.orders.orders.lastNode.get("nodeId", "")
-                robot_state.lastNodeSequenceId = self.orders.orders.lastNode.get("sequenceId", 0)
-                # 統計每個node、edge、action 的完成數量
-                nodes_status = self.orders.orders.nodes
-                actions_status = self.orders.orders.actions
-                edges_status = self.orders.orders.edges
-                node_f_n = len(nodes_status)
-                edge_f_n = len(edges_status)
-                action_f_n = len(actions_status)
-                if node_f_n == 0 and edge_f_n == 0 and self.orders.orders.action_empty():
-                    self.log.error("狀態機沒有任務")
-                    return robot_state
-                for _, node_s in nodes_status.items():
-                    n_s = node_s.get("status",None)
-                    if n_s != Status.FINISHED:
-                        robot_state.nodeStates.append(state.NodeState(**node_s["node"].model_dump()))
-                    else:
-                        node_f_n -= 1
-
-
-                for _, edge_s in edges_status.items():
-                    e_s = edge_s.get("status",None)
-                    if e_s != Status.FINISHED:
-                        robot_state.edgeStates.append(state.EdgeState(**edge_s["edge"].model_dump()))
-                    else:
-                        edge_f_n -= 1
-                for _, action_s in actions_status.items():
-                    a_s = action_s.get("status",None)
-                    a = action_s.get("action",None)
-                    robot_state.actionStates.append(state.ActionState(**{
-                        "actionDescription": a.actionDescription,
-                        "actionId": a.actionId,
-                        "actionStatus": a_s,
-                        "actionType": a.actionType,
-                        "resultDescription": ""
-                    }))
-                    if a_s == Status.FINISHED or a_s == Status.FAILED:
-                        action_f_n -= 1
-                if len(nodes_status) == 1:
-                    node_f_n = 0
-                if node_f_n == 0 and edge_f_n == 0 and action_f_n == 0:
-
-                    self.orders.orders.status = Status.FINISHED
-                    self.ready = True
-                    self.edges_and_actions_id_list.clear()
-                    self.task_id_list.clear()
-                    self.log.info(f"狀態機任務: {self.orders.orders.status}")
-                    self.orders = Orders
-                    self.init = True
-                else:
-                    self.orders.orders.status = Status.RUNNING
-                    self.log.info(f"狀態機任務: {self.orders.orders.status}")
             if len(robot_state.nodeStates) == 0:
                 robot_state.newBaseRequest = True
             else:
                 print(robot_state.nodeStates)
                 robot_state.newBaseRequest = False
+            robot_state.nodeStates.clear()
+            robot_state.edgeStates.clear()
+            robot_state.actionStates.clear()
+            # 統計每個node、edge、action 的完成數量
+            node_f_n = len(nodes_status)
+            edge_f_n = len(edges_status)
+            action_f_n = len(actions_status)
 
+            # 在 topic state 中更在 lastNode 字段
+            robot_state.lastNodeId = self.orders.orders.lastNode.get("nodeId", "")
+            robot_state.lastNodeSequenceId = self.orders.orders.lastNode.get("sequenceId", 0)
+            if self.cancel_order:
+                robot_state.actionStates.append(self.cancel_order)
+            if self.instant_action_start_pause:
+                robot_state.actionStates.append(self.instant_action_start_pause)
+                if self.instant_action_stop_pause:
+                    self.instant_action_stop_pause = None
+            if self.instant_action_stop_pause:
+                robot_state.actionStates.append(self.instant_action_start_pause)
+                if self.instant_action_start_pause:
+                    self.instant_action_start_pause = None
+            if node_f_n == 0 and edge_f_n == 0 and self.orders.orders.action_empty():
+                self.log.error("狀態機沒有任務")
+                return robot_state
+            for _, node_s in nodes_status.items():
+                n_s = node_s.get("status", None)
+                if n_s != Status.FINISHED:
+                    robot_state.nodeStates.append(state.NodeState(**node_s["node"].model_dump()))
+                else:
+                    node_f_n -= 1
+            for _, edge_s in edges_status.items():
+                e_s = edge_s.get("status", None)
+                if e_s != Status.FINISHED:
+                    robot_state.edgeStates.append(state.EdgeState(**edge_s["edge"].model_dump()))
+                else:
+                    edge_f_n -= 1
+            for _, action_s in actions_status.items():
+                a_s = action_s.get("status", None)
+                a = action_s.get("action", None)
+                robot_state.actionStates.append(state.ActionState(**{
+                    "actionDescription": a.actionDescription,
+                    "actionId": a.actionId,
+                    "actionStatus": a_s,
+                    "actionType": a.actionType,
+                    "resultDescription": ""
+                }))
+                if a_s == Status.FINISHED or a_s == Status.FAILED:
+                    action_f_n -= 1
+            if len(nodes_status) == 1:
+                node_f_n = 0
+            if node_f_n == 0 and edge_f_n == 0 and action_f_n == 0:
+
+                self.orders.orders.status = Status.FINISHED
+                self.ready = True
+                self.edges_and_actions_id_list.clear()
+                self.task_id_list.clear()
+                self.log.info(f"狀態機任務: {self.orders.orders.status}")
+                self.orders = Orders
+                self.init = True
+            else:
+                self.orders.orders.status = Status.RUNNING
+                self.log.info(f"狀態機任務: {self.orders.orders.status}")
             return robot_state
 
     def update_order(self, order_data: order.Order):
@@ -215,32 +207,31 @@ class OrderStateMachine:
         with self.lock:
             for task_statu in task_pack_status:
                 task_id = task_statu.get("task_id")
-                if self.current_order:
-                    c_edge = self.orders.orders.get_task_by_id(task_id)  # 獲得order中的，edge，然後找出 起點的 nodeId 和終點的 nodeId
-                    if not c_edge:
-                        self.log.error(f"嘗試更新edge，但是沒有這個edgeId：{task_id}")
-                        continue
-                    if task_statu["status"] == RobotOrderStatus.Completed:
-                        self.orders.orders.set_node_and_edge_status(c_edge, Status.FINISHED)
-                    elif task_statu["status"] == RobotOrderStatus.Failed:
-                        self.orders.orders.set_node_and_edge_status(c_edge, Status.FAILED)
-                    elif task_statu["status"] == RobotOrderStatus.StatusNone:
-                        self.orders.orders.set_node_and_edge_status(c_edge, Status.INITIALIZING)
-                    elif task_statu["status"] == RobotOrderStatus.Running:
-                        self.orders.orders.set_node_and_edge_status(c_edge, Status.RUNNING)
-                    elif task_statu["status"] == RobotOrderStatus.Canceled:
-                        self.orders.orders.set_node_and_edge_status(c_edge, Status.FAILED)
-                    elif task_statu["status"] == RobotOrderStatus.Suspended:
-                        self.orders.orders.set_node_and_edge_status(c_edge, Status.PAUSED)
-                    elif task_statu["status"] == RobotOrderStatus.NotFound:
-                        self.orders.orders.set_node_and_edge_status(c_edge, Status.FAILED)
-                    elif task_statu["status"] == RobotOrderStatus.Waiting:
-                        self.orders.orders.set_node_and_edge_status(c_edge, Status.WAITING)
-                    else:
-                        s = task_statu["status"]
-                        self.log.error(f"未知狀態：{s}")
-                    if len(self.orders.orders.nodes) == 1 and self.orders.orders.action_empty():
-                        self.orders.orders.set_node_status(Status.FINISHED)
+                c_edge = self.orders.orders.get_task_by_id(task_id)  # 獲得order中的，edge，然後找出 起點的 nodeId 和終點的 nodeId
+                if not c_edge:
+                    self.log.error(f"嘗試更新edge，但是沒有這個edgeId：{task_id}")
+                    continue
+                if task_statu["status"] == RobotOrderStatus.Completed:
+                    self.orders.orders.set_node_and_edge_status(c_edge, Status.FINISHED)
+                elif task_statu["status"] == RobotOrderStatus.Failed:
+                    self.orders.orders.set_node_and_edge_status(c_edge, Status.FAILED)
+                elif task_statu["status"] == RobotOrderStatus.StatusNone:
+                    self.orders.orders.set_node_and_edge_status(c_edge, Status.INITIALIZING)
+                elif task_statu["status"] == RobotOrderStatus.Running:
+                    self.orders.orders.set_node_and_edge_status(c_edge, Status.RUNNING)
+                elif task_statu["status"] == RobotOrderStatus.Canceled:
+                    self.orders.orders.set_node_and_edge_status(c_edge, Status.FAILED)
+                elif task_statu["status"] == RobotOrderStatus.Suspended:
+                    self.orders.orders.set_node_and_edge_status(c_edge, Status.PAUSED)
+                elif task_statu["status"] == RobotOrderStatus.NotFound:
+                    self.orders.orders.set_node_and_edge_status(c_edge, Status.FAILED)
+                elif task_statu["status"] == RobotOrderStatus.Waiting:
+                    self.orders.orders.set_node_and_edge_status(c_edge, Status.WAITING)
+                else:
+                    s = task_statu["status"]
+                    self.log.error(f"未知狀態：{s}")
+                if len(self.orders.orders.nodes) == 1 and self.orders.orders.action_empty():
+                    self.orders.orders.set_node_status(Status.FINISHED)
 
     def set_cancel_order_instant_action(self,cancel_order_action:order.Action,status:Status):
         """对应 topic instantAction：cancelOrder
@@ -252,28 +243,25 @@ class OrderStateMachine:
         另外，还要将状态机的 nodeState 和 edgeState delete，将 actionState 的状态都改为 failed
         """
         with self.lock:
-            self.init = True
             if self.init:
                 a = cancel_order_action
                 self.cancel_order = state.ActionState(**{
-                        "actionDescription": a.actionDescription,
-                        "actionId": a.actionId,
-                        "actionStatus": status,
-                        "actionType": a.actionType,
-                        "resultDescription": ""
-                    })
-                if self.current_order:
-                    # nodeState 和 edgeState delete
-                    self.orders.orders.nodes = {}
-                    self.orders.orders.edges = {}
-                    self.task_id_list.clear()
-
-                    self.orders.orders.status = Status.FINISHED
-                    self.edges_and_actions_id_list.clear()
-                    a_s = self.orders.orders.actions
-                    for ids,action_s in a_s.items():
-                        if action_s.get("status",None) and action_s["status"] != Status.FINISHED:
-                            action_s["status"] = Status.FAILED
+                    "actionDescription": a.actionDescription,
+                    "actionId": a.actionId,
+                    "actionStatus": status,
+                    "actionType": a.actionType,
+                    "resultDescription": ""
+                })
+                # nodeState 和 edgeState delete
+                self.orders.orders.nodes = {}
+                self.orders.orders.edges = {}
+                self.task_id_list.clear()
+                self.orders.orders.status = Status.FINISHED
+                self.edges_and_actions_id_list.clear()
+                a_s = self.orders.orders.actions
+                for ids, action_s in a_s.items():
+                    if action_s.get("status", None) and action_s["status"] != Status.FINISHED:
+                        action_s["status"] = Status.FAILED
 
 
 

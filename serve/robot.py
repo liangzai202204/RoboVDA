@@ -232,7 +232,9 @@ class Robot:
                         self.logs.info(f"下发任务失败：{move_task_list}")
 
                 else:
+
                     self.logs.info("没有控制权，无法下发任务")
+                    self.lock_robot()
         except Exception as e:
             self.logs.info(f"试图抢占控制权并下发任务失败，可能是没有链接到机器人,{e}")
 

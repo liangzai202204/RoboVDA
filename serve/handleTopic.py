@@ -227,7 +227,6 @@ class HandleTopic:
                 }))
                 self.order_state_machine.set_cancel_order_instant_action(action, Status.FINISHED)
                 self.logs.error(f"[instantAction]noOrderToCancel:{self.state_error}")
-
                 return
             if self.robot.instant_cancel_task():
                 self.order_state_machine.set_cancel_order_instant_action(action, Status.FINISHED)
@@ -357,7 +356,7 @@ class HandleTopic:
             self.report_error(err.ErrorOrder.orderUpdateIdLowerErr)
 
     def _try_create_order(self, sub_order):
-        self.logs.info("new orderId，try to create order...")
+        print("收到新的orderId，并且当前没有任务，尝试创建新的订单。。。")
         self.order = order.Order.create_order(sub_order)
 
         self.current_order = self.order

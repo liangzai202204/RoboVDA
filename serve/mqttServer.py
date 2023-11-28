@@ -164,7 +164,7 @@ class MqttServer:
                 # self._enqueue(state.State(**json.loads(msg.payload)))
                 pass
             elif msg.topic == self.mqtt_topic_order:
-                self.logs.info(f"topic {self.mqtt_topic_order} rec")
+                self.logs.info(f"topic {self.mqtt_topic_order} rec,CONTENT:{msg.payload}")
                 self._enqueue(order.Order(**json.loads(msg.payload)))
             elif msg.topic == self.mqtt_topic_instantActions:
                 self.logs.info(f"topic {self.mqtt_topic_instantActions} rec")
