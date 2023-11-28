@@ -93,7 +93,7 @@ class OrderStateMachine:
         with self.lock:
             if status:
                 a = state.ActionState(**n_action.model_dump())
-                a.actionStatus = state.ActionStatus.FAILED
+                a.actionStatus = status
                 self.instant_actions[n_action.actionId] = a
                 return
             if self.instant_actions.get(n_action.actionId, None):
@@ -383,7 +383,7 @@ class OrderStateMachine:
         with self.lock:
             if status:
                 a = state.ActionState(**n_action.model_dump())
-                a.actionStatus = state.ActionStatus.FAILED
+                a.actionStatus = status
                 self.instant_actions[n_action.actionId] = a
                 return
             if self.instant_actions.get(n_action.actionId, None):

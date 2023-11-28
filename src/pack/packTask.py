@@ -107,6 +107,7 @@ class PackTask:
         self.edges = []
         self.nodes_edges_list = []
         self.task_pack_list = []
+        self.error = None
 
     def _get_node(self, NodeId):
         for node in self.nodes:
