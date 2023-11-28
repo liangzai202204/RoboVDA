@@ -1,6 +1,6 @@
 import enum
 from typing import List, Optional, Union
-from type import state
+from src.type import state
 import pydantic
 
 

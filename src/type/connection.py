@@ -1,5 +1,4 @@
 import pydantic
-import threading
 
 
 class Connection(pydantic.BaseModel):
