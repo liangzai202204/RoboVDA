@@ -33,7 +33,7 @@ class PackTask:
         self.nodes = copy.deepcopy(new_order.nodes)
         self.edges = copy.deepcopy(new_order.edges)
         # 检查 order 内容 并排序 nodes 和 edges
-        if not self.nodes or not self.edges:
+        if not self.nodes and not self.edges:
             return err.ErrorOrder.nodeOrEdgeEmpty
         if (len(self.nodes) - 1) != len(self.edges):
             return err.ErrorOrder.nodeAndEdgeNumErr
@@ -111,7 +111,7 @@ class PackTask:
             if len(self.nodes) == 1:
                 self.pack_node(self.nodes[0])
                 return
-            self.pack_node(self.nodes_edges_list[0])
+            self.pack_node(self.nodes[0])
             for edge, node in zip(self.nodes_edges_list[::2], self.nodes_edges_list[1::2]):
                 node: order.Node
                 edge: order.Edge
@@ -202,3 +202,4 @@ class PackTask:
         self.edges = []
         self.nodes_edges_list = []
         self.task_pack_list = []
+        self.error = None
