@@ -249,7 +249,7 @@ class ActionPack(pydantic.BaseModel):
                         for ap in e_a.actionParameters:
                             if ap.key == "script_name":
                                 script_name = ap.value
-                        action_task["script_name"] = script_name if script_name else "script.py"
+                        action_task["script_name"] = script_name if script_name else config.script_name
                         action_task["script_args"] = {
                             "action_parameters": [a.model_dump() for a in e_a.actionParameters],
                             "operation": e_a.actionType}
