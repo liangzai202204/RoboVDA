@@ -25,7 +25,7 @@ fi
 #
 ## 检查文件是否存在
 if [ -f "/usr/local/SeerRobotics/vda/RoboVda.sh" ] && [ -f "/etc/systemd/system/startup_vda.service" ]; then
-    echo "Files exist"
+    echo "chmod 777 /usr/local/SeerRobotics/vda/RoboVda.sh"
     echo seer | sudo -S chmod 777 /usr/local/SeerRobotics/vda/RoboVda.sh
 
 else

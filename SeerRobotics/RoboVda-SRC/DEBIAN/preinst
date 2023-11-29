@@ -11,7 +11,7 @@ set -e
 if [[ $(uname -r) =~ Microsoft$ ]]; then
     echo "This is WSL"
 else
-
+    echo "preinst"
     systemctl daemon-reload
 
     if [ -f /etc/systemd/system/startup_vda.service ]; then
