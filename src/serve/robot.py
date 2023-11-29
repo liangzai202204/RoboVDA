@@ -36,7 +36,7 @@ class Robot:
         # 機器人掉綫后，仍處於在綫狀態
         # 第一次啓動時，如果機器人不在綫，地圖管理的rbk會有問題，這期間機器人上綫，不會拿到鏈接，無法更新地圖
         self.state = state.State.create_state()
-        self.nick_name = "seer-vda5050"
+        self.nick_name = "vda5050"
         self.lock = False
         self.robot_version = "3.4.5"
         self.localizationTypes = ["SLAM"]
@@ -240,6 +240,8 @@ class Robot:
                         self.logs.info(f"下发任务成功：{move_task_list}")
                         flag = False
                     else:
+
+                        self.lock_robot()
                         self.logs.info(f"下发任务失败：{move_task_list}")
 
                 else:

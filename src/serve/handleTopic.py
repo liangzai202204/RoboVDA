@@ -35,7 +35,6 @@ class HandleTopic:
     def __init__(self, robot: Robot, config: Config):
         self.state_report_frequency = config.state_report_frequency
         self.robot_type = config.robot_type
-        self.init = False
         self.robot: Robot = robot
         self.sim_order = SimOrder(config, robot)
         self.lock_order = threading.Lock()
@@ -51,7 +50,6 @@ class HandleTopic:
         self.robot_visualization_header_id = 0
         self.logs = MyLogger()
         self.state = state.State.create_state()
-        self.init = False  # 表示第一次运行，用于判断运单逻辑
         # 訂單狀態機
         self.order_state_machine = OrderStateMachine()
         self.pack_task = PackTask(config)
@@ -397,57 +395,48 @@ class HandleTopic:
                 self.state_error.clear()
                 if not self.order_state_machine.order:
                     self.order_state_machine.reset()
-                if self.order_state_machine.order_empty():
-                    # 初始化，直接创建订单
-                    self.logs.info(f"[order] init,create order")
-                    self.current_order = order.Order.create_order(task)
+                # is order_empty? by order_state_machine
+                if self.order_state_machine.is_order_empty():
+                    self.current_order = task
+                    self.logs.info(f"[order] order empty,creating order ....")
                     self.execute_order(True)
                     return
                 # 判断机器人当前的订单Id和新的订单Id是否一致
-                self.logs.info(f"[order] try create order")
                 if self.order_state_machine.order.orderId != task.orderId:
                     # 订单不一致，开始创建新订单逻辑
-                    if not self.order_state_machine.order_task_empty():
+                    if not self.order_state_machine.is_order_empty():
                         self.report_error(task, err.ErrorOrder.newOrderIdButOrderRunning)
                     else:
                         # 创建新的订单
-                        self._try_create_order(task)
+                        self.logs.info(f"[order] try to create order when order_state_machine has a order but OK！")
+                        self.current_order = task
+                        self.execute_order()
                     return
                 # 订单一致，开始订单更新逻辑
                 # orderUpdateId 比较
                 elif self.order_state_machine.order.orderUpdateId <= task.orderUpdateId:
                     if self.order_state_machine.order.orderUpdateId == task.orderUpdateId:
-                        # 订单orderUpdateId已存在，丢弃信息
                         self.logs.info(f"orderUpdateId已存在，丢弃信息")
+                        self.report_error(task, err.ErrorOrder.orderUpdateIdExistErr)
                         return
-                    if self.order_state_machine.order_empty():
-                        """ 还有任务时，追加 order
-                            机器人正在从1到10，在4的时候，order说，可以去115了，这个时候，需要更新订单 4-15
-                        """
-                        # 更新订单
-                        # ------------------------------------------
-                        #          重要节点
-                        # ------------------------------------------
-                        self._try_update_order(task)
+                    if self.order_state_machine.is_order_empty():
+                        """ 没有任务，追加 order"""
+                        self.current_order = task
+                        self.execute_order(True)
                     else:
-                        """ 没有任务，追加 order
-                            机器人正在从1到10，已经在10了，在等order，然后order说，可以去15了，这个时候，需要更新订单 10-15
-                        """
-                        # 创建新的订单
-                        self._try_update_order(task)
+                        self.logs.info(f"[order]_try_update_order")
+                        if self.is_match_node_start_end(task.nodes, self.current_order.nodes):
+                            self.current_order = task
+                            self.execute_order()
+                            return
+                        self.report_error(self.current_order, err.ErrorOrder.createOrderFailed)
                     return
-                # orderUpdateId 错误，上报错误，拒绝订单
+                # orderUpdateId 比当前小，上报错误，拒绝订单
                 else:
                     self.report_error(task, err.ErrorOrder.orderUpdateIdLowerErr)
             except Exception as e:
                 self.logs.error(f"create order failed:{e}")
                 self.report_error(task, err.ErrorOrder.createOrderFailed)
-
-    def _try_create_order(self, sub_order):
-        print("收到新的orderId，并且当前没有任务，尝试创建新的订单。。。")
-        self.order = order.Order.create_order(sub_order)
-        self.current_order = self.order
-        self.execute_order()
 
     def _try_update_order(self, sub_order):
         """
@@ -457,20 +446,9 @@ class HandleTopic:
         """
         self.logs.info(f"[order]_try_update_order")
         if self.is_match_node_start_end(sub_order.nodes, self.current_order.nodes):
-            # self.current_order = sub_order
-            self.update_order(sub_order)
+            self.execute_order(sub_order)
             return
         self.report_error(sub_order, err.ErrorOrder.createOrderFailed)
-
-    def update_order(self, sub_order: order.Order):
-        self.current_order.orderUpdateId = sub_order.orderUpdateId
-        update_order = order.Order.create_order(sub_order)
-        # 狀態機
-        uuid_task = self.pack_send(update_order)
-        if uuid_task:
-            self.order_state_machine.add_order(update_order, uuid_task, self.robot.model.agvClass)
-        else:
-            self.logs.error(f"[pack][send]actionId empty:{uuid_task}")
 
     def pack_send(self, new_order: order.Order):
         task_list, uuid_task = self.pack_task.pack(new_order, self.robot)
@@ -524,14 +502,9 @@ class HandleTopic:
         await q.put(obj)
 
     def execute_order(self, is_new_order: bool = False):
-        """
-            打包任务，发给机器人,只是将 node 和 edge 处理打包成 3066 的任务格式，发给机器人
-        :return:None
-        """
-
         try:
             uuid_task = self.pack_send(self.current_order)
-            # 狀態機
+            self.logs.info(f"打包任务，并下发任务，下发任务的ID列表：{uuid_task}")
             self.order_state_machine.add_order(self.current_order, uuid_task, self.robot.model.agvClass)
         except Exception as e:
             self.logs.info(f"试图打包任务，发给机器人 失败:{e}")

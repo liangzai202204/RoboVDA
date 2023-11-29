@@ -8,11 +8,12 @@ class ErrorOrder(str):
     endNodeIdNotNodeId = "edge 的 endNodeId 不等于 NodeId"
     startNodeIdNotNodeId = "edge 的 startNodeId 不等于 NodeId"
     nodeAndEdgeNumErr = 0
-    newOrderIdButOrderRunning = "下發新的 order ，但是已有 order"
+    newOrderIdButOrderRunning = "下發新的 order ，但是已有 order 在运行"
     sendOrderToRobotErr = 2
     nodeOrEdgeEmpty = 3
     packNodeEdgeListErr = 4
-    orderUpdateIdLowerErr = 5
+    orderUpdateIdLowerErr = "下发order时，orderUpdateId 比当前订单小，丢弃信息"
+    orderUpdateIdExistErr = "下发order时，orderUpdateId 与当前相等"
     packTaskEdgeErr = 6
     mapNotNodePosition = "地图没有这个点"
     actionPackEmpty = "打包动作为空"

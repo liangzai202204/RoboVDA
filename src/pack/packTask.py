@@ -13,13 +13,10 @@ class PackTask:
     def __init__(self, config: Config):
         self.config = config
         self.robot: Robot = None
-        self.nodes_point = None
         self.order = None
         self.nodes: List[order.Node] = []
         self.edges: List[order.Edge] = []
-        self.nodes_edges_list = []
         self.task_pack_list = []
-        self.error = None
         self.log = MyLogger()
         self.lock = threading.Lock()
         self.uuid_task = {}
@@ -44,9 +41,13 @@ class PackTask:
                 self.nodes.sort(key=lambda x: x.sequenceId)
                 self.edges.sort(key=lambda y: y.sequenceId)
                 self._pack()
+                if not self.task_pack_list or not self.uuid_task:
+                    self.log.error(f"打包任务异常，task_pack_list：{self.task_pack_list}，uuid_task：{self.uuid_task}")
+                    self.clear_pack()
                 return self.task_pack_list, self.uuid_task
             except Exception as e:
                 self.log.error(f"[pack]pack error ;{e}")
+                self.clear_pack()
                 return [], {}
 
     def _pack(self):
@@ -103,10 +104,10 @@ class PackTask:
             self.log.error(f"pack_params error:{e}")
 
     def clear_pack(self):
-        self.nodes = []
-        self.edges = []
-        self.nodes_edges_list = []
-        self.task_pack_list = []
+        self.nodes.clear()
+        self.edges.clear()
+        self.task_pack_list.clear()
+        self.uuid_task.clear()
 
     def _get_node(self, NodeId):
         for node in self.nodes:

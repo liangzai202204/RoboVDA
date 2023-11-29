@@ -45,15 +45,9 @@ class OrderStateMachine:
         """
         return
 
-    def order_empty(self) -> bool:
+    def is_order_empty(self) -> bool:
         """是否有订单"""
-        if not self.edges and self.actions_empty:
-            return True
-        return False
-
-    def order_task_empty(self) -> bool:
-        """有订单，但是任务已完成"""
-        if not self.edges and not self.actions or not self.nodes:
+        if not self.edges and not self.actions:
             return True
         if self.actions_empty and self.edges_empty and self.nodes_empty:
             return True
@@ -87,17 +81,17 @@ class OrderStateMachine:
         if n_action.model_dump():
             self.actions[n_action.actionId] = state.ActionState(**n_action.model_dump())
         else:
-            self.log.warning(f"添加 action，但是为空：{n_action.model_dump()}")
+            self.log.warning(f"[OrderStateMachine]添加 action，但是为空：{n_action.model_dump()}")
 
     def add_instant_action(self, n_action: order.Action, status=None):
         with self.lock:
             if status:
                 a = state.ActionState(**n_action.model_dump())
-                a.actionStatus = state.ActionStatus.FAILED
+                a.actionStatus = status
                 self.instant_actions[n_action.actionId] = a
                 return
             if self.instant_actions.get(n_action.actionId, None):
-                self.log.warning(f"添加 action，但已存在,id:{n_action.actionId}")
+                self.log.warning(f"[OrderStateMachine]添加 action，但已存在,id:{n_action.actionId}")
                 return
             self.instant_actions[n_action.actionId] = state.ActionState(**n_action.model_dump())
 
@@ -109,8 +103,10 @@ class OrderStateMachine:
         """
         with self.lock:
             try:
+                self.log.info(f"[OrderStateMachine]将订单信息更新到状态机：{str(n_order.model_dump())}")
                 self.robot_type = robot_type
                 if not uuid_task:
+                    self.log.warning(f"[OrderStateMachine]添加新的订单到状态机时，下发的任务ID为空：{uuid_task}")
                     return
                 self.uuid_task = uuid_task
                 if not self.order:
@@ -132,7 +128,8 @@ class OrderStateMachine:
                         for a in e.actions:
                             self.add_action(a)
             except Exception as e:
-                self.log.error(f"[OrderStateMachine]add_order{e}")
+                self.log.error(f"[OrderStateMachine]add_order error：{e}")
+                self.reset()
 
     def del_node(self, ids: str):
         if ids in self.nodes:
@@ -140,7 +137,7 @@ class OrderStateMachine:
                 self.last_node_id = node.nodeId
                 self.last_node_sequenceId = node.sequenceId
             self.nodes.pop(ids)
-            self.log.info(f"del_node :{ids}")
+            self.log.info(f"[OrderStateMachine]del_node :{ids}")
 
     def del_edge(self, ids: str):
         edge = self.edges.get(ids,None)
@@ -148,7 +145,7 @@ class OrderStateMachine:
             self.del_node(edge.startNodeId)
             self.del_node(edge.endNodeId)
             self.edges.pop(ids)
-            self.log.warning(f"del_edge :{ids}")
+            self.log.warning(f"[OrderStateMachine]del_edge :{ids}")
         # else:
         #     self.log.error(f"del_edge but not exist id {ids}")
 
@@ -160,52 +157,43 @@ class OrderStateMachine:
             self.actions[ids].actionStatus = status
             # self.log.info(f"change action status:{status} ok！,actionId：{ids}")
         else:
-            self.log.error(f"when changing action status，cannot found actionId：{ids}")
+            self.log.error(f"[OrderStateMachine]when changing action status，cannot found actionId：{ids}")
 
     def set_instant_action_status(self, ids: str, status: Status):
         if self.instant_actions.get(ids, None):
             self.instant_actions[ids].actionStatus = status
         else:
-            self.log.error(f"when changing instant action status，cannot found  actionId：{ids}")
+            self.log.error(f"[OrderStateMachine]when changing instant action status，cannot found  actionId：{ids}")
 
     @property
     def actions_empty(self):
-        try:
-            if not self.actions:
-                return True
-            for ids, action in self.actions.items():
-                if action.actionStatus != state.ActionStatus.FINISHED and action.actionStatus != state.ActionStatus.FAILED:
-                    # 排除 instant_action  的任务
-                    if action.actionType in action_type.instant_action_type:
-                        return False
-                    return False
+        if not self.actions:
             return True
-        except Exception as e:
-            self.log.error(f"[OrderStateMachine]actions_empty error:{e}")
+        for ids, action in self.actions.items():
+            if action.actionStatus != state.ActionStatus.FINISHED and action.actionStatus != state.ActionStatus.FAILED:
+                # 排除 instant_action  的任务
+                if action.actionType in action_type.instant_action_type:
+                    return False
+                return False
+        return True
 
     @property
     def edges_empty(self):
-        try:
-            for ids, edge in self.edges.items():
-                if not self.edges:
-                    return True
-                if edge.released:
-                    return False
+        if not self.edges:
             return True
-        except Exception as e:
-            self.log.error(f"[OrderStateMachine]edges_empty error:{e}")
+        for ids, edge in self.edges.items():
+            if edge.released:
+                return False
+        return True
 
     @property
     def nodes_empty(self):
-        try:
-            if not self.nodes:
-                return True
-            for ids, node in self.nodes.items():
-                if node.released:
-                    return False
+        if not self.nodes:
             return True
-        except Exception as e:
-            self.log.error(f"[OrderStateMachine]nodes_empty error:{e}")
+        for ids, node in self.nodes.items():
+            if node.released:
+                return False
+        return True
 
     def get_order_status(self):
         with self.lock:
@@ -222,6 +210,7 @@ class OrderStateMachine:
                     return
                 actions_empty = self.actions_empty
                 if not self.edges and actions_empty and not self.instant_actions:
+                    self.nodes.clear()
                     return
                 self.task_pack_status = task_pack_status
                 self.taskStatus = taskStatus
@@ -341,7 +330,8 @@ class OrderStateMachine:
                                     elif task_statu.status == RobotOrderStatus.Waiting:
                                         self.set_action_status(a.actionId, Status.WAITING)
                                     else:
-                                        self.log.warning(f"更新状态机 action 的状态时，找不到状态：{task_statu.status}")
+                                        self.log.warning(
+                                            f"[OrderStateMachine]更新状态机 action 的状态时，找不到状态：{task_statu.status}")
                     # self.log.info(f"need_del_edge_id:{need_del_edge_id}")
                 except Exception as e:
 
@@ -371,23 +361,24 @@ class OrderStateMachine:
         elif status == RobotOrderStatus.Waiting:
             self.set_instant_action_status(ids, Status.WAITING)
         else:
-            self.log.warning(f"更新状态机 instant action 的状态时，找不到状态：{ids.status}")
+            self.log.warning(f"[OrderStateMachine]更新状态机 instant action 的状态时，找不到状态：{ids.status}")
 
     def reset(self):
         self.actions.clear()
         self.nodes.clear()
         self.edges.clear()
         self.instant_actions.clear()
+        self.log.info(f"[OrderStateMachine]清空 nodes、edges、actions、instant_actions")
 
     def set_cancel_status(self, n_action: order.Action, status=None):
         with self.lock:
             if status:
                 a = state.ActionState(**n_action.model_dump())
-                a.actionStatus = state.ActionStatus.FAILED
+                a.actionStatus = status
                 self.instant_actions[n_action.actionId] = a
                 return
             if self.instant_actions.get(n_action.actionId, None):
-                self.log.warning(f"添加 action，但已存在,id:{n_action.actionId}")
+                self.log.warning(f"[OrderStateMachine]添加 action，但已存在,id:{n_action.actionId}")
                 return
             self.instant_actions[n_action.actionId] = state.ActionState(**n_action.model_dump())
             self.nodes.clear()
@@ -398,7 +389,10 @@ class OrderStateMachine:
                     a.actionStatus = state.ActionStatus.FAILED
 
     def reset_part(self):
+        self.nodes.clear()
+        self.edges.clear()
         self.instant_actions.clear()
+        self.log.info(f"[OrderStateMachine]清空 nodes、edges、instant_actions")
 
     def _set_actions_status_failed(self):
         with self.lock:
@@ -406,5 +400,5 @@ class OrderStateMachine:
             self.nodes.clear()
             self.edges.clear()
             if self.actions:
-                for _,a in self.actions.items():
+                for _, a in self.actions.items():
                     a.actionStatus = state.ActionStatus.FAILED
