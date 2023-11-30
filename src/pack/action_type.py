@@ -226,8 +226,10 @@ class ActionPack(pydantic.BaseModel):
                                 (start_node.nodePosition.x, start_node.nodePosition.y, start_node.nodePosition.theta))
                             end_id = robot.map.XYDir.get(
                                 (end_node.nodePosition.x, end_node.nodePosition.y, end_node.nodePosition.theta))
-                            if not start_id and not end_id:
-                                print("map no point3", start_id, end_id)
+                            if not start_id or not end_id:
+                                print("[node]map no point", start_id, end_id)
+                                print(f"[node]start_node, {start_node.nodeId}, {start_node.nodePosition.model_dump()}")
+                                print(f"[node]end_node, {end_node.nodeId}, {end_node.nodePosition.model_dump()}")
                                 return {}
                             action_task["id"] = end_id
                             action_task["source_id"] = start_id
@@ -260,8 +262,10 @@ class ActionPack(pydantic.BaseModel):
                 end_id = robot.map.XYDir.get(
                     (end_node.x, end_node.y, end_node.theta))
                 print("task point", start_id, end_id)
-                if not start_id and not end_id:
-                    print("map no point", start_id, end_id)
+                if not start_id or not end_id:
+                    print("[NodePosition]map no point", start_id, end_id)
+                    print(f"[NodePosition]start_node, {start_node.model_dump()}")
+                    print(f"[NodePosition]end_node, {end_node.model_dump()}")
                     return {}
                 action_task["id"] = end_id
                 action_task["source_id"] = start_id

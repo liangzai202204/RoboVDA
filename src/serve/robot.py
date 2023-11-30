@@ -320,7 +320,7 @@ class Robot:
                 self.logs.error(f"req error")
                 return {}
             self.params = json.loads(par_req)
-            self.logs.info(f"model_req len :{par_req}")
+            self.logs.info(f"model_req len :{len(par_req)}")
 
         except OSError as o:
             self.logs.error(f"_get_params:{o}")
