@@ -7,18 +7,18 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-18.04    # 运行环境
+    runs-on: linux    # 运行环境
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2    # 拉取项目代码
+      - name: Checkout code
+        uses: actions/checkout@v2    # 拉取项目代码
 
-    - name: Setup Python environment
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.9'     # 设置Python环境
+      - name: Setup Python environment
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.9'     # 设置Python环境
 
-    - name: Install dependencies
+      - name: Install dependencies
       run: pip install -r requirements.txt  # 安装依赖，如果有的话
 
     - name: Build RoboVda
