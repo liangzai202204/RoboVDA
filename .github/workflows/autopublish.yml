@@ -19,15 +19,15 @@ jobs:
           python-version: '3.9'     # 设置Python环境
 
       - name: Install dependencies
-      run: pip install -r requirements.txt  # 安装依赖，如果有的话
+        run: pip install -r requirements.txt  # 安装依赖，如果有的话
 
-    - name: Build RoboVda
-      run: pip install -r requirements.txt  # 安装依赖，如果有的话
+      - name: Build RoboVda
+        run: pip install -r requirements.txt  # 安装依赖，如果有的话
 
-    - name: Install PyInstaller
-      run: pip install pyinstaller
+      - name: Install PyInstaller
+        run: pip install pyinstaller
 
-    - name: Build and Package
+      - name: Build and Package
       run: |
         pyinstaller --onefile src/RoboVda.py
         chmod 775 SeerRobotics/RoboVda-SRC/DEBIAN/postinst
