@@ -13,7 +13,7 @@ class Config:
     robot_ip: str = "localhost"
     robot_type: int = 1
     mode: int = 0
-    web_host: str = "localhost"
+    web_host: str = "0.0.0.0"
     web_port: int = 5000
     mqtt_topic_order: str = 'robot/order'
     mqtt_topic_state: str = 'robot/state'

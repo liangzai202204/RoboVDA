@@ -50,7 +50,7 @@ class Robot:
                 if self.init:
                     await self.update()
                 else:
-                    self.map.get_map()
+                    # self.map.get_map()
                     self.lock_robot()
                     self.model.get_model()
                     self._get_params()
@@ -343,6 +343,7 @@ class RobotModel:
         if not os.path.exists(self.model_dir):
             os.makedirs(self.model_dir)
         self.model_path = os.path.join(self.model_dir, "robot.model")
+        self.local_model_path = "/usr/local/etc/.SeerRobotics/rbk/resources/models"
         self.rbk = rbk
         self.model = None
         self.mode = None
@@ -372,57 +373,66 @@ class RobotModel:
         return None
 
     def get_model(self):
-        self.log.info(f"----------------------get_model----------------------------")
-        model_req = self._get_model()
+        try:
+            model_req = {}
+            self.log.info(f"----------------------get_model----------------------------")
+            if os.path.exists(os.path.join(self.local_model_path,"robot.model")):
+                self.log.info(f"[model]local path had model,loading....")
+                with open(os.path.join(self.local_model_path,"robot.model"), "r") as f:
+                    model_req = json.load(f)
+            else:
+                model_req = self._get_model()
+            self.model = Model(model_req)
+            for m in self.model.device_types:
+                if m.name == "jack":
+                    for d in m.devices:
+                        if d.is_enabled:
+                            self.agvClass = "CARRIER"
+                            self.model_msg["agvClass"] = self.agvClass
+                elif m.name == "fork":
+                    for d in m.devices:
+                        if d.is_enabled:
+                            self.agvClass = "FORKLIFT"
+                            self.model_msg["agvClass"] = self.agvClass
+                elif m.name == "chassis":
+                    for d in m.devices:
+                        if d.name == "chassis":
+                            for dp in d.device_params:
+                                if dp.key == "mode":
+                                    self.mode = dp.combo_param.child_key
+                                    self.model_msg["agvClass"] = self.agvClass
+                                elif dp.key == "shape":
+                                    if dp.combo_param.child_key == "rectangle":
+                                        for c_p in dp.combo_param.child_params:
+                                            if c_p.key == "rectangle":
+                                                for cpp in c_p.params:
+                                                    if cpp.key == "width":
+                                                        self.width = cpp.double_value
+                                                    elif cpp.key == "head":
+                                                        self.length += cpp.double_value
+                                                    elif cpp.key == "tail":
+                                                        self.length += cpp.double_value
+                                                    elif cpp.key == "height":
+                                                        self.height = cpp.double_value
+                                    if dp.combo_param.child_key == "circle":
+                                        for c_p in dp.combo_param.child_params:
+                                            if c_p.key == "circle":
+                                                for cpp in c_p.params:
+                                                    if cpp.key == "radius":
+                                                        self.width = cpp.double_value
+                                                        self.length = cpp.double_value
+                                                    elif cpp.key == "height":
+                                                        self.height = cpp.double_value
 
-        self.model = Model(model_req)
-        for m in self.model.device_types:
-            if m.name == "jack":
-                for d in m.devices:
-                    if d.is_enabled:
-                        self.agvClass = "CARRIER"
-                        self.model_msg["agvClass"] = self.agvClass
-            elif m.name == "fork":
-                for d in m.devices:
-                    if d.is_enabled:
-                        self.agvClass = "FORKLIFT"
-                        self.model_msg["agvClass"] = self.agvClass
-            elif m.name == "chassis":
-                for d in m.devices:
-                    if d.name == "chassis":
-                        for dp in d.device_params:
-                            if dp.key == "mode":
-                                self.mode = dp.combo_param.child_key
-                                self.model_msg["agvClass"] = self.agvClass
-                            elif dp.key == "shape":
-                                if dp.combo_param.child_key == "rectangle":
-                                    for c_p in dp.combo_param.child_params:
-                                        if c_p.key == "rectangle":
-                                            for cpp in c_p.params:
-                                                if cpp.key == "width":
-                                                    self.width = cpp.double_value
-                                                elif cpp.key == "head":
-                                                    self.length += cpp.double_value
-                                                elif cpp.key == "tail":
-                                                    self.length += cpp.double_value
-                                                elif cpp.key == "height":
-                                                    self.height = cpp.double_value
-                                if dp.combo_param.child_key == "circle":
-                                    for c_p in dp.combo_param.child_params:
-                                        if c_p.key == "circle":
-                                            for cpp in c_p.params:
-                                                if cpp.key == "radius":
-                                                    self.width = cpp.double_value
-                                                    self.length = cpp.double_value
-                                                elif cpp.key == "height":
-                                                    self.height = cpp.double_value
-
-            elif m.name == "pgv":
-                for d in m.devices:
-                    if d.name == "chassis":
-                        for dp in d.device_params:
-                            if dp.key == "func":
-                                self.pgv_func = dp.combo_param.child_key
+                elif m.name == "pgv":
+                    for d in m.devices:
+                        if d.name == "chassis":
+                            for dp in d.device_params:
+                                if dp.key == "func":
+                                    self.pgv_func = dp.combo_param.child_key
+            self.log.info(f"load map ok!!!")
+        except Exception as e:
+            self.log.error(f"load model error!!! {e}")
 
 
 class RobotMap:
@@ -431,12 +441,13 @@ class RobotMap:
         self.node_list = []  # 所有点的连线
         self.XYDir = {}  # {坐标：站点}
         self.advanced_point_list = {}  # {站点：坐标}
+        self.local_map_path = "/usr/local/etc/.SeerRobotics/rbk/resources/maps"
         self.map_dir = os.path.join("/usr/local/SeerRobotics/vda/", "robotMap")
         if not os.path.exists(self.map_dir):
             os.makedirs(self.map_dir)
-        self.model_path = os.path.join(os.path.join("/usr/local/SeerRobotics/vda/", "robotMap"), "robot.smap")
-        if os.path.exists(self.model_path):
-            self.set_map()
+        self.map_path = os.path.join(os.path.join("/usr/local/SeerRobotics/vda/", "robotMap"), "robot.smap")
+        # if os.path.exists(self.map_path):
+        #     self.set_map()
         self.rbk = rbk
         self.map = None
         self.log = MyLogger()
@@ -454,7 +465,7 @@ class RobotMap:
             self.log.info(f"[map]map_req len :{len(data)}")
             # print(self.model_path)
             # 将模型文件写入硬盘
-            with open(self.model_path, 'wb') as file:
+            with open(self.map_path, 'wb') as file:
                 # 可选：写入内容到文件
                 file.write(data)
                 self.log.info(f"[map] _get_map OK!")
@@ -470,17 +481,27 @@ class RobotMap:
     def get_map(self, name=None):
         if name:
             self.current_map = name
-        self.log.info(f"----------------------get_map----------------------------")
-        if self._get_current_map():
-            map_req = self._get_map(self.current_map)
-            if map_req:
-                self.set_map(map_req)
+        if not self.current_map:
+            self.log.warning(f"[map]map name is empty!!!")
+            return
+        if os.path.exists(os.path.join(self.local_map_path,self.current_map+".smap")):
+            self.log.info(f"[map]local path had map,loading....")
+            with open(os.path.join(self.local_map_path,self.current_map+".smap"), "r") as f:
+                map_req = json.load(f)
+                if map_req:
+                    self.set_map(map_req)
+        else:
+            self.log.info(f"[map]map,loading....")
+            if self._get_current_map():
+                map_req = self._get_map(self.current_map)
+                if map_req:
+                    self.set_map(map_req)
 
     def set_map(self, map_req=None):
         if map_req:
             self.map = Map2D(map_req)
         else:
-            with open(self.model_path, "r") as f:
+            with open(self.map_path, "r") as f:
                 map_data = json.load(f)
                 self.map = Map2D(map_data)
         if self.map:
@@ -499,6 +520,7 @@ class RobotMap:
                               self.map.advanced_curve_list]
         else:
             self.log.error(f'[map] no map')
+        self.log.info(f"[map]load and set map OK!!")
 
     def _get_current_map(self):
         try:

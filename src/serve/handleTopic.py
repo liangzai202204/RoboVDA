@@ -38,7 +38,6 @@ class HandleTopic:
         self.robot: Robot = robot
         self.sim_order = SimOrder(config, robot)
         self.lock_order = threading.Lock()
-        self.order = None
         self.current_order = None
         # 用於保存協議層面的 error，錯誤產生的時候存放，在新的訂單來臨時清空。區別於在 robot.py 的 update errors（來自於機器人的錯誤）
         self.state_error = []
@@ -289,7 +288,6 @@ class HandleTopic:
             self.order_state_machine.add_instant_action(action, Status.FAILED)
 
     def _cls(self):
-        self.order = None
         self.current_order = None
         self.robot.state.nodeStates = []
         self.robot.state.edgeStates = []
@@ -457,8 +455,7 @@ class HandleTopic:
             self.robot.send_order(task_list)
         return uuid_task
 
-    @classmethod
-    def is_match_node_start_end(cls, new_node: List[order.Node], old_node: List[order.Node]) -> bool:
+    def is_match_node_start_end(self, new_node: List[order.Node], old_node: List[order.Node]) -> bool:
         """"
         校对 new base 和 old base 的 node 是否一致
         情况1：
@@ -472,16 +469,15 @@ class HandleTopic:
             新：      1 0 0   return False
         :return bool
         """
-        # todo
         if not (isinstance(new_node, list) or isinstance(old_node, list)) or len(new_node) == 0 or len(old_node) == 0:
-            print(f"new_node:{type(new_node)},{new_node}\n")
-            print(f"old_node:{type(old_node)},{old_node}\n")
-            print("校对 new base 和 old base 的 node 是否一致时，输入节点类型不是节点,或者 list 为空")
+            self.logs.error(f"new_node:{type(new_node)},{new_node}\n")
+            self.logs.error(f"old_node:{type(old_node)},{old_node}\n")
+            self.logs.error("校对 new base 和 old base 的 node 是否一致时，输入节点类型不是节点,或者 list 为空")
             return False
         end = None
         start = new_node[0]
         if not start.released:
-            print(f"输入的第一个节点的 base 为 {start.released}")
+            self.logs.error(f"输入的第一个节点的 base 为 {start.released}")
             return False
         for i, node in enumerate(old_node):
             if node.released is True:
@@ -536,11 +532,11 @@ class HandleTopic:
         return {
             "startPause": lambda a: self.instant_start_pause(a),
             "stopPause": lambda a: self.instant_stop_pause(a),
-            "startCharging": ActionPack.startCharging,
-            "stopCharging": ActionPack.stopCharging,
+            "startCharging": lambda a: ActionPack.startCharging,
+            "stopCharging": lambda a: ActionPack.stopCharging,
             "initPosition": lambda a: self.instant_initPosition(a),
-            "stateRequest": ActionPack.stateRequest,
-            "logReport": ActionPack.logReport,
+            "stateRequest": lambda a: ActionPack.stateRequest,
+            "logReport": lambda a: ActionPack.logReport,
             "Script": lambda a: self.instant_script(a),
             "cancelOrder": lambda a: self.instant_cancel_task(a),
             "factsheetRequest": lambda a: self.instant_factsheet_request(a),
