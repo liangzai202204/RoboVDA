@@ -22,7 +22,10 @@ class Config:
     mqtt_topic_instantActions: str = 'robot/instantActions'
     mqtt_topic_factsheet: str = 'robot/factsheet'
     state_report_frequency: float = 1.1
+    visualization_report_frequency: float = 10.
+    connection_report_frequency: float = 10.
     script_name: str = 'script.py'
+    manufacturer = "SEER"
 
     def __init__(self, file_path=None):
         if not file_path:
@@ -60,8 +63,11 @@ class Config:
         self.mqtt_topic_connection = self.config.get('topic', 'connection')
         self.mqtt_topic_instantActions = self.config.get('topic', 'instantActions')
         self.mqtt_topic_factsheet = self.config.get('topic', 'factsheet')
-        self.state_report_frequency = self.config.getfloat('network', 'state_report_frequency')
-        self.script_name = self.config.get('script', 'script_name')
+        self.state_report_frequency = self.config.getfloat('network', 'state_report_frequency',fallback=1.)
+        self.visualization_report_frequency = self.config.getfloat('network', 'visualization_report_frequency',fallback=10.)
+        self.connection_report_frequency = self.config.getfloat('network', 'connection_report_frequency',fallback=10.)
+        self.script_name = self.config.get('script', 'script_name',fallback="script.py")
+        self.manufacturer = self.config.get('topic', 'manufacturer',fallback="SEER")
 
 
 

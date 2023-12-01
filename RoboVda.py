@@ -12,9 +12,6 @@ from src.serve.topicQueue import EventLoop
 
 class RoboVda:
     def __init__(self):
-        """
-        初始化所有的實例
-        """
         self.config = Config()
         self.rbk = Rbk(self.config.robot_ip)
         self.robot = Robot(self.rbk)
@@ -26,17 +23,12 @@ class RoboVda:
             robot_order=self.robot_order,
             robot=self.robot)
 
-        # 线程设置
         self.rbk_run_t = threading.Thread(target=self.rbk.run, name="rbk connect")
         self.robot_run_t = threading.Thread(target=self.robot.run, name="robot run")
         self.http_server_t = threading.Thread(target=self.http_server.run, name="http server")
         set_as_daemon([self.rbk_run_t, self.robot_run_t, self.http_server_t])
 
     def run(self):
-        """
-        启动程序入口
-        使用多线程和异步混合编程
-        """
         self.rbk_run_t.start()
         self.http_server_t.start()
         coroutines = [self.robot.run(), self.robot_order.run(), self.mqtt_server.run()]

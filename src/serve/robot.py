@@ -28,17 +28,11 @@ class Robot:
         self.logs = MyLogger()
         self.robot_push_msg = RobotPush
         self.init = False
-        # 電池狀態
         self.battery_state = state.BatteryState
-        # 機器人位置
         self.agv_position = state.AgvPosition
-        # todo
-        # 機器人掉綫后，仍處於在綫狀態
-        # 第一次啓動時，如果機器人不在綫，地圖管理的rbk會有問題，這期間機器人上綫，不會拿到鏈接，無法更新地圖
         self.state = state.State.create_state()
         self.nick_name = "vda5050"
         self.lock = False
-        self.robot_version = "3.4.5"
         self.localizationTypes = ["SLAM"]
         self.factsheet = None
         self.params = {}
@@ -73,10 +67,7 @@ class Robot:
 
     async def update(self):
         push_data = None
-        """
-        将机器人的数据，更新到 self.state 中
-        :return:
-        """
+
         try:
             push_data = await TopicQueue.pushData.get()
             new_push_ata = RobotPush(**json.loads(push_data))
@@ -85,19 +76,13 @@ class Robot:
                 self.robot_push_msg = new_push_ata
                 # state
                 self.update_state()
-                # 根據信息判斷邏輯
-                # 控制權
                 self.update_lock()
-                # 當前地圖
                 self.update_map()
-                # 依次爲：在綫、控制權、定位、置信度、任務狀態、目標點
                 # self.logs.info(
                 #     f'[robot]robot status:{self.robot_online}|{self.lock}|{self.robot_push_msg.reloc_status}|'
                 #     f'{self.robot_push_msg.confidence}|{self.robot_push_msg.task_status}|'
                 #     f'{self.robot_push_msg.target_id}')
-                # 定位信息
         except queue.Empty:
-            # 如果队列为空，则跳过本次循环，继续等待下一个数据
             self.logs.error(f"19301 push data is Empty,pass")
         except Exception as e:
             self.logs.error(f"json.loads(push_data)：{e},{push_data}")
@@ -110,9 +95,7 @@ class Robot:
             charging=self.robot_push_msg.charging,
             batteryVoltage=self.robot_push_msg.voltage
         )
-        # 操作模式
         self.state.operatingMode = self.update_operating_mode()
-        # 位置信息
         self.state.agvPosition = self.agv_position(x=self.robot_push_msg.x,
                                                    y=self.robot_push_msg.y,
                                                    theta=self.robot_push_msg.angle,
@@ -123,7 +106,6 @@ class Robot:
                                                    deviationRange=0.,
                                                    localizationScore=self.robot_push_msg.confidence,
                                                    mapDescription="")
-        # 机器人名称、rbk版本
         self.state.serialNumber = self.robot_push_msg.vehicle_id
         self.state.version = self.robot_push_msg.version
         self.state.loads = [] if not self.robot_push_msg.goods_region.point else self.update_goods()
@@ -133,7 +115,6 @@ class Robot:
         self.state.velocity = state.Velocity(vx=self.robot_push_msg.vx,
                                              vy=self.robot_push_msg.vy,
                                              omega=self.robot_push_msg.w)
-        # 更新 error seer
 
         # self.state.errors = self.update_errors()
 
@@ -158,7 +139,7 @@ class Robot:
         def err(ers: list, e_list: list, level):
             errs = e_list
             for er in ers:
-                f_child = state.Error.create_error()
+                f_child = state.Error()
                 for key, value in er.items():
                     if key not in ["desc", "times"]:
                         f_child.errorType = key

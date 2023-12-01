@@ -17,7 +17,11 @@ This script requires having installed on your system:
 1. Ensure your python script file has the shebang line (`#!/usr/bin/env python3`) at the beginning. Here, `app.py` is used as an example Python script.
 2. Make the Shell script executable by running:
    ```bash
-   pyinstaller --onefile src/RoboVda.py
+   pyinstaller --onefile RoboVda.py
+   ```
+   or 
+   ```bash
+    sudo python RoboVda.py
    ```
 3. The Python script will be converted into an executable file under the `dist/` directory.
 
