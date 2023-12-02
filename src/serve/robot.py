@@ -211,6 +211,8 @@ class Robot:
         }
         flag = True
         try:
+            if not(self.robot_push_msg.reloc_status == 2 or self.robot_push_msg.reloc_status == 4):
+                return
             while flag:
                 if self.lock:
                     # res_data = self.rbk.request(3066, msg=move_task_list)
@@ -221,11 +223,9 @@ class Robot:
                         self.logs.info(f"下发任务成功：{move_task_list}")
                         flag = False
                     else:
-
-                        self.lock_robot()
                         self.logs.info(f"下发任务失败：{move_task_list}")
-
                 else:
+                    self.lock_robot()
                     self.logs.info("没有控制权，无法下发任务")
         except Exception as e:
             self.logs.info(f"试图抢占控制权并下发任务失败，可能是没有链接到机器人,{e}")
