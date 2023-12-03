@@ -7,27 +7,12 @@ from src.type.VDA5050 import state, order, factsheet, connection, instantActions
 from typing import List
 from src.serve.robot import Robot as Robot
 from src.pack.action_type import ActionPack
-from src.error_type import error_type as err
+from src.error import error_type as err
 from src.type.RobotOrderStatus import Status
 from src.pack.packTask import PackTask
 from src.log.log import MyLogger
 from src.config.config import Config
 from src.sim.sim_order import SimOrder
-
-
-# 定义装饰器函数
-def lock_decorator(func):
-    # 创建锁对象
-    lock = threading.Lock()
-
-    def wrapper(*args, **kwargs):
-        # 获取锁
-        with lock:
-            # 在加锁范围内执行方法
-            return func(*args, **kwargs)
-
-    # 返回装饰后的方法
-    return wrapper
 
 
 class HandleTopic:
@@ -38,7 +23,6 @@ class HandleTopic:
         self.robot: Robot = robot
         self.sim_order = SimOrder(config, robot)
         self.lock_order = threading.Lock()
-        self.order = None
         self.current_order = None
         # 用於保存協議層面的 error，錯誤產生的時候存放，在新的訂單來臨時清空。區別於在 robot.py 的 update errors（來自於機器人的錯誤）
         self.state_error = []
@@ -54,6 +38,7 @@ class HandleTopic:
         self.order_state_machine = OrderStateMachine()
         self.pack_task = PackTask(config)
         self.handle_actions = self._handle_actions()
+        self.error_state = state.Error()
 
     def __del__(self):
         self._cls()
@@ -259,7 +244,7 @@ class HandleTopic:
         :return:
         """
         try:
-            if self.order_state_machine.order_empty():
+            if self.order_state_machine.is_order_empty():
                 self.state_error.append(state.Error(**{
                     "errorType": "noOrderToCancel",
                     "errorLevel": "WARNING",
@@ -289,7 +274,6 @@ class HandleTopic:
             self.order_state_machine.add_instant_action(action, Status.FAILED)
 
     def _cls(self):
-        self.order = None
         self.current_order = None
         self.robot.state.nodeStates = []
         self.robot.state.edgeStates = []
@@ -347,38 +331,19 @@ class HandleTopic:
         except Exception as e:
             self.logs.error(f" update report_state_by_current_order error:{e}")
 
-    def add_error(self, error_type: str, reference_key: str, reference_value: str, error_description: str):
-        """添加错误信息到state_error列表中"""
-        self.state_error.append(state.Error(
-            errorType=error_type,
-            errorLevel="WARNING",
-            errorReferences=[state.ErrorReference(
+    def report_error(self, error_type: str, error_level: state.ErrorLevel,
+                     reference_key:str, reference_value:str,error_description=""):
+        """上报错误逻辑"""
+        self.error_state.errorType = error_type
+        self.error_state.errorLevel = error_level
+        self.error_state.errorReferences = [
+            state.ErrorReference(
                 referenceKey=reference_key,
                 referenceValue=reference_value
-            )],
-            errorDescription=error_description
-        ))
-
-    def report_error(self, sub_order: order.Order, typ: err.ErrorOrder):
-        """上报错误逻辑"""
-        self.logs.error(f"error type : {typ}")
-
-        error_handlers = {
-            err.ErrorOrder.newOrderIdButOrderRunning:
-                lambda s_order: self.add_error("Order", "OrderId", s_order.orderId,
-                                               "new OrderId But OrderRunning"),
-            err.ErrorOrder.nodeAndEdgeNumErr: lambda: None,
-            err.ErrorOrder.orderUpdateIdLowerErr:
-                lambda s_order: self.add_error("Order", "orderUpdateId", s_order.orderUpdateId,
-                                               "order UpdateId Lower Err"),
-            err.ErrorOrder.createOrderFailed:
-                lambda s_order: self.add_error("Order", "orderId", s_order.orderId,
-                                               "creat Order Failed")
-        }
-
-        error_handler = error_handlers.get(typ)
-        if error_handler:
-            error_handler(sub_order)
+            )
+        ]
+        self.error_state.errorDescription = error_description
+        self.state_error.append(self.error_state)
         self.logs.info(f"report_error ok!!!")
 
     def http_run_order(self, task: order.Order):
@@ -394,6 +359,11 @@ class HandleTopic:
                 # 有新的 order , 清空 state error
                 self.state_error.clear()
                 if not self.robot.is_lock_control:
+                    self.report_error("newOrderIdButNotLock",
+                                      state.ErrorLevel.WARNING,
+                                      "orderId",
+                                      str(task.orderId),
+                                      err.ErrorOrder.newOrderIdButNotLock)
                     return
                 if not self.order_state_machine.order:
                     self.order_state_machine.reset()
@@ -407,7 +377,11 @@ class HandleTopic:
                 if self.order_state_machine.order.orderId != task.orderId:
                     # 订单不一致，开始创建新订单逻辑
                     if not self.order_state_machine.is_order_empty():
-                        self.report_error(task, err.ErrorOrder.newOrderIdButOrderRunning)
+                        self.report_error("newOrderIdButOrderRunning",
+                                          state.ErrorLevel.WARNING,
+                                          "orderId",
+                                          str(task.orderId),
+                                          err.ErrorOrder.newOrderIdButOrderRunning)
                     else:
                         # 创建新的订单
                         self.logs.info(f"[order] try to create order when order_state_machine has a order but OK！")
@@ -419,7 +393,11 @@ class HandleTopic:
                 elif self.order_state_machine.order.orderUpdateId <= task.orderUpdateId:
                     if self.order_state_machine.order.orderUpdateId == task.orderUpdateId:
                         self.logs.info(f"orderUpdateId已存在，丢弃信息")
-                        self.report_error(task, err.ErrorOrder.orderUpdateIdExistErr)
+                        self.report_error("orderUpdateIdExistErr",
+                                          state.ErrorLevel.WARNING,
+                                          "orderId",
+                                          str(task.orderId),
+                                          err.ErrorOrder.orderUpdateIdExistErr)
                         return
                     if self.order_state_machine.is_order_empty():
                         """ 没有任务，追加 order"""
@@ -431,14 +409,26 @@ class HandleTopic:
                             self.current_order = task
                             self.execute_order()
                             return
-                        self.report_error(self.current_order, err.ErrorOrder.createOrderFailed)
+                        self.report_error("createOrderFailed",
+                                          state.ErrorLevel.WARNING,
+                                          "orderId",
+                                          str(task.orderId),
+                                          err.ErrorOrder.createOrderFailed)
                     return
                 # orderUpdateId 比当前小，上报错误，拒绝订单
                 else:
-                    self.report_error(task, err.ErrorOrder.orderUpdateIdLowerErr)
+                    self.report_error("orderUpdateIdLowerErr",
+                                      state.ErrorLevel.WARNING,
+                                      "orderUpdateId",
+                                      str(task.orderUpdateId),
+                                      err.ErrorOrder.orderUpdateIdLowerErr)
             except Exception as e:
                 self.logs.error(f"create order failed:{e}")
-                self.report_error(task, err.ErrorOrder.createOrderFailed)
+                self.report_error("createOrderFailed",
+                                  state.ErrorLevel.WARNING,
+                                  "orderId",
+                                  str(task.orderId),
+                                  err.ErrorOrder.createOrderFailed)
 
     def _try_update_order(self, sub_order):
         """
@@ -450,7 +440,11 @@ class HandleTopic:
         if self.is_match_node_start_end(sub_order.nodes, self.current_order.nodes):
             self.execute_order(sub_order)
             return
-        self.report_error(sub_order, err.ErrorOrder.createOrderFailed)
+        self.report_error("nodeBaseErr",
+                          state.ErrorLevel.WARNING,
+                          "orderId",
+                          str(self.current_order.orderId),
+                          err.ErrorOrder.nodeBaseErr)
 
     def pack_send(self, new_order: order.Order):
         task_list, uuid_task = self.pack_task.pack(new_order, self.robot)
@@ -459,8 +453,7 @@ class HandleTopic:
             self.robot.send_order(task_list)
         return uuid_task
 
-    @classmethod
-    def is_match_node_start_end(cls, new_node: List[order.Node], old_node: List[order.Node]) -> bool:
+    def is_match_node_start_end(self, new_node: List[order.Node], old_node: List[order.Node]) -> bool:
         """"
         校对 new base 和 old base 的 node 是否一致
         情况1：
@@ -474,16 +467,15 @@ class HandleTopic:
             新：      1 0 0   return False
         :return bool
         """
-        # todo
         if not (isinstance(new_node, list) or isinstance(old_node, list)) or len(new_node) == 0 or len(old_node) == 0:
-            print(f"new_node:{type(new_node)},{new_node}\n")
-            print(f"old_node:{type(old_node)},{old_node}\n")
-            print("校对 new base 和 old base 的 node 是否一致时，输入节点类型不是节点,或者 list 为空")
+            self.logs.error(f"new_node:{type(new_node)},{new_node}\n")
+            self.logs.error(f"old_node:{type(old_node)},{old_node}\n")
+            self.logs.error("校对 new base 和 old base 的 node 是否一致时，输入节点类型不是节点,或者 list 为空")
             return False
         end = None
         start = new_node[0]
         if not start.released:
-            print(f"输入的第一个节点的 base 为 {start.released}")
+            self.logs.error(f"输入的第一个节点的 base 为 {start.released}")
             return False
         for i, node in enumerate(old_node):
             if node.released is True:
@@ -510,7 +502,11 @@ class HandleTopic:
             self.order_state_machine.add_order(self.current_order, uuid_task, self.robot.model.agvClass)
         except Exception as e:
             self.logs.info(f"试图打包任务，发给机器人 失败:{e}")
-            self.report_error(err.ErrorOrder.sendOrderToRobotErr, err.ErrorOrder.sendOrderToRobotErr)
+            self.report_error("sendOrderToRobotErr",
+                              state.ErrorLevel.WARNING,
+                              "orderId",
+                              str(self.current_order.orderId),
+                              err.ErrorOrder.sendOrderToRobotErr)
 
     @property
     def state_header_id(self):
@@ -538,11 +534,11 @@ class HandleTopic:
         return {
             "startPause": lambda a: self.instant_start_pause(a),
             "stopPause": lambda a: self.instant_stop_pause(a),
-            "startCharging": ActionPack.startCharging,
-            "stopCharging": ActionPack.stopCharging,
+            "startCharging": lambda a: ActionPack.startCharging,
+            "stopCharging": lambda a: ActionPack.stopCharging,
             "initPosition": lambda a: self.instant_initPosition(a),
-            "stateRequest": ActionPack.stateRequest,
-            "logReport": ActionPack.logReport,
+            "stateRequest": lambda a: ActionPack.stateRequest,
+            "logReport": lambda a: ActionPack.logReport,
             "Script": lambda a: self.instant_script(a),
             "cancelOrder": lambda a: self.instant_cancel_task(a),
             "factsheetRequest": lambda a: self.instant_factsheet_request(a),

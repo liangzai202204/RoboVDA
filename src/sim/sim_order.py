@@ -17,6 +17,8 @@ class SimOrder:
         self.robot: Robot = robot
         self.map: RobotMap = robot.map
         self.G = nx.DiGraph()  # 创建一个有向图
+        print(self.map.edge_list)
+        print("""self.map.edge_list""")
         if self.map.node_list and self.map.edge_list:
             self.G.add_nodes_from(self.map.node_list)  # 添加节点
             self.G.add_edges_from(self.map.edge_list)  # 添加边
@@ -42,7 +44,9 @@ class SimOrder:
         #     self.shortest_path.append(selfPosition)
         self.shortest_path.extend(nx.shortest_path(self.G, start, end))
 
-    def create_node(self, point, task=None):
+    def create_node(self,point, task=None):
+
+
         point_xy = self.map.advanced_point_list.get(point)
         if not point_xy:
             return None
@@ -78,7 +82,7 @@ class SimOrder:
         print(e.model_dump())
         return e
 
-    def creat_order(self, massage: dict):
+    def creat_order(self, robot,massage: dict):
         """
         :param massage:massage = {
             "id":"",
@@ -89,6 +93,12 @@ class SimOrder:
         start = massage.get("source_id")
         end = massage.get("id")
         task = massage.get("task")
+
+        self.robot = robot
+        print(self.robot.map.node_list)
+        print("self.robot.map.node_list")
+        self.G.add_nodes_from(self.robot.map.node_list)  # 添加节点
+        self.G.add_edges_from(self.robot.map.edge_list)  # 添加边
         try:
             if not self.robot.robot_push_msg.current_station and not start:
                 start = "SELF_POSITION"

@@ -58,10 +58,12 @@ class ActionPack(pydantic.BaseModel):
         for ap in action.actionParameters:
             if ap.key == "operation":
                 operation = ap.value
+
             elif ap.key == "script_name":
                 action_task["script_name"] = ap.value
             elif ap.key == "recfile":
                 action_task["recfile"] = ap.value
+
             elif ap.key == "start_height":
                 action_task["start_height"] = ap.value
 
@@ -73,8 +75,10 @@ class ActionPack(pydantic.BaseModel):
 
             elif ap.key == "recognize":
                 action_task["recognize"] = ap.value
+
         if operation == ActionType.Script or action.actionType == ActionType.Script:
             return ActionPack.pack_action_script(action, action_uuid)
+
         if not operation:
             if action.actionType == ActionType.PICK:
                 operation = "ForkLoad"
@@ -145,25 +149,6 @@ class ActionPack(pydantic.BaseModel):
                 print(f"[ActionPack]不支持类型:{robot.model.agvClass}")
             print(f"[pack][{action.actionType}]:{action_task}")
             return action_task
-            # action_mapping = {
-            #     ActionType.PICK: lambda a: ActionPack.pick(a,script_name),
-            #     ActionType.DROP: lambda a: ActionPack.drop(a, script_name),
-            #     ActionType.FORK_LIFT: lambda a: ActionPack.forklift(a, script_name),
-            #     ActionType.TEST: lambda a: ActionPack.test(a, script_name),
-            #     ActionType.FORK_LOAD: lambda a: ActionPack.fork_load(a, script_name),
-            #     ActionType.FORK_UNLOAD: lambda a: ActionPack.fork_unload(a, script_name),
-            #     ActionType.Angle: lambda a: ActionPack.angle_action(a, script_name),
-            #     ActionType.Ready: lambda a: ActionPack.ready(a, script_name),
-            #     # ActionType.PICK_FORK: lambda a: ActionPack.pick_fork(a, script_stage=1),
-            #     # ActionType.DROP_FORK: lambda a: ActionPack.drop_fork(a, script_stage=1),
-            # }
-            #
-            # action_type = action.actionType
-            # if action_type in action_mapping:
-            #     print(action_type)
-            #     action_task = action_mapping[action_type](action)
-            # else:
-            #     print("不支持动作类型：", action_type, action.actionParameters)
         except Exception as e:
             print(f"action pack error:{e}")
 

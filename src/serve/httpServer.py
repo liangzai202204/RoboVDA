@@ -123,7 +123,6 @@ class HttpServer:
         return jsonify(push_data)
 
     def run(self):
-        # 启动Flask应用
         self.app.run(host=self.web_host, port=self.web_port)
 
     def create_action(self, action_type):
@@ -153,6 +152,8 @@ class HttpServer:
             if message := json.loads(body.decode("utf-8")).get("message"):
                 if isinstance(message, str):
                     message = json.loads(message)
+                if isinstance(message, bytes):
+                    message = json.loads(message)
                 if isinstance(message, dict):
                     print(message)
                     if message.get("actions"):
@@ -162,7 +163,7 @@ class HttpServer:
                         self.robot_order.http_run_order(order.Order(**message))
                         print("http InstantActions")
                     elif message.get("id"):
-                        if o := self.robot_order.sim_order.creat_order(message):
+                        if o := self.robot_order.sim_order.creat_order(self.robot,message):
                             self.robot_order.http_run_order(o)
                             return o.model_dump()
             self.log.info(f"[httpServer]create order")

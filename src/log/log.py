@@ -15,12 +15,15 @@ class MyLogger:
             cls._instance.__initialized = False
         return cls._instance
 
-    def __init__(self, name="SEER-robokit-VDA5050", max_bytes=1024 * 1024):
+    def __init__(self, name="SEER-robokit-VDA5050", max_bytes=1024 * 1024 * 8):
         if self.__initialized:
             return
         self.__initialized = True
-
-        log_dir = "/usr/local/SeerRobotics/vda/scripts-logs/"
+        if os.name == 'nt':  # Windows系统
+            self.file_path = os.path.join(os.environ['USERPROFILE'], 'Desktop')
+        elif os.name == 'posix':  # Linux或者Mac OS系统
+            self.file_path = '/usr/local/SeerRobotics/vda'
+        log_dir = "/usr/local/etc/.SeerRobotics/vda/logs"
         os.makedirs(log_dir, exist_ok=True)
 
         # 获取已有的日志文件名列表

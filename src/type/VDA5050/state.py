@@ -131,17 +131,10 @@ class ErrorReference(BaseModel):
 
 
 class Error(BaseModel):
-    errorType: str  # Type/name of error
-    errorLevel: ErrorLevel = ErrorLevel.WARNING
+    errorType: Optional[str] = ""  # Type/name of error
+    errorLevel: Optional[ErrorLevel] = ErrorLevel.WARNING
     errorReferences: Optional[List[ErrorReference]] = []
     errorDescription: Optional[str] = ""
-
-    @staticmethod
-    def create_error() -> "Error":
-        return Error(errorType="",
-                     errorLevel=ErrorLevel.WARNING,
-                     errorReferences=[],
-                     errorDescription="")
 
 
 class BatteryState(BaseModel):
@@ -301,4 +294,4 @@ class State(BaseModel):
 
 
 if __name__ == "__main__":
-    b = State()
+    pass

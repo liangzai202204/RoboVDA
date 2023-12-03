@@ -32,13 +32,9 @@ class Robot:
         self.battery_state = state.BatteryState
         # 機器人位置
         self.agv_position = state.AgvPosition
-        # todo
-        # 機器人掉綫后，仍處於在綫狀態
-        # 第一次啓動時，如果機器人不在綫，地圖管理的rbk會有問題，這期間機器人上綫，不會拿到鏈接，無法更新地圖
         self.state = state.State.create_state()
         self.nick_name = "vda5050"
         self.lock = False
-        self.robot_version = "3.4.5"
         self.localizationTypes = ["SLAM"]
         self.factsheet = None
         self.params = {}
@@ -157,7 +153,7 @@ class Robot:
         def err(ers: list, e_list: list, level):
             errs = e_list
             for er in ers:
-                f_child = state.Error.create_error()
+                f_child = state.Error()
                 for key, value in er.items():
                     if key not in ["desc", "times"]:
                         f_child.errorType = key
@@ -167,14 +163,15 @@ class Robot:
                 errs.append(f_child)
 
         err_list = []
-        if self.robot_push_msg.fatals:
-            err(self.robot_push_msg.fatals, err_list, state.ErrorLevel.FATAL)
-        if self.robot_push_msg.errors:
-            err(self.robot_push_msg.errors, err_list, state.ErrorLevel.FATAL)
-        if self.robot_push_msg.warnings:
-            err(self.robot_push_msg.warnings, err_list, state.ErrorLevel.WARNING)
-        if self.robot_push_msg.notices:
-            err(self.robot_push_msg.notices, err_list, state.ErrorLevel.WARNING)
+        if self.robot_push_msg:
+            if self.robot_push_msg.fatals:
+                err(self.robot_push_msg.fatals, err_list, state.ErrorLevel.FATAL)
+            if self.robot_push_msg.errors:
+                err(self.robot_push_msg.errors, err_list, state.ErrorLevel.FATAL)
+            if self.robot_push_msg.warnings:
+                err(self.robot_push_msg.warnings, err_list, state.ErrorLevel.WARNING)
+            if self.robot_push_msg.notices:
+                err(self.robot_push_msg.notices, err_list, state.ErrorLevel.WARNING)
         return err_list
 
     @property
