@@ -1,5 +1,3 @@
-![src](./assets/src.webp)
-
 # Python Script to Executable for rbk
 
 This repository provides a Shell script to easily convert Python scripts to executable files on Linux systems.
@@ -19,15 +17,11 @@ This script requires having installed on your system:
    ```bash
    pyinstaller --onefile RoboVda.py
    ```
-   or 
-   ```bash
-    sudo python RoboVda.py
-   ```
 3. The Python script will be converted into an executable file under the `dist/` directory.
 
 Please note: The Shell script will check if PyInstaller is installed on your system. If not, it will attempt to install it. Make sure you are connected to the internet.
 
-## make .deb and zip
+## make .deb and zip for ubuntu-18.04
 
 1. chmod
    ```bash

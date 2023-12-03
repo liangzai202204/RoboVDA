@@ -1,3 +1,4 @@
+import json
 import threading
 from typing import Union
 
@@ -103,7 +104,7 @@ class OrderStateMachine:
         """
         with self.lock:
             try:
-                self.log.info(f"[OrderStateMachine]将订单信息更新到状态机：{str(n_order.model_dump())}")
+                self.log.info(f"[OrderStateMachine]将订单信息更新到状态机：{str(json.dumps(n_order.model_dump()))}")
                 self.robot_type = robot_type
                 if not uuid_task:
                     self.log.warning(f"[OrderStateMachine]添加新的订单到状态机时，下发的任务ID为空：{uuid_task}")

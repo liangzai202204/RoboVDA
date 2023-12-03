@@ -358,6 +358,13 @@ class HandleTopic:
             try:
                 # 有新的 order , 清空 state error
                 self.state_error.clear()
+                if not self.robot.is_lock_control:
+                    self.report_error("newOrderIdButNotLock",
+                                      state.ErrorLevel.WARNING,
+                                      "orderId",
+                                      str(task.orderId),
+                                      err.ErrorOrder.newOrderIdButNotLock)
+                    return
                 if not self.order_state_machine.order:
                     self.order_state_machine.reset()
                 # is order_empty? by order_state_machine
@@ -371,7 +378,7 @@ class HandleTopic:
                     # 订单不一致，开始创建新订单逻辑
                     if not self.order_state_machine.is_order_empty():
                         self.report_error("newOrderIdButOrderRunning",
-                                          state.ErrorLevel.FATAL,
+                                          state.ErrorLevel.WARNING,
                                           "orderId",
                                           str(task.orderId),
                                           err.ErrorOrder.newOrderIdButOrderRunning)
@@ -387,7 +394,7 @@ class HandleTopic:
                     if self.order_state_machine.order.orderUpdateId == task.orderUpdateId:
                         self.logs.info(f"orderUpdateId已存在，丢弃信息")
                         self.report_error("orderUpdateIdExistErr",
-                                          state.ErrorLevel.FATAL,
+                                          state.ErrorLevel.WARNING,
                                           "orderId",
                                           str(task.orderId),
                                           err.ErrorOrder.orderUpdateIdExistErr)
@@ -403,7 +410,7 @@ class HandleTopic:
                             self.execute_order()
                             return
                         self.report_error("createOrderFailed",
-                                          state.ErrorLevel.FATAL,
+                                          state.ErrorLevel.WARNING,
                                           "orderId",
                                           str(task.orderId),
                                           err.ErrorOrder.createOrderFailed)
@@ -411,14 +418,14 @@ class HandleTopic:
                 # orderUpdateId 比当前小，上报错误，拒绝订单
                 else:
                     self.report_error("orderUpdateIdLowerErr",
-                                      state.ErrorLevel.FATAL,
+                                      state.ErrorLevel.WARNING,
                                       "orderUpdateId",
                                       str(task.orderUpdateId),
                                       err.ErrorOrder.orderUpdateIdLowerErr)
             except Exception as e:
                 self.logs.error(f"create order failed:{e}")
                 self.report_error("createOrderFailed",
-                                  state.ErrorLevel.FATAL,
+                                  state.ErrorLevel.WARNING,
                                   "orderId",
                                   str(task.orderId),
                                   err.ErrorOrder.createOrderFailed)

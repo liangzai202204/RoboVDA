@@ -5,6 +5,7 @@ class ErrorOrder(str):
     """
         topic : order error type
     """
+    newOrderIdButNotLock = "newOrderIdButNotLock"
     endNodeIdNotNodeId = "edge 的 endNodeId 不等于 NodeId"
     startNodeIdNotNodeId = "edge 的 startNodeId 不等于 NodeId"
     nodeAndEdgeNumErr = 0

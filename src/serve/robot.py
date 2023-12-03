@@ -28,7 +28,9 @@ class Robot:
         self.logs = MyLogger()
         self.robot_push_msg = RobotPush
         self.init = False
+        # 電池狀態
         self.battery_state = state.BatteryState
+        # 機器人位置
         self.agv_position = state.AgvPosition
         self.state = state.State.create_state()
         self.nick_name = "vda5050"
@@ -44,7 +46,7 @@ class Robot:
                 if self.init:
                     await self.update()
                 else:
-                    # self.map.get_map()
+                    self.map.get_map()
                     self.lock_robot()
                     self.model.get_model()
                     self._get_params()
@@ -62,12 +64,14 @@ class Robot:
         """
         if self.rbk.online:
             return True
-        self.lock = False
         return False
 
     async def update(self):
         push_data = None
-
+        """
+        将机器人的数据，更新到 self.state 中
+        :return:
+        """
         try:
             push_data = await TopicQueue.pushData.get()
             new_push_ata = RobotPush(**json.loads(push_data))
@@ -76,13 +80,19 @@ class Robot:
                 self.robot_push_msg = new_push_ata
                 # state
                 self.update_state()
+                # 根據信息判斷邏輯
+                # 控制權
                 self.update_lock()
+                # 當前地圖
                 self.update_map()
+                # 依次爲：在綫、控制權、定位、置信度、任務狀態、目標點
                 # self.logs.info(
                 #     f'[robot]robot status:{self.robot_online}|{self.lock}|{self.robot_push_msg.reloc_status}|'
                 #     f'{self.robot_push_msg.confidence}|{self.robot_push_msg.task_status}|'
                 #     f'{self.robot_push_msg.target_id}')
+                # 定位信息
         except queue.Empty:
+            # 如果队列为空，则跳过本次循环，继续等待下一个数据
             self.logs.error(f"19301 push data is Empty,pass")
         except Exception as e:
             self.logs.error(f"json.loads(push_data)：{e},{push_data}")
@@ -95,7 +105,9 @@ class Robot:
             charging=self.robot_push_msg.charging,
             batteryVoltage=self.robot_push_msg.voltage
         )
+        # 操作模式
         self.state.operatingMode = self.update_operating_mode()
+        # 位置信息
         self.state.agvPosition = self.agv_position(x=self.robot_push_msg.x,
                                                    y=self.robot_push_msg.y,
                                                    theta=self.robot_push_msg.angle,
@@ -106,6 +118,7 @@ class Robot:
                                                    deviationRange=0.,
                                                    localizationScore=self.robot_push_msg.confidence,
                                                    mapDescription="")
+        # 机器人名称、rbk版本
         self.state.serialNumber = self.robot_push_msg.vehicle_id
         self.state.version = self.robot_push_msg.version
         self.state.loads = [] if not self.robot_push_msg.goods_region.point else self.update_goods()
@@ -115,6 +128,7 @@ class Robot:
         self.state.velocity = state.Velocity(vx=self.robot_push_msg.vx,
                                              vy=self.robot_push_msg.vy,
                                              omega=self.robot_push_msg.w)
+        # 更新 error seer
 
         # self.state.errors = self.update_errors()
 
@@ -129,9 +143,9 @@ class Robot:
 
     def update_operating_mode(self) -> state.OperatingMode:
         mode = state.OperatingMode.MANUAL
-        if self.robot_online and self.lock:
+        if self.robot_online and self.is_lock_control:
             mode = state.OperatingMode.AUTOMATIC
-        if not self.lock:
+        if not self.is_lock_control:
             mode = state.OperatingMode.SERVICE
         return mode
 
@@ -149,26 +163,31 @@ class Robot:
                 errs.append(f_child)
 
         err_list = []
-        if self.robot_push_msg.fatals:
-            err(self.robot_push_msg.fatals, err_list, state.ErrorLevel.FATAL)
-        if self.robot_push_msg.errors:
-            err(self.robot_push_msg.errors, err_list, state.ErrorLevel.FATAL)
-        if self.robot_push_msg.warnings:
-            err(self.robot_push_msg.warnings, err_list, state.ErrorLevel.WARNING)
-        if self.robot_push_msg.notices:
-            err(self.robot_push_msg.notices, err_list, state.ErrorLevel.WARNING)
+        print(self.robot_push_msg)
+        if self.robot_push_msg:
+            if self.robot_push_msg.fatals:
+                err(self.robot_push_msg.fatals, err_list, state.ErrorLevel.FATAL)
+            if self.robot_push_msg.errors:
+                err(self.robot_push_msg.errors, err_list, state.ErrorLevel.FATAL)
+            if self.robot_push_msg.warnings:
+                err(self.robot_push_msg.warnings, err_list, state.ErrorLevel.WARNING)
+            if self.robot_push_msg.notices:
+                err(self.robot_push_msg.notices, err_list, state.ErrorLevel.WARNING)
+        print(err_list)
         return err_list
 
+    @property
+    def is_lock_control(self) -> bool:
+        if not self.robot_online:
+            return False
+        return self.robot_push_msg.current_lock.nick_name == self.nick_name
+
     def update_lock(self):
-        if self.robot_push_msg.current_lock.nick_name == self.nick_name:
-            self.lock = True
+        if self.is_lock_control:
             return
         else:
             if not self.robot_push_msg.current_lock.locked:
                 self.lock_robot()
-                self.lock = True
-            else:
-                self.lock = False
 
     def update_map(self):
         if not self.map.current_map_md5:
@@ -183,7 +202,6 @@ class Robot:
         if self.robot_online:
             # self.rbk.robot_config_lock_req(self.nick_name)
             self.rbk.call_service(ApiReq.ROBOT_CONFIG_LOCK_REQ.value, {"nick_name": self.nick_name})
-            self.lock = True
             self.logs.info("master has lock")
 
     def get_task_status(self, edges_id_list):
@@ -211,10 +229,8 @@ class Robot:
         }
         flag = True
         try:
-            if not(self.robot_push_msg.reloc_status == 2 or self.robot_push_msg.reloc_status == 4):
-                return
             while flag:
-                if self.lock:
+                if self.is_lock_control:
                     # res_data = self.rbk.request(3066, msg=move_task_list)
                     res_data = self.rbk.call_service(ApiReq.ROBOT_TASK_GOTARGETLIST_REQ.value, move_task_list)
                     res_data_json = json.loads(res_data)
@@ -223,9 +239,11 @@ class Robot:
                         self.logs.info(f"下发任务成功：{move_task_list}")
                         flag = False
                     else:
+
+                        self.lock_robot()
                         self.logs.info(f"下发任务失败：{move_task_list}")
+
                 else:
-                    self.lock_robot()
                     self.logs.info("没有控制权，无法下发任务")
         except Exception as e:
             self.logs.info(f"试图抢占控制权并下发任务失败，可能是没有链接到机器人,{e}")
@@ -235,7 +253,7 @@ class Robot:
         send = True
         while send:
             try:
-                if self.robot_online and self.lock:
+                if self.robot_online and self.is_lock_control:
                     res = self.rbk.call_service(service_name)
                     res_json = json.loads(res)
                     print(res_json)
@@ -324,7 +342,6 @@ class RobotModel:
         if not os.path.exists(self.model_dir):
             os.makedirs(self.model_dir)
         self.model_path = os.path.join(self.model_dir, "robot.model")
-        self.local_model_path = "/usr/local/etc/.SeerRobotics/rbk/resources/models"
         self.rbk = rbk
         self.model = None
         self.mode = None
@@ -354,66 +371,57 @@ class RobotModel:
         return None
 
     def get_model(self):
-        try:
-            model_req = {}
-            self.log.info(f"----------------------get_model----------------------------")
-            if os.path.exists(os.path.join(self.local_model_path,"robot.model")):
-                self.log.info(f"[model]local path had model,loading....")
-                with open(os.path.join(self.local_model_path,"robot.model"), "r") as f:
-                    model_req = json.load(f)
-            else:
-                model_req = self._get_model()
-            self.model = Model(model_req)
-            for m in self.model.device_types:
-                if m.name == "jack":
-                    for d in m.devices:
-                        if d.is_enabled:
-                            self.agvClass = "CARRIER"
-                            self.model_msg["agvClass"] = self.agvClass
-                elif m.name == "fork":
-                    for d in m.devices:
-                        if d.is_enabled:
-                            self.agvClass = "FORKLIFT"
-                            self.model_msg["agvClass"] = self.agvClass
-                elif m.name == "chassis":
-                    for d in m.devices:
-                        if d.name == "chassis":
-                            for dp in d.device_params:
-                                if dp.key == "mode":
-                                    self.mode = dp.combo_param.child_key
-                                    self.model_msg["agvClass"] = self.agvClass
-                                elif dp.key == "shape":
-                                    if dp.combo_param.child_key == "rectangle":
-                                        for c_p in dp.combo_param.child_params:
-                                            if c_p.key == "rectangle":
-                                                for cpp in c_p.params:
-                                                    if cpp.key == "width":
-                                                        self.width = cpp.double_value
-                                                    elif cpp.key == "head":
-                                                        self.length += cpp.double_value
-                                                    elif cpp.key == "tail":
-                                                        self.length += cpp.double_value
-                                                    elif cpp.key == "height":
-                                                        self.height = cpp.double_value
-                                    if dp.combo_param.child_key == "circle":
-                                        for c_p in dp.combo_param.child_params:
-                                            if c_p.key == "circle":
-                                                for cpp in c_p.params:
-                                                    if cpp.key == "radius":
-                                                        self.width = cpp.double_value
-                                                        self.length = cpp.double_value
-                                                    elif cpp.key == "height":
-                                                        self.height = cpp.double_value
+        self.log.info(f"----------------------get_model----------------------------")
+        model_req = self._get_model()
 
-                elif m.name == "pgv":
-                    for d in m.devices:
-                        if d.name == "chassis":
-                            for dp in d.device_params:
-                                if dp.key == "func":
-                                    self.pgv_func = dp.combo_param.child_key
-            self.log.info(f"load map ok!!!")
-        except Exception as e:
-            self.log.error(f"load model error!!! {e}")
+        self.model = Model(model_req)
+        for m in self.model.device_types:
+            if m.name == "jack":
+                for d in m.devices:
+                    if d.is_enabled:
+                        self.agvClass = "CARRIER"
+                        self.model_msg["agvClass"] = self.agvClass
+            elif m.name == "fork":
+                for d in m.devices:
+                    if d.is_enabled:
+                        self.agvClass = "FORKLIFT"
+                        self.model_msg["agvClass"] = self.agvClass
+            elif m.name == "chassis":
+                for d in m.devices:
+                    if d.name == "chassis":
+                        for dp in d.device_params:
+                            if dp.key == "mode":
+                                self.mode = dp.combo_param.child_key
+                                self.model_msg["agvClass"] = self.agvClass
+                            elif dp.key == "shape":
+                                if dp.combo_param.child_key == "rectangle":
+                                    for c_p in dp.combo_param.child_params:
+                                        if c_p.key == "rectangle":
+                                            for cpp in c_p.params:
+                                                if cpp.key == "width":
+                                                    self.width = cpp.double_value
+                                                elif cpp.key == "head":
+                                                    self.length += cpp.double_value
+                                                elif cpp.key == "tail":
+                                                    self.length += cpp.double_value
+                                                elif cpp.key == "height":
+                                                    self.height = cpp.double_value
+                                if dp.combo_param.child_key == "circle":
+                                    for c_p in dp.combo_param.child_params:
+                                        if c_p.key == "circle":
+                                            for cpp in c_p.params:
+                                                if cpp.key == "radius":
+                                                    self.width = cpp.double_value
+                                                    self.length = cpp.double_value
+                                                elif cpp.key == "height":
+                                                    self.height = cpp.double_value
+
+            elif m.name == "pgv":
+                for d in m.devices:
+                    if d.name == "chassis":
+                        for dp in d.device_params:
+                            if dp.key == "func":
+                                self.pgv_func = dp.combo_param.child_key
 
 
 class RobotMap:
@@ -422,13 +430,12 @@ class RobotMap:
         self.node_list = []  # 所有点的连线
         self.XYDir = {}  # {坐标：站点}
         self.advanced_point_list = {}  # {站点：坐标}
-        self.local_map_path = "/usr/local/etc/.SeerRobotics/rbk/resources/maps"
         self.map_dir = os.path.join("/usr/local/SeerRobotics/vda/", "robotMap")
         if not os.path.exists(self.map_dir):
             os.makedirs(self.map_dir)
-        self.map_path = os.path.join(os.path.join("/usr/local/SeerRobotics/vda/", "robotMap"), "robot.smap")
-        # if os.path.exists(self.map_path):
-        #     self.set_map()
+        self.model_path = os.path.join(os.path.join("/usr/local/SeerRobotics/vda/", "robotMap"), "robot.smap")
+        if os.path.exists(self.model_path):
+            self.set_map()
         self.rbk = rbk
         self.map = None
         self.log = MyLogger()
@@ -446,7 +453,7 @@ class RobotMap:
             self.log.info(f"[map]map_req len :{len(data)}")
             # print(self.model_path)
             # 将模型文件写入硬盘
-            with open(self.map_path, 'wb') as file:
+            with open(self.model_path, 'wb') as file:
                 # 可选：写入内容到文件
                 file.write(data)
                 self.log.info(f"[map] _get_map OK!")
@@ -462,27 +469,17 @@ class RobotMap:
     def get_map(self, name=None):
         if name:
             self.current_map = name
-        if not self.current_map:
-            self.log.warning(f"[map]map name is empty!!!")
-            return
-        if os.path.exists(os.path.join(self.local_map_path,self.current_map+".smap")):
-            self.log.info(f"[map]local path had map,loading....")
-            with open(os.path.join(self.local_map_path,self.current_map+".smap"), "r") as f:
-                map_req = json.load(f)
-                if map_req:
-                    self.set_map(map_req)
-        else:
-            self.log.info(f"[map]map,loading....")
-            if self._get_current_map():
-                map_req = self._get_map(self.current_map)
-                if map_req:
-                    self.set_map(map_req)
+        self.log.info(f"----------------------get_map----------------------------")
+        if self._get_current_map():
+            map_req = self._get_map(self.current_map)
+            if map_req:
+                self.set_map(map_req)
 
     def set_map(self, map_req=None):
         if map_req:
             self.map = Map2D(map_req)
         else:
-            with open(self.map_path, "r") as f:
+            with open(self.model_path, "r") as f:
                 map_data = json.load(f)
                 self.map = Map2D(map_data)
         if self.map:
@@ -501,7 +498,6 @@ class RobotMap:
                               self.map.advanced_curve_list]
         else:
             self.log.error(f'[map] no map')
-        self.log.info(f"[map]load and set map OK!!")
 
     def _get_current_map(self):
         try:

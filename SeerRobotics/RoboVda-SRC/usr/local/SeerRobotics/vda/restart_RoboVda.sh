@@ -9,10 +9,10 @@ if [[ ! -z "$PID" ]]; then
   kill $PID
 fi
 
-# 切换到 RoboVda 程序所在目录
-cd /usr/local/SeerRobotics/vda/
-
-# 以后台进程的方式重新启动 RoboVda
-sudo ./RoboVda
+## 切换到 RoboVda 程序所在目录
+#cd /usr/local/SeerRobotics/vda/
+#
+## 以后台进程的方式重新启动 RoboVda
+#sudo ./RoboVda
 
 echo "RoboVda restarted successfully."
