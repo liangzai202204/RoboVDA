@@ -163,7 +163,6 @@ class Robot:
                 errs.append(f_child)
 
         err_list = []
-        print(self.robot_push_msg)
         if self.robot_push_msg:
             if self.robot_push_msg.fatals:
                 err(self.robot_push_msg.fatals, err_list, state.ErrorLevel.FATAL)
@@ -173,7 +172,6 @@ class Robot:
                 err(self.robot_push_msg.warnings, err_list, state.ErrorLevel.WARNING)
             if self.robot_push_msg.notices:
                 err(self.robot_push_msg.notices, err_list, state.ErrorLevel.WARNING)
-        print(err_list)
         return err_list
 
     @property
