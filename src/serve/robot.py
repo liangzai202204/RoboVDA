@@ -68,7 +68,6 @@ class Robot:
         """
         if self.rbk.online:
             return True
-        self.lock = False
         return False
 
     async def update(self):
@@ -148,9 +147,9 @@ class Robot:
 
     def update_operating_mode(self) -> state.OperatingMode:
         mode = state.OperatingMode.MANUAL
-        if self.robot_online and self.lock:
+        if self.robot_online and self.is_lock_control:
             mode = state.OperatingMode.AUTOMATIC
-        if not self.lock:
+        if not self.is_lock_control:
             mode = state.OperatingMode.SERVICE
         return mode
 
@@ -178,16 +177,18 @@ class Robot:
             err(self.robot_push_msg.notices, err_list, state.ErrorLevel.WARNING)
         return err_list
 
+    @property
+    def is_lock_control(self) -> bool:
+        if not self.robot_online:
+            return False
+        return self.robot_push_msg.current_lock.nick_name == self.nick_name
+
     def update_lock(self):
-        if self.robot_push_msg.current_lock.nick_name == self.nick_name:
-            self.lock = True
+        if self.is_lock_control:
             return
         else:
             if not self.robot_push_msg.current_lock.locked:
                 self.lock_robot()
-                self.lock = True
-            else:
-                self.lock = False
 
     def update_map(self):
         if not self.map.current_map_md5:
@@ -202,7 +203,6 @@ class Robot:
         if self.robot_online:
             # self.rbk.robot_config_lock_req(self.nick_name)
             self.rbk.call_service(ApiReq.ROBOT_CONFIG_LOCK_REQ.value, {"nick_name": self.nick_name})
-            self.lock = True
             self.logs.info("master has lock")
 
     def get_task_status(self, edges_id_list):
@@ -231,7 +231,7 @@ class Robot:
         flag = True
         try:
             while flag:
-                if self.lock:
+                if self.is_lock_control:
                     # res_data = self.rbk.request(3066, msg=move_task_list)
                     res_data = self.rbk.call_service(ApiReq.ROBOT_TASK_GOTARGETLIST_REQ.value, move_task_list)
                     res_data_json = json.loads(res_data)
@@ -254,7 +254,7 @@ class Robot:
         send = True
         while send:
             try:
-                if self.robot_online and self.lock:
+                if self.robot_online and self.is_lock_control:
                     res = self.rbk.call_service(service_name)
                     res_json = json.loads(res)
                     print(res_json)

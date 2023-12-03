@@ -6,6 +6,7 @@ from src.serve.robot import RobotMap, Robot
 from src.type.VDA5050 import order
 from src.parse_protobuf.Map2D import Map2D
 import networkx as nx
+import matplotlib.pyplot as plt
 
 
 class SimOrder:
@@ -22,6 +23,14 @@ class SimOrder:
         self.shortest_path = []
         self.sequenceId_node = 0
         self.sequenceId_edge = 0
+        # 绘制有向图
+        pos = nx.spring_layout(self.G)  # 定义节点位置布局
+        nx.draw_networkx_nodes(self.G, pos, node_color='r', node_size=500)  # 绘制节点
+        nx.draw_networkx_edges(self.G, pos, edge_color='b')  # 绘制边
+        nx.draw_networkx_labels(self.G, pos)  # 绘制节点标签
+
+        plt.axis('off')  # 关闭坐标轴显示
+        plt.show()  # 显示图形
 
     def get_sequenceId(self):
         self.sequenceId_node += 2

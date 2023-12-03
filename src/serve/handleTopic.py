@@ -393,6 +393,8 @@ class HandleTopic:
             try:
                 # 有新的 order , 清空 state error
                 self.state_error.clear()
+                if not self.robot.is_lock_control:
+                    return
                 if not self.order_state_machine.order:
                     self.order_state_machine.reset()
                 # is order_empty? by order_state_machine
