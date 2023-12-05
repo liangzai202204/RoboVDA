@@ -237,7 +237,8 @@ class OrderStateMachine:
                                     action_type == 'stopPause' and taskStatus != 3):
                                 instant_action.actionStatus = Status.FINISHED
                             else:
-                                instant_action.actionStatus = Status.FAILED
+                                if instant_action.actionStatus != Status.FINISHED:
+                                    instant_action.actionStatus = Status.FAILED
                         elif action_type in ['initPosition', 'Script']:
                             task_statu = next((task for task in task_pack_status.task_status_list if
                                                task.task_id == instant_action_id), None)

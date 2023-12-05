@@ -5,6 +5,8 @@ class ErrorOrder(str):
     """
         topic : order error type
     """
+    sendOrderFailed = "打包任务后，发送人给机器人时失败了"
+    newOrderIdButNotAUTOMATIC = "下发订单时不是自动模式，拒绝订单任务"
     newOrderIdButNotLock = "newOrderIdButNotLock"
     endNodeIdNotNodeId = "edge 的 endNodeId 不等于 NodeId"
     startNodeIdNotNodeId = "edge 的 startNodeId 不等于 NodeId"

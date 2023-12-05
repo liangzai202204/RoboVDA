@@ -65,6 +65,11 @@ class PackTask:
                         if a_task:
                             self.uuid_task[action_uuid] = a.actionId
                             self.task_pack_list.append(a_task)
+                            self.log.info(f"{self.nodes[0].nodeId} node action:{a_task}")
+                        else:
+                            self.log.error(
+                                f"解析 startNode 时打包任务失败，自当前 sequenceId：{self.nodes[0].sequenceId}起，左右的任务都被丢弃")
+                            return
 
             for edge in self.edges:
                 if edge.released:
@@ -82,6 +87,11 @@ class PackTask:
                             if edge_task:
                                 self.uuid_task[edge_uuid] = edge.edgeId
                                 self.task_pack_list.append(edge_task)
+                                self.log.info(f"{edge.edgeId} edge:{edge_task}")
+                            else:
+                                self.log.error(
+                                    f"解析 edge 时打包任务失败，自当前 sequenceId：{edge.sequenceId}起，左右的任务都被丢弃")
+                                return
                             tag_edge_node_task = True
                             break
                     if tag_edge_node_task:
@@ -92,6 +102,11 @@ class PackTask:
                     if edge_task:
                         self.uuid_task[edge_uuid] = edge.edgeId
                         self.task_pack_list.append(edge_task)
+                        self.log.info(f"{edge.edgeId} edge:{edge_task}")
+                    else:
+                        self.log.error(
+                            f"解析 edge 时打包任务失败，自当前 sequenceId：{edge.sequenceId}起，左右的任务都被丢弃")
+                        return
                     if endNode.actions and endNode.released:
                         for a2 in endNode.actions:
                             if a2.actionId not in self.uuid_task:
@@ -100,6 +115,11 @@ class PackTask:
                                 if a_task:
                                     self.uuid_task[action_uuid] = a2.actionId
                                     self.task_pack_list.append(a_task)
+                                    self.log.info(f"{endNode.nodeId} node action:{a_task}")
+                                else:
+                                    self.log.error(
+                                        f"解析 endNode 时打包任务失败，自当前 sequenceId：{endNode.sequenceId}起，左右的任务都被丢弃")
+                                    return
         except Exception as e:
             self.log.error(f"pack_params error:{e}")
 

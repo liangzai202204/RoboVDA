@@ -58,7 +58,6 @@ class ActionPack(pydantic.BaseModel):
         for ap in action.actionParameters:
             if ap.key == "operation":
                 operation = ap.value
-
             elif ap.key == "script_name":
                 action_task["script_name"] = ap.value
             elif ap.key == "recfile":
@@ -168,6 +167,10 @@ class ActionPack(pydantic.BaseModel):
                             action_task["id"] = edge.endNodeId
                             action_task["source_id"] = edge.startNodeId
                             action_task["task_id"] = uuid_task
+                            if edge.maxSpeed:
+                                action_task["max_speed"] = edge.maxSpeed
+                            action_task["angle"] = end_node.nodePosition.theta
+
                     else:
                         print(f"[actionPack] ActionType:{endNode_a.actionType}")
                         return {}

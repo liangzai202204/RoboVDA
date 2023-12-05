@@ -3,24 +3,24 @@ import pydantic
 
 
 class TypeSpecification(pydantic.BaseModel):
-    seriesName: Optional[str]
-    seriesDescription: Optional[str]
-    agvKinematic: Optional[str]  # DIFF, OMNI, THREE WHEEL
-    agvClass: Optional[str]  # FORKLIFT, CONVEYOR, TAGGER, CARRIER
-    maxLoadMass: Optional[float]
-    localizationTypes: Optional[List[str]]  # NATURAL, REFLECTOR, RFID, DMC, SPOT, GRID
-    navigationTypes: Optional[List[str]]  # PHYSICAL_LINE_GUIDED, VIRTUAL_LINE_GUIDED, AUTONOMOUS
+    seriesName: Optional[str] = ''
+    seriesDescription: Optional[str] = ''
+    agvKinematic: Optional[str] = ''  # DIFF, OMNI, THREE WHEEL
+    agvClass: Optional[str] = ''  # FORKLIFT, CONVEYOR, TAGGER, CARRIER
+    maxLoadMass: Optional[float] = 0.
+    localizationTypes: Optional[List[str]] = ''  # NATURAL, REFLECTOR, RFID, DMC, SPOT, GRID
+    navigationTypes: Optional[List[str]] = ''  # PHYSICAL_LINE_GUIDED, VIRTUAL_LINE_GUIDED, AUTONOMOUS
 
 
 class PhysicalParameters(pydantic.BaseModel):
-    speedMin: Optional[float]
-    speedMax: Optional[float]
-    accelerationMax: Optional[float]
-    decelerationMax: Optional[float]
-    heightMin: Optional[float]
-    heightMax: Optional[float]
-    width: Optional[float]
-    length: Optional[float]
+    speedMin: Optional[float] = 0.
+    speedMax: Optional[float] = 0.
+    accelerationMax: Optional[float] = 0.
+    decelerationMax: Optional[float] = 0.
+    heightMin: Optional[float] = 0.
+    heightMax: Optional[float] = 0.
+    width: Optional[float] = 0.
+    length: Optional[float] = 0.
 
 
 class MaxStringLens(pydantic.BaseModel):
@@ -151,16 +151,16 @@ class LocalizationParameters(pydantic.BaseModel):
     pass
 
 
-class Factsheet(pydantic.BaseModel):
+class FactSheet(pydantic.BaseModel):
     headerId: Optional[int] = 0
     timestamp: Optional[str] = ""
-    version: Optional[str] =""
-    manufacturer: Optional[str]=""
-    serialNumber: Optional[str]=''
-    typeSpecification: Optional[TypeSpecification] =None
-    physicalParameters: Optional[PhysicalParameters] = None
-    protocolLimits: Optional[ProtocolLimits]= None
-    protocolFeatures: Optional[ProtocolFeatures]= None
-    agvGeometry: Optional[AgvGeometry]= None
-    loadSpecification: Optional[LoadSpecification]= None
-    localizationParameters: Optional[LocalizationParameters]= None
+    version: Optional[str] = ""
+    manufacturer: Optional[str] = ""
+    serialNumber: Optional[str] = ''
+    typeSpecification: Optional[TypeSpecification] = TypeSpecification()
+    physicalParameters: Optional[PhysicalParameters] = PhysicalParameters()
+    protocolLimits: Optional[ProtocolLimits] = None
+    protocolFeatures: Optional[ProtocolFeatures] = None
+    agvGeometry: Optional[AgvGeometry] = None
+    loadSpecification: Optional[LoadSpecification] = None
+    localizationParameters: Optional[LocalizationParameters] = None

@@ -26,7 +26,6 @@ class HandleTopic:
         self.current_order = None
         # 用於保存協議層面的 error，錯誤產生的時候存放，在新的訂單來臨時清空。區別於在 robot.py 的 update errors（來自於機器人的錯誤）
         self.state_error = []
-        self.current_order_state: state.State = state.State.create_state()
         self.connection: connection.Connection = connection.Connection.create()
         self.visualization: visualization.Visualization = visualization.Visualization.create()
         self.robot_state_header_id = 0
@@ -178,7 +177,7 @@ class HandleTopic:
             return True
         return False
 
-    def _handle_factsheet(self, f: factsheet.Factsheet):
+    def _handle_factsheet(self, f: factsheet.FactSheet):
         self.logs.info("_handle_factsheet")
 
     def _handle_instantActions(self, instant: instantActions.InstantActions):
@@ -317,6 +316,7 @@ class HandleTopic:
             if self.current_order:
                 self.robot.state.orderId = self.current_order.orderId
                 self.robot.state.orderUpdateId = self.current_order.orderUpdateId
+                self.robot.state.manufacturer = self.current_order.manufacturer
             # 更新错误，一种是机器人本身的错误，一种是本程序的错误
             self.robot.state.errors.clear()
             if self.state_error:
@@ -335,7 +335,7 @@ class HandleTopic:
                      reference_key:str, reference_value:str,error_description=""):
         """上报错误逻辑"""
         self.error_state.errorType = error_type
-        self.error_state.errorLevel = error_level
+        self.error_state.errorLevel = error_level.value
         self.error_state.errorReferences = [
             state.ErrorReference(
                 referenceKey=reference_key,
@@ -344,7 +344,7 @@ class HandleTopic:
         ]
         self.error_state.errorDescription = error_description
         self.state_error.append(self.error_state)
-        self.logs.info(f"report_error ok!!!")
+        self.logs.info(f"report_error:{self.error_state.model_dump()}")
 
     def http_run_order(self, task: order.Order):
         self._run_order(task)
@@ -358,12 +358,12 @@ class HandleTopic:
             try:
                 # 有新的 order , 清空 state error
                 self.state_error.clear()
-                if not self.robot.is_lock_control:
-                    self.report_error("newOrderIdButNotLock",
+                if self.robot.state.operatingMode != state.OperatingMode.AUTOMATIC:
+                    self.report_error("AUTOMATIC",
                                       state.ErrorLevel.WARNING,
                                       "orderId",
                                       str(task.orderId),
-                                      err.ErrorOrder.newOrderIdButNotLock)
+                                      err.ErrorOrder.newOrderIdButNotAUTOMATIC)
                     return
                 if not self.order_state_machine.order:
                     self.order_state_machine.reset()
@@ -449,9 +449,15 @@ class HandleTopic:
     def pack_send(self, new_order: order.Order):
         task_list, uuid_task = self.pack_task.pack(new_order, self.robot)
         self.logs.info(f"[pack]res:{task_list}，{uuid_task}")
-        if task_list:
-            self.robot.send_order(task_list)
-        return uuid_task
+        if self.robot.send_order(task_list):
+            return uuid_task
+        else:
+            self.report_error("sendOrderFailed",
+                              state.ErrorLevel.WARNING,
+                              "orderId",
+                              str(new_order.orderId),
+                              err.ErrorOrder.sendOrderFailed)
+            return {}
 
     def is_match_node_start_end(self, new_node: List[order.Node], old_node: List[order.Node]) -> bool:
         """"

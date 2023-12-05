@@ -27,7 +27,7 @@ class MqttServer:
             self.config.mqtt_topic_instantActions: instantActions.InstantActions,
             self.config.mqtt_topic_connection: connection.Connection,
             self.config.mqtt_topic_visualization: visualization.Visualization,
-            self.config.mqtt_topic_factsheet: factsheet.Factsheet
+            self.config.mqtt_topic_factsheet: factsheet.FactSheet
         }
         self.handlers = {
             state.State: self._mqtt_handle_state,
@@ -35,7 +35,7 @@ class MqttServer:
             instantActions.InstantActions: self._mqtt_handle_instantActions,
             connection.Connection: self._mqtt_handle_Connection,
             visualization.Visualization: self._mqtt_handle_visualization,
-            factsheet.Factsheet: self._mqtt_handle_fact_sheet
+            factsheet.FactSheet: self._mqtt_handle_fact_sheet
         }
 
     async def run(self):
@@ -213,6 +213,6 @@ class MqttServer:
         #                f"{len(message.model_dump())}|")
         pass
 
-    def _mqtt_handle_fact_sheet(self, factSheet: factsheet.Factsheet):
+    def _mqtt_handle_fact_sheet(self, factSheet: factsheet.FactSheet):
         asyncio.run_coroutine_threadsafe(TopicQueue.s_factSheet.put(factSheet), EventLoop.event_loop)
         self.logs.info(f"MQTT s_factSheet 订单队列大小：{TopicQueue.s_factSheet.qsize()}")

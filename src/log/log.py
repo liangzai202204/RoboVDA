@@ -68,7 +68,7 @@ class MyLogger:
 
         # 设置输出格式
         formatter = ColoredFormatter(
-            "[%(asctime)s.%(msecs)03d] %(log_color)s[%(name)s] %(levelname)s%(reset)s %(message)s",
+            "[%(asctime)s.%(msecs)03d] %(log_color)s[%(name)s]%(levelname)s%(reset)s %(message)s",
             datefmt='%Y-%m-%d %H:%M:%S',
             log_colors={
                 'DEBUG': 'blue',

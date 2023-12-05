@@ -35,9 +35,7 @@ class HttpServer:
     def _add_routes(self):
         @self.app.route('/')
         def index():
-            current_order = self.robot_order.current_order
-            current_order_state = self.robot_order.current_order_state
-            return render_template_string(HTML, current_order=current_order, current_order_state=current_order_state)
+            return render_template_string(HTML)
 
         @self.app.route('/get_data', methods=['GET'])
         def get_data():
@@ -82,7 +80,7 @@ class HttpServer:
         # 这里需要根据具体情况编写逻辑，在此给出一个示例
         data = {
             'current_order': order1,
-            'current_order_state': self.robot_order.current_order_state.model_dump()
+            'current_order_state': self.robot.state.model_dump()
         }
         return jsonify(data)
 

@@ -3,6 +3,7 @@ import json
 import os
 import queue
 import datetime
+import time
 
 import src.rbklib.rbklibPro
 from src.serve.topicQueue import TopicQueue
@@ -39,6 +40,7 @@ class Robot:
         self.factsheet = None
         self.params = {}
         self.messages = queue.Queue()
+        self.MAX_ATTEMPTS = 5  # 发送请求的最大请求次数
 
     async def run(self):
         while True:
@@ -90,7 +92,8 @@ class Robot:
                 #     f'[robot]robot status:{self.robot_online}|{self.lock}|{self.robot_push_msg.reloc_status}|'
                 #     f'{self.robot_push_msg.confidence}|{self.robot_push_msg.task_status}|'
                 #     f'{self.robot_push_msg.target_id}')
-                # 定位信息
+                self.get_fact_sheet()
+
         except queue.Empty:
             # 如果队列为空，则跳过本次循环，继续等待下一个数据
             self.logs.error(f"19301 push data is Empty,pass")
@@ -114,7 +117,8 @@ class Robot:
                                                    mapId=self.robot_push_msg.current_map,
                                                    positionInitialized=True if (
                                                            self.robot_push_msg.reloc_status == 2 or
-                                                           self.robot_push_msg.reloc_status == 4) else False,
+                                                           self.robot_push_msg.reloc_status == 4 or
+                                                           self.robot_push_msg.loc_state == 0) else False,
                                                    deviationRange=0.,
                                                    localizationScore=self.robot_push_msg.confidence,
                                                    mapDescription="")
@@ -143,10 +147,14 @@ class Robot:
 
     def update_operating_mode(self) -> state.OperatingMode:
         mode = state.OperatingMode.MANUAL
-        if self.robot_online and self.is_lock_control:
+        if self.robot_online and self.is_lock_control and \
+                self.robot_push_msg.loc_state == 0 and \
+                (self.robot_push_msg.reloc_status == 1 or self.robot_push_msg.reloc_status == 3):
             mode = state.OperatingMode.AUTOMATIC
         if not self.is_lock_control:
             mode = state.OperatingMode.SERVICE
+        if self.robot_push_msg.brake or self.robot_push_msg.soft_emc or self.robot_push_msg.emergency:
+            mode = state.OperatingMode.MANUAL
         return mode
 
     def update_errors(self) -> List[state.Error]:
@@ -197,10 +205,12 @@ class Robot:
             self.map.current_map_md5 = self.robot_push_msg.current_map_md5
 
     def lock_robot(self):
-        if self.robot_online:
-            # self.rbk.robot_config_lock_req(self.nick_name)
-            self.rbk.call_service(ApiReq.ROBOT_CONFIG_LOCK_REQ.value, {"nick_name": self.nick_name})
-            self.logs.info("master has lock")
+        try:
+            if self.robot_online:
+                self.rbk.call_service(ApiReq.ROBOT_CONFIG_LOCK_REQ.value, {"nick_name": self.nick_name})
+                self.logs.info("master has lock")
+        except Exception as e:
+            self.logs.warning(f"抢占控制权异常：{e}")
 
     def get_task_status(self, edges_id_list):
         res_edges_json = self.rbk.call_service(ApiReq.ROBOT_STATUS_TASK_STATUS_PACKAGE_REQ.value,
@@ -216,55 +226,59 @@ class Robot:
                               {"interval": 100})
 
     def send_order(self, task_list):
-        try:
-            if not isinstance(task_list, list) or not task_list:
-                self.logs.error(f"send_order is empty:{task_list}")
-                return
-        except Exception as e:
-            self.logs.error(f"收到訂單,发送失败:{e}")
+        if not isinstance(task_list, list) or not task_list:
+            self.logs.error(f"send_order is empty:{task_list}")
+            return False
         move_task_list = {
             'move_task_list': task_list
         }
-        flag = True
+        send_request_attempts_times = 0
         try:
-            while flag:
-                if self.is_lock_control:
-                    # res_data = self.rbk.request(3066, msg=move_task_list)
+            while send_request_attempts_times <= self.MAX_ATTEMPTS:
+                if self.get_control:
                     res_data = self.rbk.call_service(ApiReq.ROBOT_TASK_GOTARGETLIST_REQ.value, move_task_list)
                     res_data_json = json.loads(res_data)
-                    self.logs.info(f"下发任务内容：{move_task_list}, rbk 返回结果：{res_data_json}")
+                    self.logs.info(f"下发任务内容：{move_task_list}")
+                    self.logs.info(f"rbk 返回结果：{res_data_json}")
                     if res_data_json["ret_code"] == 0:
                         self.logs.info(f"下发任务成功：{move_task_list}")
-                        flag = False
+                        return True
                     else:
-
-                        self.lock_robot()
-                        self.logs.info(f"下发任务失败：{move_task_list}")
-
+                        send_request_attempts_times += 1
+                        time.sleep(1)
                 else:
-                    self.logs.info("没有控制权，无法下发任务")
+                    self.logs.info(f"没有获取到控制权，下发任务失败：{move_task_list}")
+                    self.logs.info(f"等待 1 s 重试")
+
+                    send_request_attempts_times += 1
+                    time.sleep(1)
+            return False
         except Exception as e:
             self.logs.info(f"试图抢占控制权并下发任务失败，可能是没有链接到机器人,{e}")
+            return False
+
+    def get_control(self) -> bool:
+        if self.is_lock_control:
+            return True
+        self.lock_robot()
+        return self.is_lock_control
 
     def _send_robot_service_request(self, service_name: str) -> bool:
         """发送机器人服务请求"""
-        send = True
-        while send:
+        send_request_attempts_times = 0
+        while send_request_attempts_times <= self.MAX_ATTEMPTS:
             try:
-                if self.robot_online and self.is_lock_control:
+                if self.robot_online and self.get_control():
                     res = self.rbk.call_service(service_name)
                     res_json = json.loads(res)
                     print(res_json)
-
                     if "ret_code" in res_json:
                         if res_json["ret_code"] == 0:
-                            send = False
-                else:
-                    self.lock_robot()
+                            return True
             except Exception as e:
+                send_request_attempts_times += 1
                 self.logs.error(f"[robot]service request error:{e}")
                 return False
-        return True
 
     def instant_stop_pause(self):
         """暂停机器人任务"""
@@ -279,11 +293,13 @@ class Robot:
         return self._send_robot_service_request(ApiReq.ROBOT_TASK_CLEARTARGETLIST_REQ.value)
 
     def instant_init_position(self, task):
-        self.send_order(task)
-        return True
+        return self.send_order(task)
 
-    def get_fact_sheet(self) -> factsheet.Factsheet:
-        f = factsheet.Factsheet()
+    def get_fact_sheet(self) -> factsheet.FactSheet:
+        if not self.robot_push_msg:
+            return None
+        f = factsheet.FactSheet()
+        f.serialNumber = self.robot_push_msg.vehicle_id
         f.typeSpecification.seriesName = self.robot_push_msg.vehicle_id
         f.typeSpecification.seriesDescription = self.robot_push_msg.vehicle_id
         if self.model.mode == "differential" or self.model.mode == "dualDiff":
@@ -296,9 +312,9 @@ class Robot:
             f.typeSpecification.agvKinematic = "RGV"
         f.typeSpecification.agvClass = self.model.agvClass
         f.typeSpecification.maxLoadMass = 0.5
-        f.typeSpecification.localizationTypes = self.localizationTypes if self.model.pgv_func else \
-            not self.localizationTypes.append(self.model.pgv_func)
-        f.typeSpecification.navigationTypes = "VIRTUAL_LINE_GUIDED"
+        f.typeSpecification.localizationTypes = self.localizationTypes if not self.model.pgv_func else \
+            self.localizationTypes.append(self.model.pgv_func)
+        f.typeSpecification.navigationTypes = ["VIRTUAL_LINE_GUIDED"]
 
         f.physicalParameters.speedMin = 0.01
         f.physicalParameters.speedMax = self.params.get("MoveFactory", {}).get("MaxSpeed", {}).get("value", 0)
@@ -332,7 +348,7 @@ class RobotModel:
         self.height = 0
         self.length = 0
         self.width = 0
-        self.pgv_func = None
+        self.pgv_func = ""
         self.pgv = "NONE"
         self.mode = "NONE"
         self.agvClass = "NONE"
@@ -386,14 +402,18 @@ class RobotModel:
                         self.model_msg["agvClass"] = self.agvClass
             elif m.name == "chassis":
                 for d in m.devices:
+                    print(d.name)
                     if d.name == "chassis":
                         for dp in d.device_params:
+                            print(dp.key)
                             if dp.key == "mode":
                                 self.mode = dp.combo_param.child_key
                                 self.model_msg["agvClass"] = self.agvClass
                             elif dp.key == "shape":
+                                print(dp.combo_param.child_key)
                                 if dp.combo_param.child_key == "rectangle":
                                     for c_p in dp.combo_param.child_params:
+                                        print(c_p.key)
                                         if c_p.key == "rectangle":
                                             for cpp in c_p.params:
                                                 if cpp.key == "width":

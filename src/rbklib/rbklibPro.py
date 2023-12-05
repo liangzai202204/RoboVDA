@@ -149,14 +149,6 @@ class BaseSo:
         :param so:  使用指定的socket
         :return: 响应，包含报文头和报文体的元组，报文头[2：序号 3：报文体长度 4：报文类型]
         """
-        ################################################################################################################
-        # 打印socket信息
-        # print("*" * 20, "socket信息", "*" * 20)
-        # print(f"{'socket:':>10}\server{so.getpeername()},local{so.getsockname()}")
-        # print()
-        ################################################################################################################
-        # 封装报文
-
         body = None
         if msg is not None:
             # 如果报文体不为空，则使用报文体
@@ -170,22 +162,6 @@ class BaseSo:
         else:
             msgLen = 0
         rawMsg = struct.pack(self.PACK_FMT_STR, 0x5A, 0x01, reqId, msgLen, msgType, b'\x00\x00\x00\x00\x00\x00')
-        ################################################################################################################
-        # 打印请求报文信息
-        # print("*" * 20, "请求信息", "*" * 20)
-        # print(f"{'时间:':　>6}\t", datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"), sep='')
-        # print(f"{'报文类型:':　>6}\t{msgType}\t{msgType:#06X}")
-        # print(f"{'序号:':　>6}\t{reqId}\t{reqId:#06X}")
-        # print(f"{'报文头:':　>6}\t{rawMsg.hex(' ').upper()}")
-        # print(f"{'报文体长度:':　>6}\t{msgLen}\t{msgLen:#010X}")
-        # if msgLen == 0:
-        #     print(f"{'报文体:':　>6}\t无")
-        # else:
-        #     print(f"{'报文体:':　>6}\t{body[:1000]}")
-        #     if msgLen > 1000:
-        #         print("...")
-        # print()
-        ################################################################################################################
         # 发送报文
         if msgLen > 0:
             rawMsg += body
@@ -367,6 +343,7 @@ class So19301(BaseSo):
                 if not recv:
                     break
                 recvData += recv
+            print(recvData)
             return recvData
         except Exception as e:
             print(f"获取机器人数据失败：{e}")
